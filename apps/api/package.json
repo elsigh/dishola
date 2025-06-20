@@ -1,10 +1,13 @@
 {
+	"name": "@dishola/api",
 	"private": true,
 	"scripts": {
 		"build": "nitro build",
 		"dev": "nitro dev",
 		"prepare": "nitro prepare",
-		"preview": "node .output/server/index.mjs"
+		"preview": "node .output/server/index.mjs",
+		"lint": "echo 'No linting configured'",
+		"clean": "rm -rf .output"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.0",
