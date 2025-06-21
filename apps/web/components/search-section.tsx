@@ -2,31 +2,75 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { MapPin, SearchIcon, Loader2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Loader2, MapPin, SearchIcon } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useState } from "react"
 
 export default function SearchSection() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  
   const [dishQuery, setDishQuery] = useState("")
   const [latitude, setLatitude] = useState<number | null>(null)
   const [longitude, setLongitude] = useState<number | null>(null)
   const [locationStatus, setLocationStatus] = useState("Set your location to search")
   const [isLocating, setIsLocating] = useState(false)
-  const router = useRouter()
 
+  // Initialize from URL parameters
   useEffect(() => {
-    const storedLat = localStorage.getItem("dishola_lat")
-    const storedLng = localStorage.getItem("dishola_lng")
-    if (storedLat && storedLng) {
-      setLatitude(Number.parseFloat(storedLat))
-      setLongitude(Number.parseFloat(storedLng))
-      setLocationStatus(
-        `Location set (Lat: ${Number.parseFloat(storedLat).toFixed(2)}, Lng: ${Number.parseFloat(storedLng).toFixed(2)})`,
-      )
+    const q = searchParams.get("q")
+    const lat = searchParams.get("lat")
+    const long = searchParams.get("long")
+    
+    if (q) {
+      setDishQuery(q)
     }
-  }, [])
+    
+    if (lat && long) {
+      setLatitude(Number.parseFloat(lat))
+      setLongitude(Number.parseFloat(long))
+      setLocationStatus(`Location set (Lat: ${Number.parseFloat(lat).toFixed(2)}, Lng: ${Number.parseFloat(long).toFixed(2)})`)
+    } else {
+      // Check localStorage for saved location
+      const storedLat = localStorage.getItem("dishola_lat")
+      const storedLng = localStorage.getItem("dishola_lng")
+      if (storedLat && storedLng) {
+        setLatitude(Number.parseFloat(storedLat))
+        setLongitude(Number.parseFloat(storedLng))
+        setLocationStatus(
+          `Location set (Lat: ${Number.parseFloat(storedLat).toFixed(2)}, Lng: ${Number.parseFloat(storedLng).toFixed(2)})`,
+        )
+      }
+    }
+  }, [searchParams])
+
+  // Update URL as user types (with debouncing)
+  const updateURL = useCallback((query: string, lat: number | null, lng: number | null) => {
+    const params = new URLSearchParams()
+    
+    if (query.trim()) {
+      params.set("q", query.trim())
+    }
+    
+    if (lat !== null && lng !== null) {
+      params.set("lat", lat.toString())
+      params.set("long", lng.toString())
+    }
+    
+    const newURL = params.toString() ? `/?${params.toString()}` : "/"
+    router.replace(newURL, { scroll: false })
+  }, [router])
+
+  // Debounced URL update for typing
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      updateURL(dishQuery, latitude, longitude)
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [dishQuery, latitude, longitude, updateURL])
 
   const handleGeolocate = () => {
     if (!navigator.geolocation) {
@@ -60,7 +104,7 @@ export default function SearchSection() {
       alert("Please enter a dish and set your location to search.")
       return
     }
-    router.push(`/search?q=${encodeURIComponent(dishQuery)}&lat=${latitude}&long=${longitude}`)
+    // URL is already updated by the effect, so we don't need to navigate
   }
 
   const canSearch = dishQuery.trim() !== "" && latitude !== null && longitude !== null
