@@ -8,7 +8,7 @@
     "clean": "turbo clean"
   },
   "devDependencies": {
-    "turbo": "^2.5.4"
+    "turbo": "latest"
   },
   "packageManager": "pnpm@9.15.0"
 }
