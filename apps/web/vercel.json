@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd ../.. && pnpm turbo build --filter=@dishola/web",
-  "installCommand": "cd ../.. && pnpm install",
-  "framework": "nextjs",
-  "outputDirectory": ".next"
-} 
