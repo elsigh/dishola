@@ -19,9 +19,9 @@ const fontSerif = FontSerif({
 })
 
 export const metadata: Metadata = {
-  title: "Dishola - Share the Love of Food",
+  title: "dishola - Share the Love of Food",
   description:
-    "Dishola: Share the love of food, dish by dish. Find real meals at real places, reviewed by editors, pros, and food lovers.",
+    "dishola: Share the love of food, dish by dish. Find real meals at real places, reviewed by editors, pros, and food lovers.",
     generator: 'v0.dev'
 }
 

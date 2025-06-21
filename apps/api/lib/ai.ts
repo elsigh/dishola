@@ -2,8 +2,9 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { google } from '@ai-sdk/google';
 import { openai } from '@ai-sdk/openai';
 import { gateway } from '@vercel/ai-sdk-gateway';
+import type { LanguageModel } from 'ai';
 
-export function getModel() {
+export function getModel(): LanguageModel {
   const aiProvider = process.env.AI_PROVIDER || 'gateway';
   
   // Use Vercel AI Gateway if enabled (default)
@@ -14,15 +15,12 @@ export function getModel() {
   
   // Fallback to direct provider integration
   switch (aiProvider.toLowerCase()) {
-    case 'openai': {
+    case 'openai':
       return openai('gpt-3.5-turbo');
-    }
-    case 'anthropic': {
+    case 'anthropic':
       return anthropic('claude-3-haiku-20240307');
-    }
-    case 'google': {
+    case 'google':
       return google('gemini-pro');
-    }
     default:
       throw new Error(`Unsupported AI provider: ${aiProvider}. Use 'gateway', 'openai', 'anthropic', or 'google'.`);
   }

@@ -5,7 +5,7 @@ export default function SiteHeader() {
     <header className="py-6 border-b border-brand-border">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
         <Link href="/" className="text-3xl font-serif font-bold text-brand-primary">
-          Dishola
+          dishola
         </Link>
         <nav>
           {/* Future navigation links can go here */}

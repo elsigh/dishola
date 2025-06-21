@@ -2,11 +2,11 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { MapPin, SearchIcon, Loader2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Loader2, MapPin, SearchIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function SearchSection() {
   const [dishQuery, setDishQuery] = useState("")
@@ -51,6 +51,7 @@ export default function SearchSection() {
         setLocationStatus(`Error: ${error.message}. Please set location manually or check permissions.`)
         setIsLocating(false)
       },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     )
   }
 

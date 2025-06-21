@@ -1,11 +1,11 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
-import { useEffect, useState, Suspense } from "react"
-import DishCard from "@/components/dish-card.tsx"
-import { Loader2, AlertTriangle, SearchSlash } from "lucide-react"
-import Link from "next/link"
+import DishCard from "@/components/dish-card"
 import { Button } from "@/components/ui/button"
+import { AlertTriangle, Loader2, SearchSlash } from "lucide-react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
 
 interface Dish {
   id: string
@@ -17,6 +17,8 @@ interface Dish {
   address: string
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001"
+
 function SearchResultsContent() {
   const searchParams = useSearchParams()
   const q = searchParams.get("q")
@@ -26,12 +28,13 @@ function SearchResultsContent() {
   const [dishes, setDishes] = useState<Dish[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [displayLocation, setDisplayLocation] = useState<string>("")
 
   useEffect(() => {
     if (q && lat && long) {
       setIsLoading(true)
       setError(null)
-      fetch(`/api/search?q=${encodeURIComponent(q)}&lat=${lat}&long=${long}`)
+      fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(q)}&lat=${lat}&long=${long}`)
         .then((res) => {
           if (!res.ok) {
             throw new Error("Failed to fetch search results. Please try again.")
@@ -43,6 +46,7 @@ function SearchResultsContent() {
             throw new Error(data.error)
           }
           setDishes(data.dishes || [])
+          setDisplayLocation(data.displayLocation || "")
           setIsLoading(false)
         })
         .catch((err) => {
@@ -95,12 +99,9 @@ function SearchResultsContent() {
     <div>
       <h1 className="text-3xl font-bold text-brand-text mb-2">Results for &quot;{q}&quot;</h1>
       <p className="text-brand-text-muted mb-8">
-        Showing dishes found near your location (Lat: {Number.parseFloat(lat || "0").toFixed(2)}, Long:{" "}
-        {Number.parseFloat(long || "0").toFixed(2)}).
+        Showing dishes found near <span className="font-semibold">{displayLocation}</span>.
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-        {" "}
-        {/* Changed to 1 column for better readability of cards */}
         {dishes.map((dish) => (
           <DishCard key={dish.id} dish={dish} />
         ))}
