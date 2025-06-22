@@ -1,11 +1,13 @@
 import { anthropic } from '@ai-sdk/anthropic';
 import { google } from '@ai-sdk/google';
 import { openai } from '@ai-sdk/openai';
+// @ts-ignore
+import type { LanguageModelV2 } from '@ai-sdk/provider';
 import { gateway } from '@vercel/ai-sdk-gateway';
-import type { LanguageModel } from 'ai';
 
-export function getModel(): LanguageModel {
+export function getModel(): LanguageModelV2 {
   const aiProvider = process.env.AI_PROVIDER || 'gateway';
+  console.debug(`[AI] Using provider: ${aiProvider}`);
   
   // Use Vercel AI Gateway if enabled (default)
   if (aiProvider.toLowerCase() === 'gateway') {

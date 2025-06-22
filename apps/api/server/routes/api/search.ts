@@ -291,7 +291,7 @@ Make realistic recommendations for real restaurants. Include proper DoorDash URL
       dishName: parsedQuery.dishName,
       cuisine: parsedQuery.cuisine,
       restaurant: {
-        name: "Local Restaurant",
+        name: "Mock Local Restaurant",
         address: locationInfo.address || `${locationInfo.lat},${locationInfo.long}`,
         website: "https://example.com",
         doordashUrl: "https://doordash.com"
