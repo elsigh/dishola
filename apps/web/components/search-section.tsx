@@ -8,23 +8,34 @@ import { Loader2, MapPin, SearchIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
+function BluePulseDot() {
+  return (
+    <span className="ml-2 inline-block h-3 w-3 rounded-full bg-blue-500 animate-pulse border border-blue-700" title="Improving location..." />
+  )
+}
+
+function formatLatLng(lat: number, lng: number) {
+  return `Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)}`;
+}
+
 export default function SearchSection() {
   const [dishQuery, setDishQuery] = useState("")
   const [latitude, setLatitude] = useState<number | null>(null)
   const [longitude, setLongitude] = useState<number | null>(null)
   const [locationStatus, setLocationStatus] = useState("Set your location to search")
   const [isLocating, setIsLocating] = useState(false)
+  const [isImproving, setIsImproving] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
     const storedLat = localStorage.getItem("dishola_lat")
     const storedLng = localStorage.getItem("dishola_lng")
     if (storedLat && storedLng) {
-      setLatitude(Number.parseFloat(storedLat))
-      setLongitude(Number.parseFloat(storedLng))
-      setLocationStatus(
-        `Location set (Lat: ${Number.parseFloat(storedLat).toFixed(2)}, Lng: ${Number.parseFloat(storedLng).toFixed(2)})`,
-      )
+      const latNum = Number.parseFloat(storedLat)
+      const lngNum = Number.parseFloat(storedLng)
+      setLatitude(latNum)
+      setLongitude(lngNum)
+      setLocationStatus(formatLatLng(latNum, lngNum))
     }
   }, [])
 
@@ -35,21 +46,69 @@ export default function SearchSection() {
     }
 
     setIsLocating(true)
+    setIsImproving(false)
     setLocationStatus("Fetching location...")
+
+    let bestAccuracy = Infinity
+    let watchId: number | null = null
+    let timeoutId: number | null = null
+
+    // In meters, 20m is excellent accuracy
+    const accuracyThreshold = 20
+
+    const updatePosition = (position: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng, accuracy } = position.coords
+      console.log(`[Geolocation:updatePosition] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}`)
+      setLatitude(lat)
+      setLongitude(lng)
+      localStorage.setItem("dishola_lat", lat.toString())
+      localStorage.setItem("dishola_lng", lng.toString())
+      setLocationStatus(formatLatLng(lat, lng))
+      setIsLocating(false)
+    }
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude: lat, longitude: lng } = position.coords
-        setLatitude(lat)
-        setLongitude(lng)
-        localStorage.setItem("dishola_lat", lat.toString())
-        localStorage.setItem("dishola_lng", lng.toString())
-        setLocationStatus(`Location set (Lat: ${lat.toFixed(2)}, Lng: ${lng.toFixed(2)})`)
-        setIsLocating(false)
+        updatePosition(position)
+        bestAccuracy = position.coords.accuracy
+
+        // If accuracy is not good, start watchPosition for up to 20s
+        if (bestAccuracy >= accuracyThreshold) {
+          console.log("[Geolocation:watchPosition] started watching for better accuracy")
+          setIsImproving(true)
+          watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+              console.log(`[Geolocation:watch] lat: ${pos.coords.latitude}, lng: ${pos.coords.longitude}, accuracy: ${pos.coords.accuracy}`)
+              if (pos.coords.accuracy < bestAccuracy) {
+                bestAccuracy = pos.coords.accuracy
+                updatePosition(pos)
+              }
+              // If accuracy is now good, stop watching
+              if (bestAccuracy < accuracyThreshold) {
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+                setIsImproving(false)
+                if (timeoutId !== null) clearTimeout(timeoutId)
+                console.log("[Geolocation:watchPosition] stopped watching - good accuracy")
+              }
+            },
+            (err) => {
+              console.error("[Geolocation:watchPosition] error:", err)
+            },
+            { enableHighAccuracy: true }
+          )
+          // Stop watching after 20 seconds
+          timeoutId = window.setTimeout(() => {
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+            setIsImproving(false)
+            console.log("[Geolocation:watchPosition] stopped watching - timeout")
+          }, 20000)
+        }
       },
       (error) => {
         console.error("Geolocation error:", error)
         setLocationStatus(`Error: ${error.message}. Please set location manually or check permissions.`)
         setIsLocating(false)
+        setIsImproving(false)
       },
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     )
@@ -96,9 +155,22 @@ export default function SearchSection() {
             {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
             Use Current Location
           </Button>
-          <p className="text-sm text-brand-text-muted flex-grow truncate p-2 border border-transparent rounded-md bg-white/50">
+          <button
+            type="button"
+            className="text-sm ml-2 text-brand-text-muted flex-grow truncate p-2 border border-transparent rounded-md bg-white/50 flex items-center cursor-pointer focus:outline-none border-none text-left"
+            onClick={() => {
+              if (latitude !== null && longitude !== null) {
+                const url = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                window.open(url, "_blank", "noopener,noreferrer");
+              }
+            }}
+            disabled={latitude === null || longitude === null}
+            tabIndex={0}
+            aria-label="Open location in Google Maps"
+          >
             {locationStatus}
-          </p>
+            {isImproving && <BluePulseDot />}
+          </button>
         </div>
       </div>
 
