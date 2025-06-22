@@ -8,8 +8,8 @@ export function getModel(): LanguageModel {
   
   // Use Vercel AI Gateway if enabled (default)
   //if (aiProvider.toLowerCase() === 'gateway') {
-    const gatewayModel = process.env.AI_GATEWAY_MODEL || 'openai/gpt-3.5-turbo';
-    return gateway(gatewayModel);
+  const gatewayModel = process.env.AI_GATEWAY_MODEL || 'openai/gpt-3.5-turbo';
+  return gateway(gatewayModel);
   //}
   
   // // Fallback to direct provider integration
