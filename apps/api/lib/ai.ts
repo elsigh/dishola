@@ -1,11 +1,11 @@
 import { anthropic } from '@ai-sdk/anthropic';
+import { gateway } from '@ai-sdk/gateway';
 import { google } from '@ai-sdk/google';
 import { openai } from '@ai-sdk/openai';
-// @ts-ignore
-import type { LanguageModelV2 } from '@ai-sdk/provider';
-import { gateway } from '@vercel/ai-sdk-gateway';
 
-export function getModel(): LanguageModelV2 {
+import type { LanguageModel } from 'ai';
+
+export function getModel(): LanguageModel {
   const aiProvider = process.env.AI_PROVIDER || 'gateway';
   console.debug(`[AI] Using provider: ${aiProvider}`);
   
