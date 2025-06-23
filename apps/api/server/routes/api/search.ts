@@ -199,7 +199,7 @@ export default defineEventHandler(async (event) => {
     // Parse the user query to extract structured data
     const parsedQuery = await parseUserQuery(searchPrompt);
     // Get restaurant recommendations based on parsed query and location
-    const results = await getRestaurantRecommendations(parsedQuery, location, locationInfo);
+    const results = await getRestaurantRecommendations(parsedQuery, locationInfo);
     return {
       query: searchPrompt,
       location: location,
@@ -262,7 +262,7 @@ Respond with valid JSON only:`;
   }
 }
 
-async function getRestaurantRecommendations(parsedQuery: ParsedQuery, location: string, locationInfo: { lat: string, long: string, address?: string }): Promise<RestaurantResult[]> {
+async function getRestaurantRecommendations(parsedQuery: ParsedQuery, locationInfo: { lat: string, long: string, address?: string }): Promise<RestaurantResult[]> {
   const prompt = `Find restaurants near (${locationInfo.lat}, ${locationInfo.long})${locationInfo.address ? ` (${locationInfo.address})` : ''} that serve ${parsedQuery.dishName} (${parsedQuery.cuisine} cuisine).
 
 Return exactly 5 restaurant recommendations as a JSON array with this structure:
