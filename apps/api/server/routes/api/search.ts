@@ -268,12 +268,12 @@ async function getRestaurantRecommendations(parsedQuery: ParsedQuery, location: 
 Return exactly 5 restaurant recommendations as a JSON array with this structure:
 [{
   "dishName": "specific dish name",
+  "dishImageUrl": "image url of the dish or the value null if not available",
   "cuisine": "cuisine type",
   "restaurant": {
     "name": "restaurant name",
     "address": "full address",
-    "website": "https://restaurant-website.com",
-    "doordashUrl": "https://doordash.com/store/restaurant-name"
+    "website": "https://restaurant-website.com or null if not available",
   },
   "description": "dish description",
   "estimatedPrice": "$15-20"

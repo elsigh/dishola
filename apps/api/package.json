@@ -11,12 +11,11 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.0.0",
-		"nitropack": "latest",
-		"typescript": "^5.8.3"
+		"nitropack": "latest"
 	},
 	"dependencies": {
-		"@ai-sdk/gateway": "1.0.0-alpha.15",
-		"@ai-sdk/provider": "2.0.0-alpha.15",
-		"ai": "5.0.0-alpha.15"
+		"@ai-sdk/gateway": "alpha",
+		"@ai-sdk/provider": "latest",
+		"ai": "alpha"
 	}
 }

@@ -32,14 +32,30 @@ export default function SearchSection() {
 	const router = useRouter();
 
 	useEffect(() => {
-		const storedLat = localStorage.getItem("dishola_lat");
-		const storedLng = localStorage.getItem("dishola_lng");
-		if (storedLat && storedLng) {
-			const latNum = Number.parseFloat(storedLat);
-			const lngNum = Number.parseFloat(storedLng);
-			setLatitude(latNum);
-			setLongitude(lngNum);
-			setLocationStatus(formatLatLng(latNum, lngNum));
+		// On mount, immediately request geolocation
+		if (navigator.geolocation) {
+			setIsLocating(true);
+			setLocationStatus("Fetching location...");
+			navigator.geolocation.getCurrentPosition(
+				(position) => {
+					const { latitude: lat, longitude: lng, accuracy } = position.coords;
+					console.log(
+						`[Geolocation:onLoad] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}`,
+					);
+					setLatitude(lat);
+					setLongitude(lng);
+					setLocationStatus(formatLatLng(lat, lng));
+					setIsLocating(false);
+				},
+				(error) => {
+					console.error("Geolocation error (onLoad):", error);
+					setLocationStatus(
+						`Error: ${error.message}. Please set location manually or check permissions.`,
+					);
+					setIsLocating(false);
+				},
+				{ enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
+			);
 		}
 	}, []);
 
@@ -56,8 +72,6 @@ export default function SearchSection() {
 		let bestAccuracy = Infinity;
 		let watchId: number | null = null;
 		let timeoutId: number | null = null;
-
-		// In meters, 20m is excellent accuracy
 		const accuracyThreshold = 20;
 
 		const updatePosition = (position: GeolocationPosition) => {
@@ -67,8 +81,6 @@ export default function SearchSection() {
 			);
 			setLatitude(lat);
 			setLongitude(lng);
-			localStorage.setItem("dishola_lat", lat.toString());
-			localStorage.setItem("dishola_lng", lng.toString());
 			setLocationStatus(formatLatLng(lat, lng));
 			setIsLocating(false);
 		};
@@ -79,22 +91,16 @@ export default function SearchSection() {
 				bestAccuracy = position.coords.accuracy;
 
 				// If accuracy is not good, start watchPosition for up to 20s
-				if (bestAccuracy >= accuracyThreshold) {
-					console.log(
-						"[Geolocation:watchPosition] started watching for better accuracy",
-					);
+				if (bestAccuracy > accuracyThreshold) {
 					setIsImproving(true);
 					watchId = navigator.geolocation.watchPosition(
 						(pos) => {
 							console.log(
 								`[Geolocation:watch] lat: ${pos.coords.latitude}, lng: ${pos.coords.longitude}, accuracy: ${pos.coords.accuracy}`,
 							);
-							if (pos.coords.accuracy < bestAccuracy) {
-								bestAccuracy = pos.coords.accuracy;
-								updatePosition(pos);
-							}
-							// If accuracy is now good, stop watching
-							if (bestAccuracy < accuracyThreshold) {
+							bestAccuracy = pos.coords.accuracy;
+							updatePosition(pos);
+							if (bestAccuracy <= accuracyThreshold) {
 								if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 								setIsImproving(false);
 								if (timeoutId !== null) clearTimeout(timeoutId);
@@ -108,7 +114,6 @@ export default function SearchSection() {
 						},
 						{ enableHighAccuracy: true },
 					);
-					// Stop watching after 20 seconds
 					timeoutId = window.setTimeout(() => {
 						if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 						setIsImproving(false);

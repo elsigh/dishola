@@ -1,10 +1,9 @@
 import { gateway } from '@ai-sdk/gateway';
-
 import type { LanguageModel } from 'ai';
 
 export function getModel(): LanguageModel {
-  const aiProvider = 'gateway';
-  console.debug(`[AI] Using provider: ${aiProvider}`);
+  //const aiProvider = 'gateway';
+  //console.debug(`[AI] Using provider: ${aiProvider}, OIDC: `, process.env.VERCEL_OIDC_TOKEN);
   
   // Use Vercel AI Gateway if enabled (default)
   //if (aiProvider.toLowerCase() === 'gateway') {
