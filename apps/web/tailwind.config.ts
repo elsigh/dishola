@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss"
 
 const config = {
-  darkMode: ["class"],
+  darkMode: "class",
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -20,47 +20,13 @@ const config = {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-        // Custom Dishola palette
-        "brand-bg": "#f5f5f3", // Light beige
-        "brand-text": "#3a3a3a", // Dark gray
-        "brand-text-muted": "#5c5c5c", // Medium gray
-        "brand-border": "#d1d1d1", // Light gray for borders
-        "brand-input-bg": "#ffffff", // White for input backgrounds
-        "brand-primary": "#6b705c", // Muted olive green
-        "brand-primary-hover": "#5a604c", // Darker olive green
+        'brand-bg': '#a7d3d6', // Teal/Aqua
+        'brand-primary': '#4a3a2c', // Dark brown
+        'brand-primary-hover': '#3a2c1e', // Slightly darker brown for hover
+        'brand-accent': '#f15a29', // Orange dot
+        'brand-border': '#e6e6e6', // Light gray
+        'brand-text': '#4a3a2c', // Main text
+        'brand-text-muted': '#7d6e5c', // Muted brown
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -76,10 +42,16 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "blue-dot-pulse": {
+          "0%": { transform: "scale(1)", opacity: "0.7" },
+          "70%": { transform: "scale(2.5)", opacity: "0" },
+          "100%": { transform: "scale(2.5)", opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "blue-dot-pulse": "blue-dot-pulse 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1)",
       },
       fontFamily: {
         sans: [

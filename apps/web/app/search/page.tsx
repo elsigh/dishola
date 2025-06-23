@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Loader2, SearchSlash } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 interface Dish {
 	id: string;
@@ -30,39 +30,56 @@ function SearchResultsContent() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [displayLocation, setDisplayLocation] = useState<string>("");
+	const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+	const abortController = useRef<AbortController | null>(null);
 
 	useEffect(() => {
 		if (q && lat && long) {
 			setIsLoading(true);
 			setError(null);
-			fetch(
-				`${API_BASE_URL}/api/search?q=${encodeURIComponent(q)}&lat=${lat}&long=${long}`,
-			)
-				.then((res) => {
-					if (!res.ok) {
-						throw new Error(
-							"Failed to fetch search results. Please try again.",
-						);
-					}
-					return res.json();
-				})
-				.then((data) => {
-					if (data.error) {
-						throw new Error(data.error);
-					}
-					setDishes(data.results || data.dishes || []);
-					setDisplayLocation(data.displayLocation || "");
-					setIsLoading(false);
-				})
-				.catch((err) => {
-					console.error("Search API error:", err);
-					setError(err.message || "An unknown error occurred.");
-					setIsLoading(false);
-				});
+			// Debounce the fetch
+			if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+			if (abortController.current) abortController.current.abort();
+			debounceTimeout.current = setTimeout(() => {
+				abortController.current = new AbortController();
+				fetch(
+					`${API_BASE_URL}/api/search?q=${encodeURIComponent(q)}&lat=${lat}&long=${long}`,
+					{
+						signal: abortController.current.signal,
+					},
+				)
+					.then((res) => {
+						if (!res.ok) {
+							throw new Error(
+								"Failed to fetch search results. Please try again.",
+							);
+						}
+						return res.json();
+					})
+					.then((data) => {
+						if (data.error) {
+							throw new Error(data.error);
+						}
+						setDishes(data.results || data.dishes || []);
+						setDisplayLocation(data.displayLocation || "");
+						setIsLoading(false);
+					})
+					.catch((err) => {
+						if (err.name === "AbortError") return;
+						console.error("Search API error:", err);
+						setError(err.message || "An unknown error occurred.");
+						setIsLoading(false);
+					});
+			}, 300);
 		} else {
 			setError("Search query or location is missing.");
 			setIsLoading(false);
 		}
+		// Cleanup on unmount or param change
+		return () => {
+			if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+			if (abortController.current) abortController.current.abort();
+		};
 	}, [q, lat, long]);
 
 	if (isLoading) {

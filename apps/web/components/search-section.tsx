@@ -3,16 +3,18 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, MapPin, SearchIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type React from "react";
 import { useEffect, useState } from "react";
 
 function BluePulseDot() {
 	return (
-		<span
-			className="ml-2 inline-block h-3 w-3 rounded-full bg-blue-500 animate-pulse border border-blue-700"
-			title="Improving location..."
-		/>
+		<span className="relative flex h-5 w-5 items-center justify-center">
+			{/* Halo pulse */}
+			<span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-60 animate-blue-dot-pulse"></span>
+			{/* Solid blue dot */}
+			<span className="relative inline-flex h-3 w-3 rounded-full bg-blue-600 border-2 border-white shadow"></span>
+		</span>
 	);
 }
 
@@ -30,9 +32,11 @@ export default function SearchSection() {
 	const [isLocating, setIsLocating] = useState(false);
 	const [isImproving, setIsImproving] = useState(false);
 	const router = useRouter();
+	const pathname = usePathname();
 
+	// biome-ignore lint: intentionally re-run geolocation on pathname change
 	useEffect(() => {
-		// On mount, immediately request geolocation
+		// On mount (or when pathname changes), immediately request geolocation
 		if (navigator.geolocation) {
 			setIsLocating(true);
 			setLocationStatus("Fetching location...");
@@ -49,15 +53,13 @@ export default function SearchSection() {
 				},
 				(error) => {
 					console.error("Geolocation error (onLoad):", error);
-					setLocationStatus(
-						`Error: ${error.message}. Please set location manually or check permissions.`,
-					);
+					setLocationStatus(`Error: ${error.message}. You offline?`);
 					setIsLocating(false);
 				},
 				{ enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
 			);
 		}
-	}, []);
+	}, [pathname]);
 
 	const handleGeolocate = () => {
 		if (!navigator.geolocation) {
@@ -125,9 +127,7 @@ export default function SearchSection() {
 			},
 			(error) => {
 				console.error("Geolocation error:", error);
-				setLocationStatus(
-					`Error: ${error.message}. Please set location manually or check permissions.`,
-				);
+				setLocationStatus(`Error: ${error.message}. You offline?`);
 				setIsLocating(false);
 				setIsImproving(false);
 			},
@@ -156,7 +156,7 @@ export default function SearchSection() {
 					htmlFor="dishQuery"
 					className="block text-sm font-medium text-brand-text-muted mb-1"
 				>
-					What dish are you craving?
+					What are you craving?
 				</label>
 				<Input
 					type="text"
@@ -169,7 +169,7 @@ export default function SearchSection() {
 			</div>
 
 			<div>
-				{/** biome-ignore lint/a11y/noLabelWithoutControl: <explanation> */}
+				{/** biome-ignore lint/a11y/noLabelWithoutControl: lol */}
 				<label className="block text-sm font-medium text-brand-text-muted mb-1">
 					Location
 				</label>

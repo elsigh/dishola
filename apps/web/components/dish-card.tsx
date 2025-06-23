@@ -32,7 +32,7 @@ export default function DishCard({ dish }: DishCardProps) {
 		<div className="bg-white border border-brand-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 ease-in-out flex flex-col sm:flex-row">
 			<div className="sm:w-1/3 h-48 sm:h-auto relative">
 				<Image
-					src={dish.imageUrl || "/placeholder.svg"}
+					src={dish.imageUrl || "/img/placeholder.svg"}
 					alt={`Image of ${dish.dishName}`}
 					layout="fill"
 					objectFit="cover"
@@ -58,7 +58,9 @@ export default function DishCard({ dish }: DishCardProps) {
 							{restaurant.address}
 						</div>
 						<div className="text-xs text-blue-600 truncate group-hover:underline">
-							{restaurant.website.replace(/^https?:\/\//, "")}
+							{restaurant.website
+								.replace(/^https?:\/\//, "")
+								.replace(/\/$/, "")}
 						</div>
 					</a>
 				) : (
