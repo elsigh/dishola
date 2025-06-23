@@ -1,3 +1,3 @@
-# Nitro starter
+# dishola-api
 
-Look at the [nitro quick start](https://nitro.unjs.io/guide#quick-start) to learn more how to get started.
+You are going to need to `vc link` and `vc env pull` and then `ln -s .env.local .env` before you start the server
