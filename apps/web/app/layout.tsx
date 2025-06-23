@@ -28,6 +28,7 @@ export const metadata: Metadata = {
 	description:
 		"dishola: Share the love of food, dish by dish. Find real meals at real places, reviewed by editors, pros, and food lovers.",
 	generator: "v0.dev",
+	icons: [{ rel: "icon", url: "/favicon.png" }],
 };
 
 export default function RootLayout({

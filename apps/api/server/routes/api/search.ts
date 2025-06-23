@@ -236,6 +236,7 @@ interface RestaurantResult {
   };
   description: string;
   estimatedPrice: string;
+  dishImageUrl: string;
 }
 
 async function parseUserQuery(query: string): Promise<ParsedQuery> {
@@ -268,18 +269,18 @@ async function getRestaurantRecommendations(parsedQuery: ParsedQuery, locationIn
 Return exactly 5 restaurant recommendations as a JSON array with this structure:
 [{
   "dishName": "specific dish name",
-  "dishImageUrl": "image url of the dish or the value null if not available",
+  "dishImageUrl": "A real image URL of the dish from the restaurant's website if available, or a high-quality public image (e.g., Wikimedia Commons, Unsplash, or another reputable source) that best represents the dish. Do not use placeholder images.",
   "cuisine": "cuisine type",
   "restaurant": {
     "name": "restaurant name",
     "address": "full address",
-    "website": "https://restaurant-website.com or null if not available",
+    "website": "https://restaurant-website.com or null if not available"
   },
   "description": "dish description",
   "estimatedPrice": "$15-20"
 }]
 
-Make realistic recommendations for real restaurants. Include proper DoorDash URLs.`;
+Make realistic recommendations for real restaurants. Include proper DoorDash URLs. Always provide a real, relevant image URL for each dish.`;
 
   try {
     const response = await generateAIResponse(prompt);
@@ -297,7 +298,8 @@ Make realistic recommendations for real restaurants. Include proper DoorDash URL
         doordashUrl: "https://doordash.com"
       },
       description: `Delicious ${parsedQuery.dishName} at a local restaurant`,
-      estimatedPrice: "$12-18"
+      estimatedPrice: "$12-18",
+      dishImageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80" // fallback public image
     }];
   }
 }
