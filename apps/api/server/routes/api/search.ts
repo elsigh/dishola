@@ -141,7 +141,10 @@ async function getDishRecommendationa(
 	parsedQuery: ParsedQuery,
 	locationInfo: { lat: string; long: string },
 ): Promise<DishRecommendation[]> {
-	const prompt = `Return exactly 5 exceptional dish recommendations for ${parsedQuery.dishName} (${parsedQuery.cuisine} cuisine very-nearby to (${locationInfo.lat}, ${locationInfo.long})) as a JSON array with this structure:
+	const prompt = `Return the top 5 best ${parsedQuery.dishName} recommendations
+	as close as possible to (${locationInfo.lat}, ${locationInfo.long}))
+	sorted by closeness, rating, and popularity, 
+	as a JSON array with this structure:
 [
   {
     "dish": {
@@ -158,13 +161,14 @@ async function getDishRecommendationa(
     }
   }
 ]
-Respond with valid, strict JSON only. Do not include comments, trailing commas, or single quotes. 
+
+Respond with valid, strict JSON only. 
+Do not include comments, trailing commas, or single quotes. 
 Only use double quotes for property names and string values.`;
 
 	// Runtime check: ensure all required values are present in the prompt string
 	if (
 		prompt.indexOf(parsedQuery.dishName) === -1 ||
-		prompt.indexOf(parsedQuery.cuisine) === -1 ||
 		prompt.indexOf(locationInfo.lat) === -1 ||
 		prompt.indexOf(locationInfo.long) === -1
 	) {
