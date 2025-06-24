@@ -75,7 +75,7 @@ function SearchResultsContent() {
 		return (
 			<div className="flex flex-col items-center justify-center text-center py-20">
 				<Loader2 className="h-12 w-12 animate-spin text-brand-primary mb-4" />
-				<p className="text-brand-text-muted">Searching for deliciousness...</p>
+				<p className="text-brand-text-muted">Searching for {q} deliciousness...</p>
 			</div>
 		);
 	}

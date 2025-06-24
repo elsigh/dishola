@@ -93,7 +93,7 @@ export default function DishCard({ recommendation }: DishCardProps) {
 	const { name: dishName } = recommendation.dish;
 	const { name: restaurantName, address } = recommendation.restaurant;
 	const imageQuery = encodeURIComponent(
-		`${dishName} ${restaurantName} ${address}`,
+		`${dishName} at ${restaurantName} ${address}`,
 	);
 	const imageSrc = `/api/dish-image?q=${imageQuery}`;
 

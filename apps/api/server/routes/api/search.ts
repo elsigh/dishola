@@ -124,11 +124,12 @@ Query: "${query}"
 
 Respond with valid, strict JSON only. Do not include comments, trailing commas, or single quotes. Only use double quotes for property names and string values.`;
 
+	let response: string;
 	try {
-		const response = await generateAIResponse(prompt);
+		response = await generateAIResponse(prompt);
 		return JSON.parse(response);
 	} catch (error) {
-		console.error("Query parsing error:", error);
+		console.error("Query parsing error:", {error, response});
 		// Fallback parsing
 		return {
 			dishName: query,

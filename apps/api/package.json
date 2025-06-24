@@ -14,8 +14,8 @@
 		"nitropack": "latest"
 	},
 	"dependencies": {
-		"@ai-sdk/gateway": "alpha",
-		"@ai-sdk/provider": "latest",
-		"ai": "alpha"
+		"@ai-sdk/gateway": "1.0.0-alpha.6",
+		"ai": "5.0.0-alpha.15",
+		"h3": "^1.15.3"
 	}
 }

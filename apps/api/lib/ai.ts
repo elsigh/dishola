@@ -1,25 +1,17 @@
-import { gateway } from "@ai-sdk/gateway";
+import { createGatewayProvider } from '@ai-sdk/gateway';
 import type { LanguageModel } from "ai";
 
+const gateway = createGatewayProvider({
+  apiKey: process.env.GATEWAY_API_KEY,
+})
+
+const fallbackModel = "openai/gpt-4-turbo"
+//const fallbackModel = "openai/gpt-3.5-turbo"
+//const fallbackModel = "google/gemini-2.0-flash"
+//const fallbackModel = "google/gemini-2.5-pro"
+
 export function getModel(): LanguageModel {
-	//const aiProvider = 'gateway';
-	//console.debug(`[AI] Using provider: ${aiProvider}, OIDC: `, process.env.VERCEL_OIDC_TOKEN);
-
-	// Use Vercel AI Gateway if enabled (default)
-	//if (aiProvider.toLowerCase() === 'gateway') {
-	const gatewayModel = process.env.AI_GATEWAY_MODEL || "openai/gpt-3.5-turbo";
-	return gateway(gatewayModel);
-	//}
-
-	// // Fallback to direct provider integration
-	// switch (aiProvider.toLowerCase()) {
-	//   case 'openai':
-	//     return openai('gpt-3.5-turbo');
-	//   case 'anthropic':
-	//     return anthropic('claude-3-haiku-20240307');
-	//   case 'google':
-	//     return google('gemini-pro');
-	//   default:
-	//     throw new Error(`Unsupported AI provider: ${aiProvider}. Use 'gateway', 'openai', 'anthropic', or 'google'.`);
-	// }
+	const gatewayModel = process.env.AI_GATEWAY_MODEL || fallbackModel;
+	// @ts-ignore
+	return gateway(gatewayModel)
 }
