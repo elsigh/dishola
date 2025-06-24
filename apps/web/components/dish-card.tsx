@@ -1,19 +1,34 @@
 import { Star } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
+import type { DishRecommendation } from "../../api/lib/types";
 
 function GoogleMapsIcon() {
 	return (
 		<svg
 			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			fill="currentColor"
-			className="inline-block w-4 h-4 text-blue-600 ml-1 align-text-bottom"
+			width={20}
+			height={20}
+			viewBox="0 0 32 32"
+			fill="none"
+			className="inline-block w-4 h-4 ml-1 align-text-bottom"
 			aria-label="Google Maps"
 			role="img"
 		>
 			<title>Google Maps Icon</title>
-			<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
+			<g>
+				<path
+					d="M16 2C9.373 2 4 7.373 4 14c0 7.732 10.25 15.25 11.25 15.986a1 1 0 0 0 1.5 0C17.75 29.25 28 21.732 28 14c0-6.627-5.373-12-12-12z"
+					fill="#4285F4"
+				/>
+				<path
+					d="M16 6.5A7.5 7.5 0 1 0 16 21.5a7.5 7.5 0 0 0 0-15z"
+					fill="#34A853"
+				/>
+				<path d="M16 6.5v15A7.5 7.5 0 0 0 16 6.5z" fill="#FBBC04" />
+				<circle cx="16" cy="14" r="4.5" fill="#EA4335" />
+				<circle cx="16" cy="14" r="2.5" fill="#fff" />
+			</g>
 		</svg>
 	);
 }
@@ -38,41 +53,16 @@ function haversineDistance(
 	return d;
 }
 
-interface Dish {
-	id: string;
-	dishName: string;
-	restaurantName: string;
-	description: string;
-	imageUrl: string;
-	rating: number;
-	address: string;
-	restaurant?: {
-		name: string;
-		address: string;
-		lat?: string;
-		lng?: string;
-		website: string;
-	};
-	dishImageUrl?: string;
-}
-
 interface DishCardProps {
-	dish: Dish;
+	recommendation: DishRecommendation;
 }
 
-export default function DishCard({ dish }: DishCardProps) {
+export default function DishCard({ recommendation }: DishCardProps) {
 	const searchParams = useSearchParams();
 	const userLat = parseFloat(searchParams.get("lat") || "");
 	const userLng = parseFloat(searchParams.get("long") || "");
 
-	// Support both flat and nested restaurant info
-	const restaurant = dish.restaurant || {
-		name: dish.restaurantName,
-		address: dish.address,
-		website: undefined,
-		lat: undefined,
-		lng: undefined,
-	};
+	const restaurant = recommendation.restaurant;
 
 	const googleMapsQuery = encodeURIComponent(
 		`${restaurant.name} ${restaurant.address}`,
@@ -94,31 +84,28 @@ export default function DishCard({ dish }: DishCardProps) {
 			parseFloat(restaurant.lat),
 			parseFloat(restaurant.lng),
 		);
-		// Use miles if in US, else meters (for now, default to miles)
-		// You can improve this by reading the user's country from a header or context
-		const isUS = true; // TODO: Replace with real check if available
+		const isUS = true;
 		distanceDisplay = isUS
 			? `${(distMeters / 1609.34).toFixed(1)} mi`
 			: `${distMeters.toFixed(0)} m`;
 	}
-	console.log({ distanceDisplay, userLat, userLng, restaurant });
 
 	return (
 		<div className="bg-white border border-brand-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 ease-in-out flex flex-col sm:flex-row">
 			<div className="sm:w-1/3 h-48 sm:h-auto relative">
 				<Image
-					src={dish.dishImageUrl || dish.imageUrl || "/placeholder.svg"}
-					alt={`Image of ${dish.dishName}`}
+					src={recommendation.dish.imageSrc || "/placeholder.svg"}
+					alt={`Image of ${recommendation.dish.name}`}
 					layout="fill"
 					className="bg-gray-100"
 				/>
 			</div>
 			<div className="p-4 sm:p-6 flex-1">
 				<h3 className="text-xl font-semibold text-brand-primary mb-1">
-					{dish.dishName}
+					{recommendation.dish.name}
 				</h3>
 				<p className="text-brand-text text-sm leading-relaxed mb-8">
-					{dish.description}
+					{recommendation.dish.description}
 				</p>
 				<div className="mb-2 flex flex-col gap-1">
 					<div className="text-sm text-brand-text-muted font-medium">
@@ -162,35 +149,33 @@ export default function DishCard({ dish }: DishCardProps) {
 						Google Maps <GoogleMapsIcon />
 					</a>
 				</div>
-				{dish.rating && (
+				{recommendation.dish.rating && (
 					<div className="flex items-center mb-3">
-						{[...Array(Math.floor(dish.rating))].map((_, i) => (
-							<Star
-								key={`full-${
-									// biome-ignore lint/suspicious/noArrayIndexKey: whocares
-									i
-								}`}
-								className="h-5 w-5 text-yellow-400 fill-yellow-400"
-							/>
-						))}
-						{dish.rating % 1 !== 0 && (
+						{[...Array(Math.floor(Number(recommendation.dish.rating)))].map(
+							(_, index) => (
+								<Star
+									key={`full-${recommendation.dish.name}-${index}`}
+									className="h-5 w-5 text-yellow-400 fill-yellow-400"
+								/>
+							),
+						)}
+						{Number(recommendation.dish.rating) % 1 !== 0 && (
 							<Star
 								key="half"
 								className="h-5 w-5 text-yellow-400"
 								style={{ clipPath: "inset(0 50% 0 0)" }}
 							/>
 						)}
-						{[...Array(5 - Math.ceil(dish.rating))].map((_, i) => (
-							<Star
-								key={`empty-${
-									// biome-ignore lint/suspicious/noArrayIndexKey: whocares
-									i
-								}`}
-								className="h-5 w-5 text-gray-300"
-							/>
-						))}
+						{[...Array(5 - Math.ceil(Number(recommendation.dish.rating)))].map(
+							(_, index) => (
+								<Star
+									key={`empty-${recommendation.dish.name}-${index}`}
+									className="h-5 w-5 text-gray-300"
+								/>
+							),
+						)}
 						<span className="ml-2 text-sm text-brand-text-muted">
-							{dish.rating}
+							{recommendation.dish.rating}
 						</span>
 					</div>
 				)}

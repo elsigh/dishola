@@ -6,16 +6,7 @@ import { AlertTriangle, Loader2, SearchSlash } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-
-interface Dish {
-	id: string;
-	dishName: string;
-	restaurantName: string;
-	description: string;
-	imageUrl: string;
-	rating: number;
-	address: string;
-}
+import type { DishRecommendation } from "../../../api/lib/types";
 
 const API_BASE_URL =
 	process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -29,7 +20,7 @@ function SearchResultsContent() {
 	const lat = searchParams.get("lat");
 	const long = searchParams.get("long");
 
-	const [dishes, setDishes] = useState<Dish[]>([]);
+	const [dishes, setDishes] = useState<DishRecommendation[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [displayLocation, setDisplayLocation] = useState<string>("");
@@ -63,7 +54,7 @@ function SearchResultsContent() {
 						if (data.error) {
 							throw new Error(data.error);
 						}
-						setDishes(data.results || data.dishes || []);
+						setDishes(data.results || []);
 						setDisplayLocation(data.displayLocation || "");
 						setIsLoading(false);
 					})
@@ -139,11 +130,8 @@ function SearchResultsContent() {
 				.
 			</p>
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-				{dishes.map((dish) => (
-					<DishCard
-						key={`${dish.dishName}-${dish.restaurantName}`}
-						dish={dish}
-					/>
+				{dishes.map((recommendation) => (
+					<DishCard key={recommendation.id} recommendation={recommendation} />
 				))}
 			</div>
 		</div>
@@ -152,14 +140,7 @@ function SearchResultsContent() {
 
 export default function SearchPage() {
 	return (
-		<Suspense
-			fallback={
-				<div className="flex flex-col items-center justify-center text-center py-20">
-					<Loader2 className="h-12 w-12 animate-spin text-brand-primary mb-4" />
-					<p className="text-brand-text-muted">Loading search...</p>
-				</div>
-			}
-		>
+		<Suspense fallback={<div>Loading...</div>}>
 			<SearchResultsContent />
 		</Suspense>
 	);
