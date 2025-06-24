@@ -43,7 +43,7 @@ export default function SearchSection() {
 			navigator.geolocation.getCurrentPosition(
 				(position) => {
 					const { latitude: lat, longitude: lng, accuracy } = position.coords;
-					console.log(
+					console.debug(
 						`[Geolocation:onLoad] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}`,
 					);
 					setLatitude(lat);
@@ -78,7 +78,7 @@ export default function SearchSection() {
 
 		const updatePosition = (position: GeolocationPosition) => {
 			const { latitude: lat, longitude: lng, accuracy } = position.coords;
-			console.log(
+			console.debug(
 				`[Geolocation:updatePosition] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}`,
 			);
 			setLatitude(lat);
@@ -97,7 +97,7 @@ export default function SearchSection() {
 					setIsImproving(true);
 					watchId = navigator.geolocation.watchPosition(
 						(pos) => {
-							console.log(
+							console.debug(
 								`[Geolocation:watch] lat: ${pos.coords.latitude}, lng: ${pos.coords.longitude}, accuracy: ${pos.coords.accuracy}`,
 							);
 							bestAccuracy = pos.coords.accuracy;
@@ -106,7 +106,7 @@ export default function SearchSection() {
 								if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 								setIsImproving(false);
 								if (timeoutId !== null) clearTimeout(timeoutId);
-								console.log(
+								console.debug(
 									"[Geolocation:watchPosition] stopped watching - good accuracy",
 								);
 							}
@@ -119,7 +119,7 @@ export default function SearchSection() {
 					timeoutId = window.setTimeout(() => {
 						if (watchId !== null) navigator.geolocation.clearWatch(watchId);
 						setIsImproving(false);
-						console.log(
+						console.debug(
 							"[Geolocation:watchPosition] stopped watching - timeout",
 						);
 					}, 20000);

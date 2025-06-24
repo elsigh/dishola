@@ -3,11 +3,11 @@
 // Simple test script to verify AI Gateway configuration
 // Run with: node test-gateway.js
 
-import { generateText } from "ai";
 import { gateway } from "@vercel/ai-sdk-gateway";
+import { generateText } from "ai";
 
 async function testGateway() {
-	console.log("Testing Vercel AI Gateway configuration...");
+	console.debug("Testing Vercel AI Gateway configuration...");
 
 	try {
 		// Test gateway model
@@ -20,7 +20,7 @@ async function testGateway() {
 			maxTokens: 20,
 		});
 
-		console.log("✅ Success! Gateway response:", text);
+		console.debug("✅ Success! Gateway response:", text);
 	} catch (error) {
 		console.error("❌ Gateway test failed:", error.message);
 
@@ -28,14 +28,14 @@ async function testGateway() {
 			error.message.includes("authentication") ||
 			error.message.includes("401")
 		) {
-			console.log("\n💡 To fix authentication issues:");
-			console.log(
+			console.debug("\n💡 To fix authentication issues:");
+			console.debug(
 				"1. For local development: Run `vc env pull` to get authentication token",
 			);
-			console.log(
+			console.debug(
 				"2. For production: Deploy to Vercel for automatic authentication",
 			);
-			console.log(
+			console.debug(
 				"3. Make sure you have the Vercel CLI installed: `npm i -g vercel`",
 			);
 		}

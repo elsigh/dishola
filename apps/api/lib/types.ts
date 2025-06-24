@@ -7,7 +7,6 @@ export interface DishRecommendation {
 	id?: string;
 	dish: {
 		name: string;
-		imageSrc: string;
 		description: string;
 		rating: string;
 	};

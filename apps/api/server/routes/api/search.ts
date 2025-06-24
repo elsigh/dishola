@@ -146,7 +146,6 @@ async function getDishRecommendationa(
   {
     "dish": {
       "name": "specific dish name",
-      "imageSrc": "A real image URL of the dish from the restaurant's website if available, or a high-quality public image",
       "description": "dish description",
       "rating": "rating out of 5 from google maps reviews"
     },
@@ -159,7 +158,6 @@ async function getDishRecommendationa(
     }
   }
 ]
-Never use example.com or any other fake or placeholder domain for imageSrc. Only use real, direct image URLs from reputable sources (e.g., Wikimedia Commons, Unsplash, or the restaurant's real website). If you cannot find a real image, use a relevant Unsplash or Wikimedia Commons image for the dish name.
 Respond with valid, strict JSON only. Do not include comments, trailing commas, or single quotes. 
 Only use double quotes for property names and string values.`;
 

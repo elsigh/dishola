@@ -90,14 +90,24 @@ export default function DishCard({ recommendation }: DishCardProps) {
 			: `${distMeters.toFixed(0)} m`;
 	}
 
+	const { name: dishName } = recommendation.dish;
+	const { name: restaurantName, address } = recommendation.restaurant;
+	const imageQuery = encodeURIComponent(
+		`${dishName} ${restaurantName} ${address}`,
+	);
+	const imageSrc = `/api/dish-image?q=${imageQuery}`;
+
 	return (
 		<div className="bg-white border border-brand-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 ease-in-out flex flex-col sm:flex-row">
-			<div className="sm:w-1/3 h-48 sm:h-auto relative">
+			<div
+				className="sm:w-1/3 h-48 sm:h-auto relative"
+				style={{ aspectRatio: "4 / 3" }}
+			>
 				<Image
-					src={recommendation.dish.imageSrc || "/placeholder.svg"}
-					alt={`Image of ${recommendation.dish.name}`}
-					layout="fill"
-					className="bg-gray-100"
+					src={imageSrc}
+					alt={`Image of ${dishName} at ${restaurantName}`}
+					fill
+					className="bg-gray-100 object-cover"
 				/>
 			</div>
 			<div className="p-4 sm:p-6 flex-1">
