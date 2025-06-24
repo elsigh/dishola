@@ -2,17 +2,12 @@
 
 import DishCard from "@/components/dish-card";
 import { Button } from "@/components/ui/button";
+import { API_BASE_URL } from "@/lib/constants";
 import { AlertTriangle, Loader2, SearchSlash } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import type { DishRecommendation } from "../../../api/lib/types";
-
-const API_BASE_URL =
-	process.env.NEXT_PUBLIC_API_BASE_URL ||
-	(process.env.NODE_ENV === "production"
-		? "https://api.dishola.com"
-		: "http://localhost:3001");
 
 function SearchResultsContent() {
 	const searchParams = useSearchParams();

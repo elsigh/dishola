@@ -3,36 +3,36 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-brand-bg text-brand-text;
-    @apply font-sans;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+	body {
+		@apply bg-brand-bg text-brand-text;
+		@apply font-sans;
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+	}
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-serif text-brand-text;
-  }
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		@apply font-serif text-brand-text;
+	}
 
-  main {
-    flex-grow: 1;
-  }
+	main {
+		flex-grow: 1;
+	}
 }
 
 @layer components {
-  .input-custom {
-    @apply bg-white border-brand-border placeholder:text-brand-text-muted focus:border-brand-primary focus:ring-brand-primary;
-  }
-  .btn-custom-primary {
-    @apply bg-brand-primary text-white hover:bg-brand-primary-hover;
-  }
-  .btn-custom-secondary {
-    @apply bg-transparent border border-brand-primary text-brand-primary hover:bg-brand-primary/10;
-  }
+	.input-custom {
+		@apply bg-white border-brand-border placeholder:text-brand-text-muted focus:border-brand-primary focus:ring-brand-primary;
+	}
+	.btn-custom-primary {
+		@apply bg-brand-primary text-white hover:bg-brand-primary-hover;
+	}
+	.btn-custom-secondary {
+		@apply bg-transparent border border-brand-primary text-brand-primary hover:bg-brand-primary/10;
+	}
 }

@@ -77,8 +77,6 @@ tmp/
 temp/
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
@@ -97,7 +95,6 @@ node_modules
 .now
 .sentryclirc
 .idea
-.vscode
 .turbo
 .vercel
 

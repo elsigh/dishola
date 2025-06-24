@@ -1,102 +1,122 @@
-import { generateText } from 'ai';
-import { setHeader } from 'h3';
-import { getModel } from '../../../lib/ai';
-import type { DishRecommendation, ParsedQuery } from '../../../lib/types';
-
+import { generateText } from "ai";
+import { setHeader } from "h3";
+import { getModel } from "../../../lib/ai";
+import type { DishRecommendation, ParsedQuery } from "../../../lib/types";
 
 export default defineEventHandler(async (event) => {
-  // CORS headers
-  setHeader(event, 'Access-Control-Allow-Origin', process.env.NODE_ENV === 'production' ? 'https://dishola.com' : 'http://localhost:3000');
-  setHeader(event, 'Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  setHeader(event, 'Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (event.method === 'OPTIONS') {
-    return new Response(null, { status: 204 });
-  }
+	// CORS headers
+	setHeader(
+		event,
+		"Access-Control-Allow-Origin",
+		process.env.NODE_ENV === "production"
+			? "https://dishola.com"
+			: "http://localhost:3000",
+	);
+	setHeader(event, "Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+	setHeader(
+		event,
+		"Access-Control-Allow-Headers",
+		"Content-Type, Authorization",
+	);
+	if (event.method === "OPTIONS") {
+		return new Response(null, { status: 204 });
+	}
 
-  // Location fallback logic
-  function getLocationFromRequest(event: any) {
-    const query = getQuery(event);
-    // 1. Use query params if present
-    const lat = typeof query.lat === 'string' ? query.lat : Array.isArray(query.lat) ? query.lat[0] : undefined;
-    const long = typeof query.long === 'string' ? query.long : Array.isArray(query.long) ? query.long[0] : undefined;
-    if (lat && long) {
-      return {
-        lat,
-        long,
-        address: typeof query.address === 'string' ? query.address : undefined
-      };
-    }
-    // 2. Try Vercel headers
-    const headers = event.node.req.headers;
-    const headerLat = headers['x-vercel-ip-latitude'];
-    const headerLong = headers['x-vercel-ip-longitude'];
-    const city = headers['x-vercel-ip-city'];
-    const region = headers['x-vercel-ip-country-region'];
-    const country = headers['x-vercel-ip-country'];
-    if (headerLat && headerLong) {
-      return {
-        lat: headerLat,
-        long: headerLong,
-        address: [city, region, country].filter(Boolean).join(', ')
-      };
-    }
-    // 3. Fallback to Vercel HQ
-    return {
-      lat: '37.7897',
-      long: '-122.3942',
-      address: '100 First St, San Francisco, CA'
-    };
-  }
+	// Location fallback logic
+	function getLocationFromRequest(event: any) {
+		const query = getQuery(event);
+		// 1. Use query params if present
+		const lat =
+			typeof query.lat === "string"
+				? query.lat
+				: Array.isArray(query.lat)
+					? query.lat[0]
+					: undefined;
+		const long =
+			typeof query.long === "string"
+				? query.long
+				: Array.isArray(query.long)
+					? query.long[0]
+					: undefined;
+		if (lat && long) {
+			return {
+				lat,
+				long,
+				address: typeof query.address === "string" ? query.address : undefined,
+			};
+		}
+		// 2. Try Vercel headers
+		const headers = event.node.req.headers;
+		const headerLat = headers["x-vercel-ip-latitude"];
+		const headerLong = headers["x-vercel-ip-longitude"];
+		const city = headers["x-vercel-ip-city"];
+		const region = headers["x-vercel-ip-country-region"];
+		const country = headers["x-vercel-ip-country"];
+		if (headerLat && headerLong) {
+			return {
+				lat: headerLat,
+				long: headerLong,
+				address: [city, region, country].filter(Boolean).join(", "),
+			};
+		}
+		// 3. Fallback to Vercel HQ
+		return {
+			lat: "37.7897",
+			long: "-122.3942",
+			address: "100 First St, San Francisco, CA",
+		};
+	}
 
-  const query = getQuery(event);
-  const locationInfo = getLocationFromRequest(event);
-  
-  if (!query.q) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Missing required parameter: q (query) is required'
-    });
-  }
+	const query = getQuery(event);
+	const locationInfo = getLocationFromRequest(event);
 
-  const searchPrompt = query.q as string;
-  const location = locationInfo.address || `${locationInfo.lat},${locationInfo.long}`;
+	if (!query.q) {
+		throw createError({
+			statusCode: 400,
+			statusMessage: "Missing required parameter: q (query) is required",
+		});
+	}
 
-  const headers = event.node.req.headers;
-  const city = headers['x-vercel-ip-city'];
-  const postal = headers['x-vercel-ip-postal-code'];
+	const searchPrompt = query.q as string;
+	const location =
+		locationInfo.address || `${locationInfo.lat},${locationInfo.long}`;
 
-  let displayLocation: string;
-  if (city && postal) {
-    displayLocation = `${city} ${postal}`;
-  } else {
-    displayLocation = `${locationInfo.lat},${locationInfo.long}`;
-  }
+	const headers = event.node.req.headers;
+	const city = headers["x-vercel-ip-city"];
+	const postal = headers["x-vercel-ip-postal-code"];
 
-  try {
-    // Parse the user query to extract structured data
-    const parsedQuery = await parseUserQuery(searchPrompt);
-    // Get restaurant recommendations based on parsed query and location
-    const results = await getDishRecommendationa(parsedQuery, locationInfo);
-    return {
-      query: searchPrompt,
-      location: location,
-      lat: locationInfo.lat,
-      long: locationInfo.long,
-      displayLocation,
-      parsedQuery: parsedQuery,
-      results: results
-    };
-  } catch (error) {
-    console.error('Search error:', error);
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Failed to search dishes'
-    });
-  }
+	let displayLocation: string;
+	if (city && postal) {
+		displayLocation = `${city} ${postal}`;
+	} else {
+		displayLocation = `${locationInfo.lat},${locationInfo.long}`;
+	}
+
+	try {
+		// Parse the user query to extract structured data
+		const parsedQuery = await parseUserQuery(searchPrompt);
+		// Get restaurant recommendations based on parsed query and location
+		const results = await getDishRecommendationa(parsedQuery, locationInfo);
+		return {
+			query: searchPrompt,
+			location: location,
+			lat: locationInfo.lat,
+			long: locationInfo.long,
+			displayLocation,
+			parsedQuery: parsedQuery,
+			results: results,
+		};
+	} catch (error) {
+		console.error("Search error:", error);
+		throw createError({
+			statusCode: 500,
+			statusMessage: "Failed to search dishes",
+		});
+	}
 });
 
 async function parseUserQuery(query: string): Promise<ParsedQuery> {
-  const prompt = `Parse this food search query into structured data. Extract:
+	const prompt = `Parse this food search query into structured data. Extract:
 - dishName: specific dish or food item
 - cuisine: nationality/type (Italian, Mexican, Asian, American, etc.)
 
@@ -104,21 +124,24 @@ Query: "${query}"
 
 Respond with valid, strict JSON only. Do not include comments, trailing commas, or single quotes. Only use double quotes for property names and string values.`;
 
-  try {
-    const response = await generateAIResponse(prompt);
-    return JSON.parse(response);
-  } catch (error) {
-    console.error('Query parsing error:', error);
-    // Fallback parsing
-    return {
-      dishName: query,
-      cuisine: 'Any',
-    };
-  }
+	try {
+		const response = await generateAIResponse(prompt);
+		return JSON.parse(response);
+	} catch (error) {
+		console.error("Query parsing error:", error);
+		// Fallback parsing
+		return {
+			dishName: query,
+			cuisine: "Any",
+		};
+	}
 }
 
-async function getDishRecommendationa(parsedQuery: ParsedQuery, locationInfo: { lat: string, long: string }): Promise<DishRecommendation[]> {
-  const prompt = `Return exactly 5 exceptional dish recommendations for ${parsedQuery.dishName} (${parsedQuery.cuisine} cuisine very-nearby to (${locationInfo.lat}, ${locationInfo.long})) as a JSON array with this structure:
+async function getDishRecommendationa(
+	parsedQuery: ParsedQuery,
+	locationInfo: { lat: string; long: string },
+): Promise<DishRecommendation[]> {
+	const prompt = `Return exactly 5 exceptional dish recommendations for ${parsedQuery.dishName} (${parsedQuery.cuisine} cuisine very-nearby to (${locationInfo.lat}, ${locationInfo.long})) as a JSON array with this structure:
 [
   {
     "dish": {
@@ -140,40 +163,39 @@ Never use example.com or any other fake or placeholder domain for imageSrc. Only
 Respond with valid, strict JSON only. Do not include comments, trailing commas, or single quotes. 
 Only use double quotes for property names and string values.`;
 
-  // Runtime check: ensure all required values are present in the prompt string
-  if (
-    prompt.indexOf(parsedQuery.dishName) === -1 ||
-    prompt.indexOf(parsedQuery.cuisine) === -1 ||
-    prompt.indexOf(locationInfo.lat) === -1 ||
-    prompt.indexOf(locationInfo.long) === -1
-  ) {
-    throw new Error("Prompt is missing required search parameters.");
-  }
+	// Runtime check: ensure all required values are present in the prompt string
+	if (
+		prompt.indexOf(parsedQuery.dishName) === -1 ||
+		prompt.indexOf(parsedQuery.cuisine) === -1 ||
+		prompt.indexOf(locationInfo.lat) === -1 ||
+		prompt.indexOf(locationInfo.long) === -1
+	) {
+		throw new Error("Prompt is missing required search parameters.");
+	}
 
-  try {
-    const response = await generateAIResponse(prompt);
-    const parsed = JSON.parse(response);
-    // Assign a unique id to each recommendation
-    return parsed.map((rec: any, idx: number) => ({
-      ...rec,
-      id: `${rec.dish.name.replace(/\s+/g, "_")}-${rec.restaurant.name.replace(/\s+/g, "_")}-${idx}`
-    }));
-  } catch (error) {
-    console.error('Restaurant recommendation error:', error);
-    return [];
-  }
+	try {
+		const response = await generateAIResponse(prompt);
+		const parsed = JSON.parse(response);
+		// Assign a unique id to each recommendation
+		return parsed.map((rec: any, idx: number) => ({
+			...rec,
+			id: `${rec.dish.name.replace(/\s+/g, "_")}-${rec.restaurant.name.replace(/\s+/g, "_")}-${idx}`,
+		}));
+	} catch (error) {
+		console.error("Restaurant recommendation error:", error);
+		return [];
+	}
 }
 
 async function generateAIResponse(prompt: string): Promise<string> {
-  const model = getModel();
-  const { text } = await generateText({
-    model,
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.3
-  });
-  return text;
+	const model = getModel();
+	const { text } = await generateText({
+		model,
+		messages: [{ role: "user", content: prompt }],
+		temperature: 0.3,
+	});
+	return text;
 }
-
 
 // defineRouteMeta({
 //   openAPI: {

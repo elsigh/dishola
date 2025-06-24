@@ -1,0 +1,17 @@
+{
+	"formatter": {
+		"indentStyle": "space",
+		"indentWidth": 2,
+		"lineEnding": "lf",
+		"semicolons": "asNeeded",
+		"quoteStyle": "double",
+		"trailingComma": "none"
+	},
+	"linter": {
+		"rules": {
+			"style": {
+				"sortImports": "on"
+			}
+		}
+	}
+}
