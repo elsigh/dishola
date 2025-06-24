@@ -133,11 +133,17 @@ function SearchResultsContent() {
 			</h1>
 			<p className="text-brand-text-muted mb-8">
 				Showing dishes found near{" "}
-				<span className="font-semibold">{displayLocation}</span>.
+				<span className="font-semibold">
+					{decodeURIComponent(displayLocation)}
+				</span>
+				.
 			</p>
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
 				{dishes.map((dish) => (
-					<DishCard key={dish.id} dish={dish} />
+					<DishCard
+						key={`${dish.dishName}-${dish.restaurantName}`}
+						dish={dish}
+					/>
 				))}
 			</div>
 		</div>

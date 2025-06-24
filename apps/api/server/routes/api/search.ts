@@ -37,56 +37,28 @@ defineRouteMeta({
             schema: {
               type: 'object',
               properties: {
-                query: {
-                  type: 'string',
-                  description: 'The search query used'
-                },
-                location: {
-                  type: 'string',
-                  description: 'The location searched'
-                },
+                query: { type: 'string', description: 'The search query used' },
+                location: { type: 'string', description: 'The location searched' },
                 results: {
                   type: 'array',
                   items: {
                     type: 'object',
                     properties: {
-                      dishName: {
-                        type: 'string',
-                        description: 'Name of the dish'
-                      },
-                      cuisine: {
-                        type: 'string',
-                        description: 'Cuisine type (e.g., Italian, Mexican, Asian)'
-                      },
+                      dishName: { type: 'string', description: 'Name of the dish' },
+                      dishImageUrl: { type: 'string', description: 'Image URL of the dish' },
+                      cuisine: { type: 'string', description: 'Cuisine type (e.g., Italian, Mexican, Asian)' },
                       restaurant: {
                         type: 'object',
                         properties: {
-                          name: {
-                            type: 'string',
-                            description: 'Restaurant name'
-                          },
-                          address: {
-                            type: 'string',
-                            description: 'Restaurant address'
-                          },
-                          website: {
-                            type: 'string',
-                            description: 'Restaurant website URL'
-                          },
-                          doordashUrl: {
-                            type: 'string',
-                            description: 'DoorDash ordering link'
-                          }
+                          name: { type: 'string', description: 'Restaurant name' },
+                          address: { type: 'string', description: 'Restaurant address' },
+                          lat: { type: 'string', description: 'Restaurant latitude' },
+                          lng: { type: 'string', description: 'Restaurant longitude' },
+                          website: { type: 'string', description: 'Restaurant website URL' }
                         }
                       },
-                      description: {
-                        type: 'string',
-                        description: 'Dish description'
-                      },
-                      estimatedPrice: {
-                        type: 'string',
-                        description: 'Estimated price range'
-                      }
+                      description: { type: 'string', description: 'Dish description' },
+                      rating: { type: 'string', description: 'Dish rating (e.g., 4.5)' }
                     }
                   }
                 }
@@ -227,28 +199,27 @@ interface ParsedQuery {
 
 interface RestaurantResult {
   dishName: string;
+  dishImageUrl: string;
   cuisine: string;
   restaurant: {
     name: string;
     address: string;
+    lat: string;
+    lng: string;
     website: string;
-    doordashUrl: string;
   };
   description: string;
-  estimatedPrice: string;
-  dishImageUrl: string;
+  rating: string;
 }
 
 async function parseUserQuery(query: string): Promise<ParsedQuery> {
   const prompt = `Parse this food search query into structured data. Extract:
 - dishName: specific dish or food item
 - cuisine: nationality/type (Italian, Mexican, Asian, American, etc.)
-- dietaryRestrictions: any mentioned (vegetarian, vegan, gluten-free, etc.)
-- priceRange: if mentioned (budget, mid-range, upscale)
 
 Query: "${query}"
 
-Respond with valid JSON only:`;
+Respond with valid, strict JSON only. Do not include comments, trailing commas, or single quotes. Only use double quotes for property names and string values.`;
 
   try {
     const response = await generateAIResponse(prompt);
@@ -263,44 +234,46 @@ Respond with valid JSON only:`;
   }
 }
 
-async function getRestaurantRecommendations(parsedQuery: ParsedQuery, locationInfo: { lat: string, long: string, address?: string }): Promise<RestaurantResult[]> {
-  const prompt = `Find restaurants near (${locationInfo.lat}, ${locationInfo.long})${locationInfo.address ? ` (${locationInfo.address})` : ''} that serve ${parsedQuery.dishName} (${parsedQuery.cuisine} cuisine).
+async function getRestaurantRecommendations(parsedQuery: ParsedQuery, locationInfo: { lat: string, long: string }): Promise<RestaurantResult[]> {
+  const prompt = `
+Return exactly 5 exceptional dish recommendations for ${parsedQuery.dishName} (${parsedQuery.cuisine} cuisine very-nearby to (${locationInfo.lat}, ${locationInfo.long}) as a JSON array with this structure:
+[
+  {
+    "dishName": "specific dish name",
+    "dishImageUrl": "A real image URL of the dish from the restaurant's website if available, or a high-quality public image ",
+    "cuisine": "cuisine type",
+    "restaurant": {
+      "name": "restaurant name",
+      "address": "full address",
+      "lat": "latitude of the restaurant",
+      "lng": "longitude of the restaurant",
+      "website": "Official restaurant website or null if not available"
+    },
+    "description": "dish description",
+    "rating": "rating out of 5 from google maps reviews"
+  }
+]
+Never use example.com or any other fake or placeholder domain for dishImageUrl. Only use real, direct image URLs from reputable sources (e.g., Wikimedia Commons, Unsplash, or the restaurant's real website). If you cannot find a real image, use a relevant Unsplash or Wikimedia Commons image for the dish name.
+Respond with valid, strict JSON only. Do not include comments, trailing commas, or single quotes. 
+Only use double quotes for property names and string values.
+`;
 
-Return exactly 5 restaurant recommendations as a JSON array with this structure:
-[{
-  "dishName": "specific dish name",
-  "dishImageUrl": "A real image URL of the dish from the restaurant's website if available, or a high-quality public image (e.g., Wikimedia Commons, Unsplash, or another reputable source) that best represents the dish. Do not use placeholder images.",
-  "cuisine": "cuisine type",
-  "restaurant": {
-    "name": "restaurant name",
-    "address": "full address",
-    "website": "https://restaurant-website.com or null if not available"
-  },
-  "description": "dish description",
-  "estimatedPrice": "$15-20"
-}]
-
-Make realistic recommendations for real restaurants. Include proper DoorDash URLs. Always provide a real, relevant image URL for each dish.`;
+  // Runtime check: ensure all required values are present in the prompt string
+  if (
+    prompt.indexOf(parsedQuery.dishName) === -1 ||
+    prompt.indexOf(parsedQuery.cuisine) === -1 ||
+    prompt.indexOf(locationInfo.lat) === -1 ||
+    prompt.indexOf(locationInfo.long) === -1
+  ) {
+    throw new Error("Prompt is missing required search parameters.");
+  }
 
   try {
     const response = await generateAIResponse(prompt);
     return JSON.parse(response);
   } catch (error) {
     console.error('Restaurant recommendation error:', error);
-    // Return fallback data
-    return [{
-      dishName: parsedQuery.dishName,
-      cuisine: parsedQuery.cuisine,
-      restaurant: {
-        name: "Mock Local Restaurant",
-        address: locationInfo.address || `${locationInfo.lat},${locationInfo.long}`,
-        website: "https://example.com",
-        doordashUrl: "https://doordash.com"
-      },
-      description: `Delicious ${parsedQuery.dishName} at a local restaurant`,
-      estimatedPrice: "$12-18",
-      dishImageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80" // fallback public image
-    }];
+    return [];
   }
 }
 
