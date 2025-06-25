@@ -1,7 +1,70 @@
+import { createGatewayProvider } from '@ai-sdk/gateway';
+import { get } from '@vercel/edge-config';
+import type { LanguageModel } from "ai";
 import { generateText } from "ai";
 import { setHeader } from "h3";
-import { getModel } from "../../../lib/ai";
-import type { DishRecommendation, ParsedQuery } from "../../../lib/types";
+import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/types";
+
+const gateway = createGatewayProvider({
+  apiKey: process.env.GATEWAY_API_KEY,
+})
+
+async function getModel(): Promise<LanguageModel> {
+	try {
+		// Try to get model from Edge Config
+		const configModel = await get('SEARCH_AI_MODEL');
+		if (configModel) {
+			console.debug(`Using model from Edge Config: ${configModel}`);
+			// @ts-ignore
+			return gateway(configModel);
+		}
+	} catch (error) {
+		console.warn("Failed to fetch from Edge Config:", error);
+	}
+	
+	// Fallbacks if Edge Config fails or is not set
+	const fallbackModel = "openai/gpt-4-turbo";
+	
+	// @ts-ignore
+	return gateway(fallbackModel);
+}
+
+function getPrompt(dishName: string, location: Location) {
+	const prompt = `Return the top 5 best ${dishName} recommendations
+	as close as possible to (${location.lat}, ${location.long}))
+	sorted by closeness, rating, and popularity, 
+	as a JSON array with this structure:
+[
+  {
+    "dish": {
+      "name": "specific dish name",
+      "description": "dish description",
+      "rating": "rating out of 5 from google maps reviews"
+    },
+    "restaurant": {
+      "name": "restaurant name",
+      "address": "full address",
+      "lat": "latitude of the restaurant",
+      "lng": "longitude of the restaurant",
+      "website": "Official restaurant website or null if not available"
+    }
+  }
+]
+
+Respond with valid, strict JSON only. 
+Do not include comments, trailing commas, or single quotes. 
+Only use double quotes for property names and string values.`;
+
+	// Runtime check: ensure all required values are present in the prompt string
+	if (
+		prompt.indexOf(dishName) === -1 ||
+		prompt.indexOf(location.lat) === -1 ||
+		prompt.indexOf(location.long) === -1
+	) {
+		throw new Error("Prompt is missing required search parameters.");
+	}
+	return prompt;
+}
 
 export default defineEventHandler(async (event) => {
 	// CORS headers
@@ -42,7 +105,7 @@ export default defineEventHandler(async (event) => {
 			return {
 				lat,
 				long,
-				address: typeof query.address === "string" ? query.address : undefined,
+				address: typeof query.address === "string" ? query.address : "",
 			};
 		}
 		// 2. Try Vercel headers
@@ -139,43 +202,10 @@ Respond with valid, strict JSON only. Do not include comments, trailing commas, 
 }
 
 async function getDishRecommendationa(
-	parsedQuery: ParsedQuery,
-	locationInfo: { lat: string; long: string },
+	q: ParsedQuery,
+	location: Location,
 ): Promise<DishRecommendation[]> {
-	const prompt = `Return the top 5 best ${parsedQuery.dishName} recommendations
-	as close as possible to (${locationInfo.lat}, ${locationInfo.long}))
-	sorted by closeness, rating, and popularity, 
-	as a JSON array with this structure:
-[
-  {
-    "dish": {
-      "name": "specific dish name",
-      "description": "dish description",
-      "rating": "rating out of 5 from google maps reviews"
-    },
-    "restaurant": {
-      "name": "restaurant name",
-      "address": "full address",
-      "lat": "latitude of the restaurant",
-      "lng": "longitude of the restaurant",
-      "website": "Official restaurant website or null if not available"
-    }
-  }
-]
-
-Respond with valid, strict JSON only. 
-Do not include comments, trailing commas, or single quotes. 
-Only use double quotes for property names and string values.`;
-
-	// Runtime check: ensure all required values are present in the prompt string
-	if (
-		prompt.indexOf(parsedQuery.dishName) === -1 ||
-		prompt.indexOf(locationInfo.lat) === -1 ||
-		prompt.indexOf(locationInfo.long) === -1
-	) {
-		throw new Error("Prompt is missing required search parameters.");
-	}
-
+	const prompt = getPrompt(q.dishName, location);
 	try {
 		const response = await generateAIResponse(prompt);
 		const parsed = JSON.parse(response);
@@ -191,7 +221,7 @@ Only use double quotes for property names and string values.`;
 }
 
 async function generateAIResponse(prompt: string): Promise<string> {
-	const model = getModel();
+	const model = await getModel();
 	const { text } = await generateText({
 		model,
 		messages: [{ role: "user", content: prompt }],

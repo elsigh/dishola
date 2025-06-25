@@ -1,6 +1,10 @@
 {
 	"editor.defaultFormatter": "biomejs.biome",
 	"editor.formatOnSave": true,
+	"search.exclude": {
+    "**/.nitro/**": true,
+		"**/.next/**": true
+  },
 	"biome.enable": true,
 	"biome.configPath": "${workspaceFolder}/.biomerc.json",
 	"[typescript]": {

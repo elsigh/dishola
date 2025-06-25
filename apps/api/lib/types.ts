@@ -18,3 +18,9 @@ export interface DishRecommendation {
 		website: string;
 	};
 }
+
+export interface Location {
+	address: string;
+	lat: string;
+	long: string;
+}

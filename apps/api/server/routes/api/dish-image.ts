@@ -6,12 +6,15 @@ import { imageCache } from "../../lib/imageCache";
 import { unsplashImageSearch } from "../../lib/unsplashImageSearch";
 
 export default defineEventHandler(async (event) => {
-	const { q } = getQuery(event);
+	const { q, nocache } = getQuery(event);
 	if (!q || typeof q !== "string") {
 		event.res.statusCode = 400;
 		return 'Missing query parameter "q"';
 	}
 
+	// Check if cache should be bypassed
+	const bypassCache = nocache === "1" || nocache === "true";
+	
 	const cacheStats = imageCache.getStats();
 	console.debug(`[API] Image cache stats: ${JSON.stringify(cacheStats)}`);
 
@@ -22,7 +25,7 @@ export default defineEventHandler(async (event) => {
 
 	if (googleApiKey && googleCx) {
 		console.debug(`[API] Using Google image search for: ${q}`);
-		imageUrl = await googleImageSearch(q, googleApiKey, googleCx);
+		imageUrl = await googleImageSearch(q, googleApiKey, googleCx, bypassCache);
 	}
 
 	// Fallback to Unsplash if Google fails or is not configured
@@ -30,7 +33,7 @@ export default defineEventHandler(async (event) => {
 		const unsplashKey = process.env.UNSPLASH_ACCESS_KEY;
 		if (unsplashKey) {
 			console.debug(`[API]Falling back to Unsplash for: ${q}`);
-			imageUrl = await unsplashImageSearch(q, unsplashKey);
+			imageUrl = await unsplashImageSearch(q, unsplashKey, bypassCache);
 		}
 	}
 
@@ -41,6 +44,7 @@ export default defineEventHandler(async (event) => {
 
 	// Fetch and stream the image
 	try {
+		console.debug(`[API] Fetching image from: ${imageUrl}`);
 		const imageRes = await fetch(imageUrl);
 		if (!imageRes.ok || !imageRes.body) {
 			event.res.statusCode = 502;
