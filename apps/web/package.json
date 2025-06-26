@@ -4,7 +4,8 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev --turbo",
-		"build": "next build",
+		"build:webpack": "next build",
+		"build": "next build --turbo",
 		"start": "next start",
 		"lint": "next lint",
 		"clean": "rm -rf .next"
@@ -48,7 +49,7 @@
 		"embla-carousel-react": "8.5.1",
 		"input-otp": "1.4.1",
 		"lucide-react": "^0.454.0",
-		"next": "canary",
+		"next": "15.4.0-canary.91",
 		"next-themes": "^0.4.4",
 		"react": "^19",
 		"react-day-picker": "8.10.1",
