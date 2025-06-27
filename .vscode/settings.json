@@ -6,8 +6,7 @@
 		"**/.next/**": true
   },
 	"biome.enable": true,
-	"biome.configPath": "${workspaceFolder}/.biomerc.json",
-	"[typescript]": {
+        "[typescript]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
 	"[typescriptreact]": {

@@ -114,3 +114,7 @@ tsconfig.tsbuildinfo
 .million
 .vercel
 .aider*
+
+*.apps.googleusercontent.com.json
+*.sql
+.cursor

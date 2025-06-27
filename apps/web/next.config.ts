@@ -1,18 +1,22 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  devtoolNewPanelUI: true,
-  devtoolSegmentExplorer: true,
-  clientSegmentCache: true,
-  eslint: {
-    ignoreDuringBuilds: true,
+  experimental: {
+    viewTransition: true,
+    ppr: true,
+    devtoolNewPanelUI: true,
+    devtoolSegmentExplorer: true,
+    clientSegmentCache: true
   },
+  eslint: {
+    ignoreDuringBuilds: true
+  }
   // typescript: {
   //   ignoreBuildErrors: true,
   // },
   // images: {
   //   unoptimized: true,
   // },
-};
+}
 
-export default nextConfig; 
+export default nextConfig
