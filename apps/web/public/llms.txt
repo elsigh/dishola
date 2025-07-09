@@ -1,0 +1,9 @@
+Dishola is a food-discovery platform focused on dishes rather than just restaurants. 
+
+Key points:
+1. Purpose: help diners find the best specific dishes nearby or around the world, based on community reviews, ratings, and photos.
+2. Scope: users can search for dishes, view high-quality images, read detailed reviews, and compare ratings aggregated from the community.
+3. Contributors: anyone can sign up to photograph, rate, and review dishes they love (or dislike), building a crowdsourced catalogue of meals.
+4. Benefits: simplifies decision-making for food enthusiasts, surfaces hidden culinary gems, and gives restaurants direct feedback on their standout (or underperforming) menu items.
+5. Tech stack: modern Next.js/React front-end, API powered by a separate Nitro/Node backend, data stored in Supabase Postgres, with automated image sourcing (Unsplash, Google CSE) and AI-enhanced tooling.
+6. Vision: become the definitive "dish graph," enabling personalised recommendations ("What should I eat right now?") and seamless sharing of food experiences. 
