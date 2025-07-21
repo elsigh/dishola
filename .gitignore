@@ -118,3 +118,5 @@ tsconfig.tsbuildinfo
 *.apps.googleusercontent.com.json
 *.sql
 .cursor
+
+imgstore*

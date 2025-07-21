@@ -1,0 +1,16 @@
+{
+  "name": "@dishola/supabase",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./browser": "./browser.ts",
+    "./server": "./server.ts",
+    "./admin": "./admin.ts",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.2",
+    "@supabase/ssr": "^0.6.1"
+  }
+}

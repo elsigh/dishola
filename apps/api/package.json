@@ -1,22 +1,24 @@
 {
-	"name": "@dishola/api",
-	"private": true,
-	"scripts": {
-		"build": "nitro build",
-		"dev": "PORT=3001 nitro dev",
-		"prepare": "nitro prepare",
-		"preview": "node .output/server/index.mjs",
-		"lint": "echo 'No linting configured'",
-		"clean": "rm -rf .output"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.0.0",
-		"nitropack": "latest"
-	},
-	"dependencies": {
-		"@ai-sdk/gateway": "1.0.0-alpha.6",
-		"@vercel/edge-config": "^1.4.0",
-		"ai": "5.0.0-alpha.15",
-		"h3": "^1.15.3"
-	}
+  "name": "@dishola/api",
+  "private": true,
+  "scripts": {
+    "build": "nitro build",
+    "dev": "PORT=3001 nitro dev",
+    "prepare": "nitro prepare",
+    "preview": "node .output/server/index.mjs",
+    "lint": "echo 'No linting configured'",
+    "clean": "rm -rf .output"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "nitropack": "latest"
+  },
+  "dependencies": {
+    "@ai-sdk/gateway": "1.0.0-alpha.6",
+    "@vercel/edge-config": "^1.4.0",
+    "ai": "5.0.0-alpha.15",
+    "h3": "^1.15.3",
+    "@supabase/supabase-js": "^2.42.3",
+    "@dishola/supabase": "workspace:*"
+  }
 }

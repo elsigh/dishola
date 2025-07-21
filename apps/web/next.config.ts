@@ -10,6 +10,16 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "sdyqt44cawukbpwe.public.blob.vercel-storage.com",
+        port: "",
+        pathname: "/**"
+      }
+    ]
   }
   // typescript: {
   //   ignoreBuildErrors: true,
