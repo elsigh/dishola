@@ -67,6 +67,25 @@ pnpm --filter @dishola/api preview
 
 ## Key Architecture Patterns
 
+### Service Boundaries (CRITICAL)
+**Frontend (`apps/web`) Rules:**
+- ALL external service calls MUST go through the Nitro backend (`apps/api`)
+- NO direct fetch calls to third-party APIs (Google, Unsplash, OpenAI, etc.)
+- NO service-specific environment variables (API keys, tokens) in web app
+- Use `/api/*` routes to proxy all external service interactions
+- The Nitro backend is the ONLY gateway to external services
+
+**Backend (`apps/api`) Rules:**
+- NO UI components or pages - API endpoints only
+- Handle ALL external service integrations and API key management
+- Provide clean REST/GraphQL interfaces for frontend consumption
+- Contains ALL service-specific environment variables
+
+**Admin/GUI Requirements:**
+- Admin interfaces belong in `apps/web` with dedicated routes
+- Admin functionality calls Nitro backend endpoints for service interactions
+- NO admin UI in `apps/api` - keep it pure API
+
 ### Database Schema
 Core entities: Users, Restaurants, Dishes, Reviews
 - Auto-updating timestamps and calculated ratings via triggers
@@ -82,7 +101,7 @@ Core entities: Users, Restaurants, Dishes, Reviews
 - AI-powered dish search using structured prompts
 - Dual results: AI recommendations + community database
 - Location-based filtering with IP geolocation fallback
-- Image sourcing from Google Images/Unsplash APIs
+- Image sourcing from Google Images/Unsplash APIs (via Nitro backend)
 
 ### Component Architecture
 - shadcn/ui components in `apps/web/components/ui/`
