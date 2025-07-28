@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase-client"
+import { useAuth } from "@/lib/auth-context"
 import { AdminGuard } from "@/components/admin-guard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,15 +45,15 @@ export default function TastesAdminPage() {
   const [isPopulatingImages, setIsPopulatingImages] = useState(false)
   const [newItem, setNewItem] = useState({ name: "", type: "dish" as "dish" | "ingredient" })
 
-  const supabase = createClient()
+  const { getAuthToken } = useAuth()
 
   // Fetch taste dictionary items
   const fetchItems = async () => {
     try {
       setIsLoading(true)
       
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const token = getAuthToken()
+      if (!token) {
         setIsLoading(false)
         return
       }
@@ -68,7 +68,7 @@ export default function TastesAdminPage() {
 
       const response = await fetch(`http://localhost:3001/api/tastes/admin?${params}`, {
         headers: {
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         }
       })
 
@@ -89,25 +89,21 @@ export default function TastesAdminPage() {
   // Fetch stats
   const fetchStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from("taste_dictionary")
-        .select("type, image_url, search_count")
+      const token = getAuthToken()
+      if (!token) return
 
-      if (error) {
-        console.error("Error fetching stats:", error)
-        return
+      const response = await fetch("http://localhost:3001/api/tastes/admin?action=stats", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data.stats)
+      } else {
+        console.error("Failed to fetch stats")
       }
-
-      const stats: Stats = {
-        total: data.length,
-        dishes: data.filter(item => item.type === "dish").length,
-        ingredients: data.filter(item => item.type === "ingredient").length,
-        withImages: data.filter(item => item.image_url).length,
-        withoutImages: data.filter(item => !item.image_url).length,
-        totalSearches: data.reduce((sum, item) => sum + (item.search_count || 0), 0)
-      }
-
-      setStats(stats)
     } catch (error) {
       console.error("Error fetching stats:", error)
     }
@@ -123,8 +119,8 @@ export default function TastesAdminPage() {
     try {
       setIsAddingItem(true)
       
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const token = getAuthToken()
+      if (!token) {
         toast.error("Please sign in to perform this action")
         return
       }
@@ -133,7 +129,7 @@ export default function TastesAdminPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ 
           name: newItem.name.trim(), 
@@ -162,8 +158,8 @@ export default function TastesAdminPage() {
   // Delete item
   const deleteItem = async (id: number) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const token = getAuthToken()
+      if (!token) {
         toast.error("Please sign in to perform this action")
         return
       }
@@ -171,7 +167,7 @@ export default function TastesAdminPage() {
       const response = await fetch(`http://localhost:3001/api/tastes/admin?id=${id}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         }
       })
 
@@ -193,8 +189,8 @@ export default function TastesAdminPage() {
     try {
       setIsPopulatingImages(true)
       
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const token = getAuthToken()
+      if (!token) {
         toast.error("Please sign in to perform this action")
         return
       }
@@ -203,7 +199,7 @@ export default function TastesAdminPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         }
       })
 

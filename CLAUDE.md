@@ -14,6 +14,13 @@ Dishola is a modern food-discovery platform that focuses on dishes rather than r
 - **Backend**: Nitro API server (`apps/api`)
 - **Shared**: Supabase client utilities (`packages/supabase`)
 
+### Data Flow Architecture
+**CRITICAL**: The web app (`apps/web`) NEVER contains API routes for data operations. All data flows through this pattern:
+- Web App UI → HTTP requests → Nitro API (`localhost:3001`) → Supabase Database
+- Web App only uses Supabase for authentication (session tokens), never for direct data queries
+- All business logic, data queries, and external API calls happen in the Nitro backend
+- Web App API routes (`apps/web/app/api/`) should only exist for Next.js-specific functions like file uploads, never for data CRUD operations
+
 ### Tech Stack
 - **Frontend**: Next.js 15 with Turbo, Tailwind CSS, Radix UI, shadcn/ui
 - **Backend**: Nitro (UnJS), Vercel AI SDK 5, Supabase admin client
@@ -109,6 +116,15 @@ Core entities: Users, Restaurants, Dishes, Reviews
 - API routes in `server/routes/api/`
 - Pages in `app/` directory (App Router)
 
+### Data and Service Policy
+**CRITICAL**: This application does NOT use any mock data, mock services, fake data, placeholder data, or dummy data anywhere. All components, APIs, and features must use real production data and services from the start. When implementing new features:
+- Connect directly to real Supabase database
+- Use actual API endpoints, never mock APIs
+- Implement real authentication flows, never fake auth
+- Use real image sources and external services
+- If data doesn't exist yet, create the real data structures and populate them
+- Never use hardcoded arrays, sample data, or temporary placeholders
+
 ## Database Development
 
 ### Schema Location
@@ -124,7 +140,8 @@ Core entities: Users, Restaurants, Dishes, Reviews
 ## Testing
 
 **Current State**: No formal testing framework configured
-**Recommendations**: Add Vitest for unit testing, Playwright for E2E
+**Policy**: When testing is implemented, all tests must use real data and services following the no-mock policy. Tests should use dedicated test databases with real data structures, not mocked responses or fake data.
+**Recommendations**: Add Vitest for unit testing with real database connections, Playwright for E2E testing against actual deployed environments
 
 ## Deployment
 

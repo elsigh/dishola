@@ -53,8 +53,34 @@ export default defineEventHandler(async (event) => {
 
   try {
     if (event.method === "GET") {
-      // Get taste dictionary items with search and filtering
       const query = getQuery(event)
+      
+      // Handle stats request
+      if (query.action === "stats") {
+        const { data, error } = await supabase
+          .from("taste_dictionary")
+          .select("type, image_url, search_count")
+
+        if (error) {
+          throw createError({
+            statusCode: 500,
+            statusMessage: "Failed to fetch taste dictionary stats"
+          })
+        }
+
+        const stats = {
+          total: data.length,
+          dishes: data.filter(item => item.type === "dish").length,
+          ingredients: data.filter(item => item.type === "ingredient").length,
+          withImages: data.filter(item => item.image_url).length,
+          withoutImages: data.filter(item => !item.image_url).length,
+          totalSearches: data.reduce((sum, item) => sum + (item.search_count || 0), 0)
+        }
+
+        return { stats }
+      }
+
+      // Handle items request (existing functionality)
       const searchTerm = query.search as string
       const typeFilter = query.type as string
       

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { createClient } from "@/lib/supabase-client"
+import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,20 +37,20 @@ export default function TastesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
-  const supabase = createClient()
+  const { user, getAuthToken } = useAuth()
 
   // Fetch user tastes
   const fetchUserTastes = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const token = getAuthToken()
+      if (!token) {
         setIsLoading(false)
         return
       }
 
       const response = await fetch("http://localhost:3001/api/tastes/user", {
         headers: {
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         }
       })
 
@@ -66,7 +66,7 @@ export default function TastesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [supabase])
+  }, [getAuthToken])
 
   // Fetch autocomplete suggestions
   const fetchAutocomplete = useCallback(async (term: string) => {
@@ -94,8 +94,8 @@ export default function TastesPage() {
   // Add taste to user's list
   const addTaste = async (taste: AutocompleteResult) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const token = getAuthToken()
+      if (!token) {
         toast.error("Please sign in to add tastes")
         return
       }
@@ -104,7 +104,7 @@ export default function TastesPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ tasteIds: [taste.id] })
       })
@@ -127,13 +127,13 @@ export default function TastesPage() {
   // Remove taste from user's list
   const removeTaste = async (tasteId: number) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const token = getAuthToken()
+      if (!token) return
 
       const response = await fetch(`http://localhost:3001/api/tastes/user?id=${tasteId}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         }
       })
 
@@ -187,14 +187,14 @@ export default function TastesPage() {
     })))
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
+      const token = getAuthToken()
+      if (!token) return
 
       const response = await fetch("http://localhost:3001/api/tastes/user", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ reorderedTastes })
       })
