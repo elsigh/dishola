@@ -1,28 +1,33 @@
 "use client"
 
-import type { User } from "@supabase/supabase-js"
+import type { User, Session } from "@supabase/supabase-js"
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react"
 import { AuthModal } from "@/components/auth-modal"
 import { createClient } from "@/lib/supabase-client"
 
 type AuthContextType = {
   user: User | null
+  session: Session | null
   isLoading: boolean
   signOut: () => Promise<void>
   requireAuth: (callback: () => void) => void
+  getAuthToken: () => string | null
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  session: null,
   isLoading: true,
   signOut: async () => {},
-  requireAuth: () => {}
+  requireAuth: () => {},
+  getAuthToken: () => null
 })
 
 export const useAuth = () => useContext(AuthContext)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [pendingCallback, setPendingCallback] = useState<(() => void) | null>(null)
@@ -36,12 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: { session }
         } = await supabase.auth.getSession()
         setUser(session?.user || null)
+        setSession(session)
 
         // Listen for auth changes
         const {
           data: { subscription }
         } = supabase.auth.onAuthStateChange((_event, session) => {
           setUser(session?.user || null)
+          setSession(session)
           if (session?.user && pendingCallback) {
             // Execute the pending action after successful auth
             pendingCallback()
@@ -78,6 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const getAuthToken = (): string | null => {
+    return session?.access_token || null
+  }
+
   const handleAuthSuccess = () => {
     setShowAuthModal(false)
     // The callback will be executed by the auth state change listener
@@ -87,9 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        session,
         isLoading,
         signOut,
-        requireAuth
+        requireAuth,
+        getAuthToken
       }}
     >
       {children}
