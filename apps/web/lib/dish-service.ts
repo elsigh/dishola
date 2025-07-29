@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "@/lib/constants"
+
 export interface DishImage {
   id: number
   blob_url: string
@@ -46,8 +48,7 @@ export interface Dish {
 }
 
 export async function getDish(dishId: string): Promise<Dish> {
-  // Call the Nitro API directly to avoid circular dependencies during SSR
-  const apiUrl = `http://localhost:3001/api/dish/${dishId}`
+  const apiUrl = `${API_BASE_URL}/api/dish/${dishId}`
 
   const response = await fetch(apiUrl)
 

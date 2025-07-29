@@ -1,5 +1,5 @@
-import { getQuery } from "h3"
-import { getUserProfileByUsername } from "@/lib/user-service"
+import { supabase } from "@dishola/supabase/admin"
+import { getQuery, setHeader } from "h3"
 
 export default defineEventHandler(async (event) => {
   setHeader(
@@ -19,11 +19,52 @@ export default defineEventHandler(async (event) => {
     if (!username || typeof username !== "string") {
       throw createError({ statusCode: 400, statusMessage: "Missing or invalid username" })
     }
-    const profile = await getUserProfileByUsername(username)
-    if (!profile) {
-      throw createError({ statusCode: 404, statusMessage: "User not found" })
+
+    try {
+      // Get profile by username
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name, avatar_url")
+        .eq("username", username)
+        .single()
+
+      if (profileError || !profileData) {
+        throw createError({ statusCode: 404, statusMessage: "User not found" })
+      }
+
+      // Get user's tastes
+      const { data: tastesData, error: tastesError } = await supabase
+        .from("user_tastes")
+        .select(`
+          id,
+          order_position,
+          taste_dictionary:taste_dictionary_id (
+            id,
+            name,
+            type,
+            image_url
+          )
+        `)
+        .eq("user_id", profileData.user_id)
+        .order("order_position")
+
+      if (tastesError) {
+        console.error("Error fetching user tastes:", tastesError)
+      }
+
+      return {
+        username: profileData.username,
+        display_name: profileData.display_name,
+        avatar_url: profileData.avatar_url,
+        tastes: tastesData || []
+      }
+    } catch (error) {
+      console.error("Error in getUserProfileByUsername:", error)
+      if (error.statusCode) {
+        throw error
+      }
+      throw createError({ statusCode: 500, statusMessage: "Internal server error" })
     }
-    return profile
   }
 
   throw createError({ statusCode: 405, statusMessage: "Method not allowed" })

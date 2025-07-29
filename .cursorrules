@@ -1,0 +1,25 @@
+# Cursor Rules for Dishola Project
+
+## API URL Guidelines (CRITICAL)
+- **NEVER hardcode API URLs** like `http://localhost:3001` or `https://api.dishola.com`
+- **ALWAYS use `API_BASE_URL`** from `@/lib/constants` when making fetch requests to the Nitro API server
+- Import: `import { API_BASE_URL } from "@/lib/constants"`
+- Usage: `fetch(`${API_BASE_URL}/api/endpoint`)`
+- This ensures proper environment handling (dev: localhost:3001, prod: api.dishola.com)
+
+## Architecture Patterns
+- Frontend (`apps/web`) should only call the Nitro backend (`apps/api`)
+- NO direct external API calls from frontend (Google, Unsplash, etc.)
+- Use `/api/*` routes to proxy external service interactions
+- API routes should use `@dishola/supabase/admin` for database access
+
+## Code Style
+- Use `API_BASE_URL` constant for all API calls
+- Prefer environment variables over hardcoded values
+- Follow existing patterns in the codebase
+- Use proper TypeScript types and interfaces
+
+## Authentication
+- Use `useAuth()` hook and `getAuthToken()` for authenticated requests
+- Include `Authorization: Bearer ${token}` header for protected endpoints
+- Handle auth errors gracefully with user-friendly messages

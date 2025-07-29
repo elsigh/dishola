@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/lib/auth-context"
+import { API_BASE_URL } from "@/lib/constants"
 
 interface TasteDictionaryItem {
   id: number
@@ -79,7 +80,7 @@ export default function TastesAdminPage() {
         params.append("search", searchTerm)
       }
 
-      const response = await fetch(`http://localhost:3001/api/tastes/admin?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/tastes/admin?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -105,7 +106,7 @@ export default function TastesAdminPage() {
       const token = getAuthToken()
       if (!token) return
 
-      const response = await fetch("http://localhost:3001/api/tastes/admin?action=stats", {
+      const response = await fetch(`${API_BASE_URL}/api/tastes/admin?action=stats`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -240,6 +241,10 @@ export default function TastesAdminPage() {
 
   // Delete item
   const deleteItem = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this item?")) {
+      return
+    }
+
     try {
       const token = getAuthToken()
       if (!token) {
@@ -247,7 +252,7 @@ export default function TastesAdminPage() {
         return
       }
 
-      const response = await fetch(`http://localhost:3001/api/tastes/admin?id=${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/tastes/admin?id=${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`
@@ -259,7 +264,8 @@ export default function TastesAdminPage() {
         toast.success("Item deleted successfully")
         fetchStats() // Refresh stats
       } else {
-        toast.error("Failed to delete item")
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.statusMessage || "Failed to delete item")
       }
     } catch (error) {
       console.error("Error deleting item:", error)
@@ -278,7 +284,7 @@ export default function TastesAdminPage() {
         return
       }
 
-      const response = await fetch("http://localhost:3001/api/tastes/populate-images", {
+      const response = await fetch(`${API_BASE_URL}/api/tastes/populate-images`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -286,16 +292,17 @@ export default function TastesAdminPage() {
         }
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to populate images")
+      if (response.ok) {
+        const result = await response.json()
+        toast.success(result.message)
+
+        // Refresh the data
+        fetchItems()
+        fetchStats()
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.statusMessage || "Failed to populate images")
       }
-
-      const result = await response.json()
-      toast.success(result.message)
-
-      // Refresh the data
-      fetchItems()
-      fetchStats()
     } catch (error) {
       console.error("Error populating images:", error)
       toast.error("Failed to populate images")

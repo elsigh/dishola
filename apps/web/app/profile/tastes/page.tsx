@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useAuth } from "@/lib/auth-context"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Trash2, GripVertical, Plus, Search } from "lucide-react"
+import { GripVertical, Plus, Search, Trash2 } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { useAuth } from "@/lib/auth-context"
+import { API_BASE_URL } from "@/lib/constants"
 
 interface TasteDictionaryItem {
   id: number
@@ -48,9 +49,9 @@ export default function TastesPage() {
         return
       }
 
-      const response = await fetch("http://localhost:3001/api/tastes/user", {
+      const response = await fetch(`${API_BASE_URL}/api/tastes/user`, {
         headers: {
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
       })
 
@@ -77,10 +78,8 @@ export default function TastesPage() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:3001/api/tastes/autocomplete?q=${encodeURIComponent(term)}`
-      )
-      
+      const response = await fetch(`${API_BASE_URL}/api/tastes/autocomplete?q=${encodeURIComponent(term)}`)
+
       if (response.ok) {
         const data = await response.json()
         setAutocompleteResults(data.results || [])
@@ -100,18 +99,18 @@ export default function TastesPage() {
         return
       }
 
-      const response = await fetch("http://localhost:3001/api/tastes/user", {
+      const response = await fetch(`${API_BASE_URL}/api/tastes/user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ tasteIds: [taste.id] })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setUserTastes(prev => [...prev, ...data.tastes])
+        setUserTastes((prev) => [...prev, ...data.tastes])
         setSearchTerm("")
         setShowAutocomplete(false)
         toast.success(`Added ${taste.name} to your tastes`)
@@ -130,15 +129,15 @@ export default function TastesPage() {
       const token = getAuthToken()
       if (!token) return
 
-      const response = await fetch(`http://localhost:3001/api/tastes/user?id=${tasteId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/tastes/user?id=${tasteId}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         }
       })
 
       if (response.ok) {
-        setUserTastes(prev => prev.filter(taste => taste.id !== tasteId))
+        setUserTastes((prev) => prev.filter((taste) => taste.id !== tasteId))
         toast.success("Taste removed")
       } else {
         toast.error("Failed to remove taste")
@@ -162,7 +161,7 @@ export default function TastesPage() {
 
   const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault()
-    
+
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null)
       return
@@ -181,20 +180,22 @@ export default function TastesPage() {
     }))
 
     // Optimistically update UI
-    setUserTastes(newTastes.map((taste, index) => ({
-      ...taste,
-      order_position: index + 1
-    })))
+    setUserTastes(
+      newTastes.map((taste, index) => ({
+        ...taste,
+        order_position: index + 1
+      }))
+    )
 
     try {
       const token = getAuthToken()
       if (!token) return
 
-      const response = await fetch("http://localhost:3001/api/tastes/user", {
+      const response = await fetch(`${API_BASE_URL}/api/tastes/user`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ reorderedTastes })
       })
@@ -251,9 +252,7 @@ export default function TastesPage() {
             <Plus className="h-5 w-5" />
             Add New Taste
           </CardTitle>
-          <CardDescription>
-            Search for dishes or ingredients to add to your preferences
-          </CardDescription>
+          <CardDescription>Search for dishes or ingredients to add to your preferences</CardDescription>
         </CardHeader>
         <CardContent className="relative">
           <div className="relative">
@@ -267,7 +266,7 @@ export default function TastesPage() {
               onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
             />
           </div>
-          
+
           {showAutocomplete && autocompleteResults.length > 0 && (
             <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
               {autocompleteResults.map((result) => (
@@ -277,11 +276,7 @@ export default function TastesPage() {
                   onClick={() => addTaste(result)}
                 >
                   {result.image_url && (
-                    <img 
-                      src={result.image_url} 
-                      alt={result.name}
-                      className="w-8 h-8 rounded object-cover"
-                    />
+                    <img src={result.image_url} alt={result.name} className="w-8 h-8 rounded object-cover" />
                   )}
                   <div className="flex-1">
                     <div className="font-medium">{result.name}</div>
@@ -301,14 +296,13 @@ export default function TastesPage() {
         <CardHeader>
           <CardTitle>Your Tastes ({userTastes.length})</CardTitle>
           <CardDescription>
-            Drag and drop to reorder by preference. Your top preferences will be weighted more heavily in recommendations.
+            Drag and drop to reorder by preference. Your top preferences will be weighted more heavily in
+            recommendations.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {userTastes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No tastes added yet. Start by searching above!
-            </div>
+            <div className="text-center py-8 text-muted-foreground">No tastes added yet. Start by searching above!</div>
           ) : (
             <div className="space-y-2">
               {userTastes.map((taste, index) => (
@@ -323,26 +317,24 @@ export default function TastesPage() {
                   } hover:bg-gray-50 cursor-move`}
                 >
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  
+
                   {taste.taste_dictionary.image_url && (
-                    <img 
-                      src={taste.taste_dictionary.image_url} 
+                    <img
+                      src={taste.taste_dictionary.image_url}
                       alt={taste.taste_dictionary.name}
                       className="w-10 h-10 rounded object-cover"
                     />
                   )}
-                  
+
                   <div className="flex-1">
                     <div className="font-medium">{taste.taste_dictionary.name}</div>
                     <Badge variant="secondary" className="text-xs">
                       {taste.taste_dictionary.type}
                     </Badge>
                   </div>
-                  
-                  <div className="text-sm text-muted-foreground">
-                    #{taste.order_position}
-                  </div>
-                  
+
+                  <div className="text-sm text-muted-foreground">#{taste.order_position}</div>
+
                   <Button
                     variant="ghost"
                     size="sm"

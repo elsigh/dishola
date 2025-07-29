@@ -1,3 +1,15 @@
+# IMPORTANT: API URL Usage
+
+**NEVER hardcode API URLs** (e.g., `http://localhost:3001`, `https://api.dishola.com`) in the web app. **ALWAYS use the `API_BASE_URL` constant** from `@/lib/constants` for any fetch to the Nitro server. This ensures correct behavior in all environments (development, preview, production).
+
+Example:
+```ts
+import { API_BASE_URL } from "@/lib/constants"
+const response = await fetch(`${API_BASE_URL}/api/endpoint`)
+```
+
+---
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.

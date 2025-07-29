@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { API_BASE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: "Cities - dishola",
@@ -17,8 +18,7 @@ interface City {
 async function getCities(): Promise<City[]> {
   try {
     // Call the Nitro API server directly
-    const apiUrl =
-      process.env.NODE_ENV === "production" ? "https://api.dishola.com/api/cities" : "http://localhost:3001/api/cities"
+    const apiUrl = `${API_BASE_URL}/api/cities`
 
     const response = await fetch(apiUrl, {
       next: { revalidate: 3600 } // Revalidate every hour
