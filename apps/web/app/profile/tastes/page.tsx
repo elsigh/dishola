@@ -38,6 +38,15 @@ export default function TastesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
+  // Create new taste state
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [newTaste, setNewTaste] = useState({ name: "", type: "dish" as "dish" | "ingredient" })
+  const [imageResults, setImageResults] = useState<{ url: string; source: string; thumbnail?: string }[]>([])
+  const [imageIndex, setImageIndex] = useState(0)
+  const [selectedImage, setSelectedImage] = useState<{ url: string; source: string; thumbnail?: string } | null>(null)
+  const [isFetchingImages, setIsFetchingImages] = useState(false)
+  const [isCreatingTaste, setIsCreatingTaste] = useState(false)
+
   const { user, getAuthToken } = useAuth()
 
   // Fetch user tastes
@@ -226,6 +235,145 @@ export default function TastesPage() {
     return () => clearTimeout(debounce)
   }, [searchTerm, fetchAutocomplete])
 
+  // Fetch images when creating new taste
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (!newTaste.name.trim() || !showCreateForm) {
+        setImageResults([])
+        setImageIndex(0)
+        setSelectedImage(null)
+        return
+      }
+      setIsFetchingImages(true)
+      try {
+        const token = getAuthToken()
+        const res = await fetch(`${API_BASE_URL}/api/image-search?q=${encodeURIComponent(newTaste.name)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setImageResults(data.images || [])
+          setImageIndex(0)
+          setSelectedImage(data.images?.[0] || null)
+        } else {
+          setImageResults([])
+          setImageIndex(0)
+          setSelectedImage(null)
+        }
+      } catch {
+        setImageResults([])
+        setImageIndex(0)
+        setSelectedImage(null)
+      } finally {
+        setIsFetchingImages(false)
+      }
+    }
+
+    if (newTaste.name.trim() && showCreateForm) {
+      const debounce = setTimeout(fetchImages, 500)
+      return () => clearTimeout(debounce)
+    }
+  }, [newTaste.name, showCreateForm, getAuthToken])
+
+  // Cycle through images
+  const cycleImage = (dir: 1 | -1) => {
+    if (!imageResults.length) return
+    let newIndex = imageIndex + dir
+    if (newIndex < 0) newIndex = imageResults.length - 1
+    if (newIndex >= imageResults.length) newIndex = 0
+    setImageIndex(newIndex)
+    setSelectedImage(imageResults[newIndex])
+  }
+
+  // Create new taste item
+  const createNewTaste = async () => {
+    if (!newTaste.name.trim()) {
+      toast.error("Taste name is required")
+      return
+    }
+
+    setIsCreatingTaste(true)
+    try {
+      const token = getAuthToken()
+      if (!token) {
+        toast.error("Please sign in to create tastes")
+        return
+      }
+
+      let imageUrl: string | undefined
+      if (selectedImage && selectedImage.url) {
+        // Upload to blob
+        const uploadRes = await fetch(`${API_BASE_URL}/api/upload-image`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            imageUrl: selectedImage.url,
+            filename: newTaste.name.replace(/\s+/g, "_").toLowerCase()
+          })
+        })
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json()
+          imageUrl = uploadData.blobUrl
+        } else {
+          toast.error("Failed to upload image")
+          setIsCreatingTaste(false)
+          return
+        }
+      }
+
+      // Create taste and add to profile
+      const response = await fetch(`${API_BASE_URL}/api/tastes/user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: "createTaste",
+          name: newTaste.name.trim(),
+          type: newTaste.type,
+          image_url: imageUrl,
+          addToProfile: true
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Add to user tastes if it was added to profile
+        if (data.userTaste) {
+          const newUserTaste = {
+            id: data.userTaste.id,
+            order_position: data.userTaste.order_position,
+            taste_dictionary: data.taste
+          }
+          setUserTastes((prev) => [...prev, newUserTaste])
+        }
+
+        // Reset form
+        setNewTaste({ name: "", type: "dish" })
+        setImageResults([])
+        setImageIndex(0)
+        setSelectedImage(null)
+        setShowCreateForm(false)
+        setSearchTerm("")
+        setShowAutocomplete(false)
+
+        toast.success(`Created and added "${data.taste.name}" to your tastes`)
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.statusMessage || "Failed to create taste")
+      }
+    } catch (error) {
+      console.error("Error creating taste:", error)
+      toast.error("Failed to create taste")
+    } finally {
+      setIsCreatingTaste(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -271,6 +419,7 @@ export default function TastesPage() {
             <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
               {autocompleteResults.map((result) => (
                 <button
+                  type="button"
                   key={result.id}
                   className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-3"
                   onClick={() => addTaste(result)}
@@ -286,6 +435,81 @@ export default function TastesPage() {
                   </div>
                 </button>
               ))}
+            </div>
+          )}
+
+          {showAutocomplete && autocompleteResults.length === 0 && searchTerm.length >= 2 && (
+            <div className="mt-4 p-4 border rounded bg-muted">
+              <div className="mb-2 font-semibold">No results found.</div>
+              {!showCreateForm ? (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setShowCreateForm(true)
+                    setNewTaste({ name: searchTerm, type: "dish" })
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Create "{searchTerm}"
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      value={newTaste.name}
+                      onChange={(e) => setNewTaste((nt) => ({ ...nt, name: e.target.value }))}
+                      placeholder="Name"
+                      className="w-48"
+                      disabled={isCreatingTaste}
+                    />
+                    <select
+                      value={newTaste.type}
+                      onChange={(e) => setNewTaste((nt) => ({ ...nt, type: e.target.value as "dish" | "ingredient" }))}
+                      className="border rounded px-2 py-1"
+                      disabled={isCreatingTaste}
+                    >
+                      <option value="dish">Dish</option>
+                      <option value="ingredient">Ingredient</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => cycleImage(-1)}
+                      disabled={isFetchingImages || !imageResults.length}
+                    >
+                      &#8592;
+                    </Button>
+                    <div className="w-24 h-24 flex items-center justify-center bg-white border rounded overflow-hidden">
+                      {isFetchingImages ? (
+                        <span className="text-xs text-muted-foreground">Loading...</span>
+                      ) : selectedImage ? (
+                        <img
+                          src={selectedImage.thumbnail || selectedImage.url}
+                          alt="Selected"
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No image</span>
+                      )}
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => cycleImage(1)}
+                      disabled={isFetchingImages || !imageResults.length}
+                    >
+                      &#8594;
+                    </Button>
+                  </div>
+                  <Button onClick={createNewTaste} disabled={isCreatingTaste}>
+                    <Plus className="w-4 h-4 mr-1" /> Add "{newTaste.name}"
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setShowCreateForm(false)} disabled={isCreatingTaste}>
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -306,6 +530,7 @@ export default function TastesPage() {
           ) : (
             <div className="space-y-2">
               {userTastes.map((taste, index) => (
+                // biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
                 <div
                   key={taste.id}
                   draggable

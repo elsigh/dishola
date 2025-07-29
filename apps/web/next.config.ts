@@ -3,9 +3,7 @@ import type { NextConfig } from "next"
 const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true,
-    ppr: true,
-    devtoolNewPanelUI: true,
-    devtoolSegmentExplorer: true,
+    cacheComponents: true,
     clientSegmentCache: true
   },
   eslint: {

@@ -1,4 +1,8 @@
 export default function SiteFooter() {
+  // Use hardcoded year to avoid Next.js static generation issues
+  // Update this manually when needed (copyright years don't change frequently)
+  const currentYear = 2025
+
   return (
     <footer className="py-8 mt-16 border-t border-brand-border">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-brand-text-muted">
@@ -23,7 +27,7 @@ export default function SiteFooter() {
           <a href="/privacy" className="underline text-blue-700 hover:text-blue-900">
             Privacy Policy
           </a>
-          <span>&copy; {new Date().getFullYear()} dishola. All rights reserved.</span>
+          <span>&copy; {currentYear} dishola. All rights reserved.</span>
         </div>
       </div>
     </footer>

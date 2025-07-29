@@ -1,5 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
-import { setHeader } from "h3"
+import { createError, getQuery, setHeader } from "h3"
 
 export default defineEventHandler(async (event) => {
   // CORS headers
@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   )
   setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
   setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-  
+
   if (event.method === "OPTIONS") {
     return new Response(null, { status: 204 })
   }
@@ -30,7 +30,6 @@ export default defineEventHandler(async (event) => {
       .from("taste_dictionary")
       .select("id, name, type, image_url")
       .ilike("name", `%${searchTerm}%`)
-      .order("search_count", { ascending: false })
       .order("name")
       .limit(10)
 
@@ -47,16 +46,6 @@ export default defineEventHandler(async (event) => {
         statusCode: 500,
         statusMessage: "Failed to fetch autocomplete suggestions"
       })
-    }
-
-    // Increment search count for matched results (fire and forget)
-    if (data && data.length > 0) {
-      const ids = data.map(item => item.id)
-      supabase
-        .from("taste_dictionary")
-        .update({ search_count: supabase.raw("search_count + 1") })
-        .in("id", ids)
-        .then(() => {}) // ignore result
     }
 
     return {
