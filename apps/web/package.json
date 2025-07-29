@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev --turbopack",
     "build:webpack": "next build",
     "build": "next build --turbo",
     "start": "next start",
@@ -55,11 +55,11 @@
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
     "nanoid": "^5.1.5",
-    "next": "15.4.0-canary.127",
+    "next": "15.4.2-canary.19",
     "next-themes": "^0.4.4",
-    "react": "^19",
+    "react": "19.1.1",
     "react-day-picker": "8.10.1",
-    "react-dom": "^19",
+    "react-dom": "19.1.1",
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
@@ -71,10 +71,16 @@
   },
   "devDependencies": {
     "@types/node": "^22",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint-config-next": "canary",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "eslint-config-next": "15.4.2-canary.19",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.1.8",
+      "@types/react-dom": "19.1.6"
+    }
   }
 }
