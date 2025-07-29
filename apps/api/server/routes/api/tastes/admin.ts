@@ -2,11 +2,12 @@ import { supabase } from "@dishola/supabase/admin"
 import { setHeader } from "h3"
 
 // Admin emails that can access this endpoint
-const ADMIN_EMAILS = ['elsigh@gmail.com']
+const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 interface AddItemRequest {
   name: string
   type: "dish" | "ingredient"
+  image_url?: string
 }
 
 export default defineEventHandler(async (event) => {
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event) => {
   )
   setHeader(event, "Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
   setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-  
+
   if (event.method === "OPTIONS") {
     return new Response(null, { status: 204 })
   }
@@ -33,8 +34,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const token = authHeader.split(" ")[1]
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-  
+  const {
+    data: { user },
+    error: authError
+  } = await supabase.auth.getUser(token)
+
   if (authError || !user) {
     throw createError({
       statusCode: 401,
@@ -54,12 +58,10 @@ export default defineEventHandler(async (event) => {
   try {
     if (event.method === "GET") {
       const query = getQuery(event)
-      
+
       // Handle stats request
       if (query.action === "stats") {
-        const { data, error } = await supabase
-          .from("taste_dictionary")
-          .select("type, image_url, search_count")
+        const { data, error } = await supabase.from("taste_dictionary").select("type, image_url, search_count")
 
         if (error) {
           throw createError({
@@ -70,10 +72,10 @@ export default defineEventHandler(async (event) => {
 
         const stats = {
           total: data.length,
-          dishes: data.filter(item => item.type === "dish").length,
-          ingredients: data.filter(item => item.type === "ingredient").length,
-          withImages: data.filter(item => item.image_url).length,
-          withoutImages: data.filter(item => !item.image_url).length,
+          dishes: data.filter((item) => item.type === "dish").length,
+          ingredients: data.filter((item) => item.type === "ingredient").length,
+          withImages: data.filter((item) => item.image_url).length,
+          withoutImages: data.filter((item) => !item.image_url).length,
           totalSearches: data.reduce((sum, item) => sum + (item.search_count || 0), 0)
         }
 
@@ -83,7 +85,7 @@ export default defineEventHandler(async (event) => {
       // Handle items request (existing functionality)
       const searchTerm = query.search as string
       const typeFilter = query.type as string
-      
+
       let dbQuery = supabase
         .from("taste_dictionary")
         .select("*")
@@ -115,8 +117,8 @@ export default defineEventHandler(async (event) => {
 
     if (event.method === "POST") {
       // Add new taste dictionary item
-      const body = await readBody(event) as AddItemRequest
-      
+      const body = (await readBody(event)) as AddItemRequest
+
       if (!body.name || !body.type) {
         throw createError({
           statusCode: 400,
@@ -131,16 +133,23 @@ export default defineEventHandler(async (event) => {
         })
       }
 
-      const { data, error } = await supabase
-        .from("taste_dictionary")
-        .insert([{ 
-          name: body.name.trim(), 
-          type: body.type 
-        }])
-        .select()
+      // Prepare the item data
+      const itemData: any = {
+        name: body.name.trim(),
+        type: body.type
+      }
+
+      // Add image URL if provided
+      if (body.image_url) {
+        itemData.image_url = body.image_url
+        itemData.image_source = "admin" // Mark as admin-uploaded
+      }
+
+      const { data, error } = await supabase.from("taste_dictionary").insert([itemData]).select()
 
       if (error) {
-        if (error.code === '23505') { // unique constraint violation
+        if (error.code === "23505") {
+          // unique constraint violation
           throw createError({
             statusCode: 409,
             statusMessage: "An item with this name already exists"
@@ -169,10 +178,7 @@ export default defineEventHandler(async (event) => {
         })
       }
 
-      const { error } = await supabase
-        .from("taste_dictionary")
-        .delete()
-        .eq("id", parseInt(itemId))
+      const { error } = await supabase.from("taste_dictionary").delete().eq("id", parseInt(itemId))
 
       if (error) {
         throw createError({
@@ -188,7 +194,6 @@ export default defineEventHandler(async (event) => {
       statusCode: 405,
       statusMessage: "Method not allowed"
     })
-
   } catch (error) {
     console.error("Taste dictionary admin API error:", error)
     if (error.statusCode) {
