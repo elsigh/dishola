@@ -1,26 +1,42 @@
-export interface ParsedQuery {
-	dishName: string;
-	cuisine: string;
-}
+// Import shared types from the types package
+export type {
+  AddTasteDictionaryItemRequest,
+  CreateTasteRequest,
+  Dish,
+  DishDetailResponse,
+  DishImage,
+  DishRecommendation,
+  ImageResult,
+  Location,
+  // Search and AI types
+  ParsedQuery,
+  Profile,
+  // API response types
+  ProfileResponse,
+  // API request types
+  ProfileUpdateRequest,
+  PublicProfileResponse,
+  Restaurant,
+  Review,
+  TasteAutocompleteResponse,
+  TasteDictionary,
+  TasteDictionaryStatsResponse,
+  UploadImageRequest,
+  // Database table types
+  User,
+  UserTaste,
+  UserTasteReorderRequest,
+  UserTasteRequest,
+  UserTastesResponse
+} from "@dishola/types"
 
-export interface DishRecommendation {
-	id?: string;
-	dish: {
-		name: string;
-		description: string;
-		rating: string;
-	};
-	restaurant: {
-		name: string;
-		address: string;
-		lat: string;
-		lng: string;
-		website: string;
-	};
-}
-
-export interface Location {
-	address: string;
-	lat: string;
-	long: string;
-}
+// Re-export schemas for validation
+export {
+  CreateTasteRequestSchema,
+  DishRecommendationSchema,
+  LocationSchema,
+  ParsedQuerySchema,
+  ProfileResponseSchema,
+  ProfileUpdateRequestSchema,
+  UserTasteRequestSchema
+} from "@dishola/types"

@@ -11,6 +11,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@dishola/types": "workspace:*",
     "@dishola/supabase": "workspace:*",
     "@react-google-maps/api": "^2.20.7",
     "@hookform/resolvers": "^3.9.1",

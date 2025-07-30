@@ -14,6 +14,7 @@
     "nitropack": "latest"
   },
   "dependencies": {
+    "@dishola/types": "workspace:*",
     "@ai-sdk/gateway": "1.0.0-alpha.6",
     "@vercel/edge-config": "^1.4.0",
     "ai": "5.0.0-alpha.15",

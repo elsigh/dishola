@@ -7,17 +7,27 @@
 - Usage: `fetch(`${API_BASE_URL}/api/endpoint`)`
 - This ensures proper environment handling (dev: localhost:3001, prod: api.dishola.com)
 
+## Shared Types (CRITICAL)
+- **ALWAYS use shared types** from `@dishola/types` for all API interactions
+- **NEVER define inline types** for API requests/responses - use the shared schemas
+- Import types: `import type { ProfileResponse, UserTastesResponse } from "@dishola/types"`
+- Import schemas for validation: `import { ProfileResponseSchema } from "@dishola/types"`
+- Use Zod schemas for runtime validation when needed: `ProfileResponseSchema.parse(data)`
+- All database table types, API request/response types are defined in `@dishola/types`
+- This ensures type consistency between frontend and backend
+
 ## Architecture Patterns
 - Frontend (`apps/web`) should only call the Nitro backend (`apps/api`)
-- NO direct external API calls from frontend (Google, Unsplash, etc.)
-- Use `/api/*` routes to proxy external service interactions
+- Every fetch in the frontend (`apps/web`) should use the API_BASE_URL constant and look like "fetch(`${API_BASE_URL}/api/something`)"
+- NO direct external API calls from frontend (Google, Unsplash, etc.) - the apps/web/app/api folder should not be something you ever create. Just use the nitro backend.
 - API routes should use `@dishola/supabase/admin` for database access
 
 ## Code Style
-- Use `API_BASE_URL` constant for all API calls
+- **ALWAYS use shared types from `@dishola/types`** - never create duplicate type definitions
 - Prefer environment variables over hardcoded values
 - Follow existing patterns in the codebase
-- Use proper TypeScript types and interfaces
+- Use proper TypeScript types and interfaces from the shared types package
+- Use Zod schemas for runtime validation when parsing external data
 
 ## Authentication
 - Use `useAuth()` hook and `getAuthToken()` for authenticated requests

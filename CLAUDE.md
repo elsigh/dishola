@@ -8,6 +8,41 @@ import { API_BASE_URL } from "@/lib/constants"
 const response = await fetch(`${API_BASE_URL}/api/endpoint`)
 ```
 
+# IMPORTANT: Shared Types Usage
+
+**ALWAYS use shared types** from `@dishola/types` for all API interactions. **NEVER define inline types** for API requests/responses - use the shared schemas to ensure type consistency between frontend and backend.
+
+Examples:
+```ts
+// Import types for TypeScript
+import type { ProfileResponse, UserTastesResponse, DishDetailResponse } from "@dishola/types"
+
+// Import schemas for runtime validation
+import { ProfileResponseSchema, UserTasteRequestSchema } from "@dishola/types"
+
+// Use types for function parameters and return values
+const getProfile = async (): Promise<ProfileResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile`)
+  const data = await response.json()
+  
+  // Use Zod schema for runtime validation when needed
+  return ProfileResponseSchema.parse(data)
+}
+
+// Use request types for API calls
+const updateUserTastes = async (request: UserTasteRequest) => {
+  // Validate request data
+  const validatedRequest = UserTasteRequestSchema.parse(request)
+  // ... make API call
+}
+```
+
+**Available Type Categories:**
+- **Database Table Types**: `User`, `Restaurant`, `Dish`, `Review`, `Profile`, `TasteDictionary`, `UserTaste`, `DishImage`
+- **API Response Types**: `ProfileResponse`, `PublicProfileResponse`, `DishDetailResponse`, `UserTastesResponse`, etc.
+- **API Request Types**: `ProfileUpdateRequest`, `UserTasteRequest`, `CreateTasteRequest`, etc.
+- **Search & AI Types**: `ParsedQuery`, `Location`, `DishRecommendation`, `ImageResult`
+
 ---
 
 # CLAUDE.md
@@ -24,7 +59,7 @@ Dishola is a modern food-discovery platform that focuses on dishes rather than r
 - **Framework**: Turborepo with pnpm workspaces
 - **Frontend**: Next.js 15 with React 19 (`apps/web`)
 - **Backend**: Nitro API server (`apps/api`)
-- **Shared**: Supabase client utilities (`packages/supabase`)
+- **Shared**: Supabase client utilities (`packages/supabase`), Shared types (`packages/types`)
 
 ### Data Flow Architecture
 **CRITICAL**: The web app (`apps/web`) NEVER contains API routes for data operations. All data flows through this pattern:
@@ -40,6 +75,7 @@ Dishola is a modern food-discovery platform that focuses on dishes rather than r
 - **Authentication**: Supabase Auth with OAuth providers
 - **AI Integration**: Vercel AI Gateway for dish search
 - **Code Quality**: Biome for formatting/linting
+- **Type Safety**: Shared types package (`@dishola/types`) with Zod schemas
 
 ## Development Commands
 
@@ -134,6 +170,14 @@ Core entities: Users, Restaurants, Dishes, Reviews
 - Fallback to direct provider APIs if needed
 
 ## Code Style and Standards
+
+### Shared Types (CRITICAL)
+- **ALWAYS use shared types** from `@dishola/types` for all API interactions
+- **NEVER define inline types** for API requests/responses - use the shared schemas
+- All database table types, API request/response types are defined in `@dishola/types`
+- Use Zod schemas for runtime validation when parsing external data
+- Import types: `import type { ProfileResponse } from "@dishola/types"`
+- Import schemas: `import { ProfileResponseSchema } from "@dishola/types"`
 
 ### Biome Configuration
 - 2-space indentation, 120 character line width

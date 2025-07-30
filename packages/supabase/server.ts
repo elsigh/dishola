@@ -10,7 +10,7 @@ type CookieStoreLike = {
   set?: (name: string, value: string, options?: any) => any
 }
 
-// Accepts optional cookieStore; if omitted, sessions won’t persist.
+// Accepts optional cookieStore; if omitted, sessions won't persist.
 export function createClient(cookieStore?: CookieStoreLike): SupabaseClient {
   // biome-ignore lint/style/noNonNullAssertion: env vars validated at runtime
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -25,14 +25,23 @@ export function createClient(cookieStore?: CookieStoreLike): SupabaseClient {
           },
           setAll(cookiesToSet: any[]) {
             if (typeof cookieStore.set === "function") {
-              cookiesToSet.forEach(({ name, value, options }) => cookieStore.set!(name, value, options))
+              // Safely set cookies - ignore errors in Next.js 15 server components
+              cookiesToSet.forEach(({ name, value, options }) => {
+                try {
+                  cookieStore.set!(name, value, options)
+                } catch (error) {
+                  // Silently ignore cookie setting errors in server components
+                  // This is expected in Next.js 15 when cookies can't be modified
+                  console.debug("Cookie setting ignored in server component:", name)
+                }
+              })
             }
           }
         }
       }
     : undefined
 
-  // @ts-ignore – createServerClient’s options are compatible
+  // @ts-ignore – createServerClient's options are compatible
   return createServerClient(url, anon, opts)
 }
 
