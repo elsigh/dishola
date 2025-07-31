@@ -1,5 +1,6 @@
 "use client"
 
+import { CATEGORIES, CUISINES, PRICE_RANGES } from "@dishola/types/constants"
 import { DollarSign } from "lucide-react"
 import { useEffect, useId, useState } from "react"
 import { Badge } from "@/components/ui/badge"
@@ -13,59 +14,9 @@ interface Props {
   setData: (d: any) => void
 }
 
-const CUISINES = [
-  "American",
-  "Italian",
-  "Chinese",
-  "Japanese",
-  "Mexican",
-  "Indian",
-  "Thai",
-  "French",
-  "Mediterranean",
-  "Korean",
-  "Vietnamese",
-  "Greek",
-  "Spanish",
-  "Lebanese",
-  "Turkish",
-  "Ethiopian",
-  "Moroccan",
-  "Brazilian",
-  "Peruvian",
-  "German",
-  "British",
-  "Russian",
-  "Other"
-]
+// CUISINES is now imported from @dishola/types/constants
 
-const CATEGORIES = [
-  "Appetizer",
-  "Main Course",
-  "Dessert",
-  "Soup",
-  "Salad",
-  "Sandwich",
-  "Pizza",
-  "Pasta",
-  "Burger",
-  "Seafood",
-  "Vegetarian",
-  "Vegan",
-  "Breakfast",
-  "Brunch",
-  "Snack",
-  "Beverage",
-  "Cocktail",
-  "Other"
-]
-
-const PRICE_RANGES = [
-  { value: 1, label: "$ - Under $15", description: "Budget-friendly" },
-  { value: 2, label: "$$ - $15-30", description: "Moderate" },
-  { value: 3, label: "$$$ - $30-60", description: "Upscale" },
-  { value: 4, label: "$$$$ - $60+", description: "Fine dining" }
-]
+// CATEGORIES and PRICE_RANGES are now imported from @dishola/types/constants
 
 export default function StepDish({ data, setData }: Props) {
   const [dishName, setDishName] = useState(data.dishName || "")

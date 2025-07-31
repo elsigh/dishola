@@ -11,19 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
-
-interface TasteDictionaryItem {
-  id: number
-  name: string
-  type: TasteType
-  image_url?: string
-}
-
-interface UserTaste {
-  id: number
-  order_position: number
-  taste_dictionary: TasteDictionaryItem
-}
+import type { UserTaste } from "./user-tastes"
 
 interface AutocompleteResult {
   id: number
@@ -32,13 +20,16 @@ interface AutocompleteResult {
   image_url?: string
 }
 
-export default function TastesPage() {
-  const [userTastes, setUserTastes] = useState<UserTaste[]>([])
+interface TastesManagerProps {
+  initialTastes: UserTaste[]
+}
+
+export function TastesManager({ initialTastes }: TastesManagerProps) {
+  const [userTastes, setUserTastes] = useState<UserTaste[]>(initialTastes)
   const [searchTerm, setSearchTerm] = useState("")
   const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteResult[]>([])
   const [showAutocomplete, setShowAutocomplete] = useState(false)
   const [isAutocompleteLoading, setIsAutocompleteLoading] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   // Create new taste state
@@ -50,36 +41,7 @@ export default function TastesPage() {
   const [isFetchingImages, setIsFetchingImages] = useState(false)
   const [isCreatingTaste, setIsCreatingTaste] = useState(false)
 
-  const { user, getAuthToken } = useAuth()
-
-  // Fetch user tastes
-  const fetchUserTastes = useCallback(async () => {
-    try {
-      const token = getAuthToken()
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/tastes/user`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setUserTastes(data.tastes || [])
-      } else {
-        toast.error("Failed to load your tastes")
-      }
-    } catch (error) {
-      console.error("Error fetching user tastes:", error)
-      toast.error("Failed to load your tastes")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [getAuthToken])
+  const { getAuthToken } = useAuth()
 
   // Fetch autocomplete suggestions
   const fetchAutocomplete = useCallback(async (term: string) => {
@@ -219,21 +181,15 @@ export default function TastesPage() {
 
       if (!response.ok) {
         // Revert on error
-        fetchUserTastes()
         toast.error("Failed to reorder tastes")
       }
     } catch (error) {
       console.error("Error reordering tastes:", error)
-      fetchUserTastes()
       toast.error("Failed to reorder tastes")
     }
 
     setDraggedIndex(null)
   }
-
-  useEffect(() => {
-    fetchUserTastes()
-  }, [fetchUserTastes])
 
   useEffect(() => {
     // Don't fetch autocomplete if create form is active
@@ -267,7 +223,7 @@ export default function TastesPage() {
           const data = await res.json()
           setImageResults(data.images || [])
           setImageIndex(0)
-          setSelectedImage(data.images?.[0] || null)
+          setSelectedImage(data.images?.[0] ?? null)
         } else {
           setImageResults([])
           setImageIndex(0)
@@ -317,7 +273,7 @@ export default function TastesPage() {
       }
 
       let imageUrl: string | undefined
-      if (selectedImage && selectedImage.url) {
+      if (selectedImage?.url) {
         // Upload to blob
         const uploadRes = await fetch(`${API_BASE_URL}/api/upload-image`, {
           method: "POST",
@@ -379,7 +335,7 @@ export default function TastesPage() {
 
         toast.success(`Created and added "${data.taste.name}" to your tastes`)
       } else {
-        const errorData = await response.json().catch(() => ({}))
+        const errorData = (await response?.json?.()) || {}
         toast.error(errorData.statusMessage || "Failed to create taste")
       }
     } catch (error) {
@@ -390,27 +346,10 @@ export default function TastesPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading your tastes...</div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">My Taste Preferences</h1>
-        <p className="text-muted-foreground">
-          Add and organize your favorite dishes and ingredients to get personalized recommendations.
-        </p>
-      </div>
-
+    <>
       {/* Add new taste */}
-      <Card className="mb-8">
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
@@ -433,17 +372,11 @@ export default function TastesPage() {
               }}
               className="pl-9"
               onFocus={() => searchTerm.length >= 2 && setShowAutocomplete(true)}
-              onBlur={() => {
-                // Don't hide autocomplete if create form is active
-                // if (!showCreateForm) {
-                //   setTimeout(() => setShowAutocomplete(false), 200)
-                // }
-              }}
             />
 
             {/* Autocomplete dropdown area */}
             {showAutocomplete && searchTerm.length >= 2 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
                 {isAutocompleteLoading ? (
                   <div className="px-4 py-3 text-center text-muted-foreground flex items-center justify-center">
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -453,11 +386,11 @@ export default function TastesPage() {
                   <>
                     {autocompleteResults.length > 0 && !showCreateForm && (
                       <>
-                        {autocompleteResults.map((result, idx) => (
+                        {autocompleteResults.map((result) => (
                           <button
                             type="button"
                             key={result.id}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-b-0 dark:hover:bg-gray-700 dark:border-gray-700"
                             onClick={() => addTaste(result)}
                           >
                             {result.image_url && (
@@ -478,10 +411,10 @@ export default function TastesPage() {
                           </button>
                         ))}
                         {!hasExactMatch(searchTerm, autocompleteResults) && (
-                          <div className="border-t border-gray-200">
+                          <div className="border-t border-gray-200 dark:border-gray-700">
                             <button
                               type="button"
-                              className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-muted-foreground"
+                              className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-muted-foreground dark:hover:bg-gray-700"
                               onClick={() => {
                                 setShowCreateForm(true)
                                 setNewTaste({ name: searchTerm, type: "dish" })
@@ -498,10 +431,10 @@ export default function TastesPage() {
                     {autocompleteResults.length === 0 && !showCreateForm && (
                       <>
                         <div className="px-4 py-3 text-center text-muted-foreground text-sm">No results found.</div>
-                        <div className="border-t border-gray-200">
+                        <div className="border-t border-gray-200 dark:border-gray-700">
                           <button
                             type="button"
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-muted-foreground"
+                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-muted-foreground dark:hover:bg-gray-700"
                             onClick={() => {
                               setShowCreateForm(true)
                               setNewTaste({ name: searchTerm, type: "dish" })
@@ -520,7 +453,7 @@ export default function TastesPage() {
           </div>
 
           {showCreateForm && (
-            <div className="mt-4 p-4 border rounded bg-muted space-y-3">
+            <div className="mt-4 p-4 border rounded bg-muted space-y-3 dark:border-gray-700">
               <div className="flex gap-2 items-center">
                 <Input
                   value={newTaste.name}
@@ -532,7 +465,7 @@ export default function TastesPage() {
                 <select
                   value={newTaste.type}
                   onChange={(e) => setNewTaste((nt) => ({ ...nt, type: e.target.value as TasteType }))}
-                  className="border rounded px-2 py-1"
+                  className="border rounded px-2 py-1 dark:bg-gray-800 dark:border-gray-700"
                   disabled={isCreatingTaste}
                 >
                   <option value="dish">Dish</option>
@@ -549,7 +482,7 @@ export default function TastesPage() {
                 >
                   &#8592;
                 </Button>
-                <div className="w-36 h-36 flex items-center justify-center bg-white border rounded overflow-hidden">
+                <div className="w-36 h-36 flex items-center justify-center bg-white border rounded overflow-hidden dark:bg-gray-800 dark:border-gray-700">
                   {isFetchingImages ? (
                     <span className="text-xs text-muted-foreground">Loading...</span>
                   ) : selectedImage ? (
@@ -611,18 +544,18 @@ export default function TastesPage() {
           {userTastes.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">No tastes added yet. Start by searching above!</div>
           ) : (
-            <div className="space-y-2">
+            <ul className="space-y-2 list-none p-0">
               {userTastes.map((taste, index) => (
-                // biome-ignore lint/a11y/noStaticElementInteractions: <explanation>
-                <div
+                <li
                   key={taste.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, index)}
+                  aria-label={`Taste item: ${taste.taste_dictionary.name}`}
                   className={`flex items-center gap-3 p-3 border rounded-lg transition-colors ${
                     draggedIndex === index ? "opacity-50" : ""
-                  } hover:bg-gray-50 cursor-move`}
+                  } hover:bg-gray-50 cursor-move dark:hover:bg-gray-800 dark:border-gray-700`}
                 >
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
 
@@ -651,12 +584,12 @@ export default function TastesPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </CardContent>
       </Card>
-    </div>
+    </>
   )
 }

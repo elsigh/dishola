@@ -1,4 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
+import type { TasteType } from "@dishola/types/constants.js"
 import { setHeader } from "h3"
 
 // Admin emails that can access this endpoint
@@ -6,7 +7,7 @@ const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 interface AddItemRequest {
   name: string
-  type: "dish" | "ingredient"
+  type: TasteType
   image_url?: string
 }
 
@@ -74,6 +75,7 @@ export default defineEventHandler(async (event) => {
           total: data.length,
           dishes: data.filter((item) => item.type === "dish").length,
           ingredients: data.filter((item) => item.type === "ingredient").length,
+          cuisines: data.filter((item) => item.type === "cuisine").length,
           withImages: data.filter((item) => item.image_url).length,
           withoutImages: data.filter((item) => !item.image_url).length,
           totalSearches: data.reduce((sum, item) => sum + (item.search_count || 0), 0)
@@ -93,7 +95,7 @@ export default defineEventHandler(async (event) => {
         .order("name")
         .limit(100)
 
-      if (typeFilter && (typeFilter === "dish" || typeFilter === "ingredient")) {
+      if (typeFilter && ["dish", "ingredient", "cuisine"].includes(typeFilter)) {
         dbQuery = dbQuery.eq("type", typeFilter)
       }
 
@@ -126,10 +128,10 @@ export default defineEventHandler(async (event) => {
         })
       }
 
-      if (!["dish", "ingredient"].includes(body.type)) {
+      if (!["dish", "ingredient", "cuisine"].includes(body.type)) {
         throw createError({
           statusCode: 400,
-          statusMessage: "type must be 'dish' or 'ingredient'"
+          statusMessage: "type must be 'dish', 'ingredient', or 'cuisine'"
         })
       }
 

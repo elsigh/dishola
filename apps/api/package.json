@@ -7,7 +7,8 @@
     "prepare": "nitro prepare",
     "preview": "node .output/server/index.mjs",
     "lint": "echo 'No linting configured'",
-    "clean": "rm -rf .output"
+    "clean": "rm -rf .output",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

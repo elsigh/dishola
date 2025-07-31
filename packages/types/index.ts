@@ -1,4 +1,6 @@
 import { z } from "zod"
+import type { TasteType } from "./constants.js"
+import { TASTE_TYPES } from "./constants.js"
 
 // ========================================
 // Database Table Types
@@ -88,7 +90,7 @@ export type Profile = z.infer<typeof ProfileSchema>
 export const TasteDictionarySchema = z.object({
   id: z.number(),
   name: z.string(),
-  type: z.enum(["dish", "ingredient"]),
+  type: z.enum(TASTE_TYPES),
   image_url: z.string().nullable(),
   image_source: z.string().nullable(),
   creator_id: z.string().nullable(),
@@ -150,7 +152,7 @@ export const PublicProfileResponseSchema = z.object({
       taste_dictionary: z.object({
         id: z.number(),
         name: z.string(),
-        type: z.enum(["dish", "ingredient"]),
+        type: z.enum(TASTE_TYPES),
         image_url: z.string().nullable()
       })
     })
@@ -210,7 +212,7 @@ export const UserTastesResponseSchema = z.object({
       taste_dictionary: z.object({
         id: z.number(),
         name: z.string(),
-        type: z.enum(["dish", "ingredient"]),
+        type: z.enum(TASTE_TYPES),
         image_url: z.string().nullable()
       })
     })
@@ -239,6 +241,7 @@ export const TasteDictionaryStatsResponseSchema = z.object({
     total: z.number(),
     dishes: z.number(),
     ingredients: z.number(),
+    cuisines: z.number(),
     withImages: z.number(),
     withoutImages: z.number(),
     totalSearches: z.number()
@@ -280,7 +283,7 @@ export type UserTasteReorderRequest = z.infer<typeof UserTasteReorderRequestSche
 // Create Taste Request
 export const CreateTasteRequestSchema = z.object({
   name: z.string(),
-  type: z.enum(["dish", "ingredient"]),
+  type: z.enum(TASTE_TYPES),
   image_url: z.string().optional(),
   addToProfile: z.boolean().optional()
 })
@@ -290,7 +293,7 @@ export type CreateTasteRequest = z.infer<typeof CreateTasteRequestSchema>
 // Add Taste Dictionary Item Request
 export const AddTasteDictionaryItemRequestSchema = z.object({
   name: z.string(),
-  type: z.enum(["dish", "ingredient"]),
+  type: z.enum(TASTE_TYPES),
   image_url: z.string().optional()
 })
 

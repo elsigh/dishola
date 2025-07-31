@@ -1,16 +1,18 @@
 import type { ProfileResponse } from "@dishola/types"
-import Link from "next/link"
 import { redirect } from "next/navigation"
 import { cache } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { API_BASE_URL } from "@/lib/constants"
 import { createClient } from "@/lib/supabase-server"
 import { ProfileDisplay } from "./profile-display"
+import { TastesManager } from "./tastes-manager"
+import { getUserTastes } from "./user-tastes"
 
 // Cache the profile fetch function
 const getProfile = cache(async (accessToken: string): Promise<ProfileResponse> => {
   try {
     const url = `${API_BASE_URL}/api/profile`
+    console.debug("Fetching profile from", url)
     const res = await fetch(url, {
       method: "GET",
       headers: {
@@ -44,8 +46,17 @@ export default async function ProfilePage() {
 
   // Fetch profile data server-side
   let profile: ProfileResponse
+  let userTastes: Awaited<ReturnType<typeof getUserTastes>>["tastes"]
+
   try {
-    profile = await getProfile(session.access_token)
+    // Fetch both profile and tastes in parallel
+    const [profileData, tastesData] = await Promise.all([
+      getProfile(session.access_token),
+      getUserTastes(session.access_token)
+    ])
+
+    profile = profileData
+    userTastes = tastesData.tastes
   } catch (_error) {
     // Handle error - could show error page or fallback
     return (
@@ -78,12 +89,16 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Additional Links */}
-        <div className="flex flex-col gap-4">
-          <Link href="/profile/tastes" className="underline text-primary">
-            Edit Taste Preferences
-          </Link>
-        </div>
+        {/* Tastes Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Taste Preferences</CardTitle>
+            <CardDescription>Add and manage your favorite dishes and ingredients</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TastesManager initialTastes={userTastes} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
+import type { TasteType } from "@dishola/types/constants.js"
 import { createError, getQuery, setHeader } from "h3"
 
 export default defineEventHandler(async (event) => {
@@ -17,7 +18,7 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const searchTerm = query.q as string
-  const type = query.type as string // 'dish', 'ingredient', or undefined for both
+  const type = query.type as TasteType | undefined // 'dish', 'ingredient', 'cuisine', or undefined for all
 
   if (!searchTerm || searchTerm.length < 2) {
     return {
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event) => {
       .limit(10)
 
     // Filter by type if specified
-    if (type && (type === "dish" || type === "ingredient")) {
+    if (type && ["dish", "ingredient", "cuisine"].includes(type)) {
       dbQuery = dbQuery.eq("type", type)
     }
 

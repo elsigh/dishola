@@ -12,9 +12,11 @@ interface UserTasteReorderRequest {
   }>
 }
 
+import type { TasteType } from "@dishola/types/constants.js"
+
 interface CreateTasteRequest {
   name: string
-  type: "dish" | "ingredient"
+  type: TasteType
   image_url?: string
   addToProfile?: boolean // Whether to also add to user's profile
 }
@@ -109,10 +111,10 @@ export default defineEventHandler(async (event) => {
             statusMessage: "name and type are required"
           })
         }
-        if (!["dish", "ingredient"].includes(type)) {
+        if (!["dish", "ingredient", "cuisine"].includes(type)) {
           throw createError({
             statusCode: 400,
-            statusMessage: "type must be 'dish' or 'ingredient'"
+            statusMessage: "type must be 'dish', 'ingredient', or 'cuisine'"
           })
         }
         // Insert into taste_dictionary
