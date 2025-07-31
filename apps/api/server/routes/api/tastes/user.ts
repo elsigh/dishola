@@ -1,4 +1,4 @@
-import { supabase } from "@dishola/supabase/admin"
+import { createClient } from "@supabase/supabase-js"
 import { createError, getHeader, getQuery, readBody, setHeader } from "h3"
 
 interface UserTasteRequest {
@@ -43,10 +43,22 @@ export default defineEventHandler(async (event) => {
   }
 
   const token = authHeader.split(" ")[1]
+
+  // Create Supabase client with user's token
+  // biome-ignore lint/style/noNonNullAssertion: zerofux
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  })
+
+  // Validate the user token
   const {
     data: { user },
     error: authError
-  } = await supabase.auth.getUser(token)
+  } = await supabase.auth.getUser()
 
   if (authError || !user) {
     throw createError({

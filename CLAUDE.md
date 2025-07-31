@@ -191,6 +191,14 @@ Core entities: Users, Restaurants, Dishes, Reviews
 - API routes in `server/routes/api/`
 - Pages in `app/` directory (App Router)
 
+### Image Handling (CRITICAL)
+- **ALWAYS use `next/image`** instead of regular `<img>` tags in the web app
+- Import: `import Image from "next/image"`
+- Provides automatic optimization, lazy loading, and responsive images
+- Use `width` and `height` props for better performance
+- Example: `<Image src={imageUrl} alt="Description" width={100} height={100} className="..." />`
+- Only use regular `<img>` tags in exceptional cases where Next.js Image component cannot be used
+
 ### Data and Service Policy
 **CRITICAL**: This application does NOT use any mock data, mock services, fake data, placeholder data, or dummy data anywhere. All components, APIs, and features must use real production data and services from the start. When implementing new features:
 - Connect directly to real Supabase database

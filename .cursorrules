@@ -28,6 +28,7 @@
 - Follow existing patterns in the codebase
 - Use proper TypeScript types and interfaces from the shared types package
 - Use Zod schemas for runtime validation when parsing external data
+- **ALWAYS use `next/image` instead of `<img>` tags in the web app for images.** Import with `import Image from "next/image"`. Only use `<img>` if `next/image` cannot be used (e.g., for external URLs that are not allowed by next.config.js).
 
 ## Authentication
 - Use `useAuth()` hook and `getAuthToken()` for authenticated requests

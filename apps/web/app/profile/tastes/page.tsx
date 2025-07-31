@@ -1,6 +1,7 @@
 "use client"
 
-import { GripVertical, Plus, Search, Trash2 } from "lucide-react"
+import { GripVertical, Loader2, Plus, Search, Trash2 } from "lucide-react"
+import Image from "next/image"
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -35,6 +36,7 @@ export default function TastesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteResult[]>([])
   const [showAutocomplete, setShowAutocomplete] = useState(false)
+  const [isAutocompleteLoading, setIsAutocompleteLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
@@ -83,8 +85,12 @@ export default function TastesPage() {
     if (term.length < 2) {
       setAutocompleteResults([])
       setShowAutocomplete(false)
+      setIsAutocompleteLoading(false)
       return
     }
+
+    setIsAutocompleteLoading(true)
+    setShowAutocomplete(true)
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/tastes/autocomplete?q=${encodeURIComponent(term)}`)
@@ -92,10 +98,11 @@ export default function TastesPage() {
       if (response.ok) {
         const data = await response.json()
         setAutocompleteResults(data.results || [])
-        setShowAutocomplete(true)
       }
     } catch (error) {
       console.error("Error fetching autocomplete:", error)
+    } finally {
+      setIsAutocompleteLoading(false)
     }
   }, [])
 
@@ -228,12 +235,17 @@ export default function TastesPage() {
   }, [fetchUserTastes])
 
   useEffect(() => {
+    // Don't fetch autocomplete if create form is active
+    if (showCreateForm) {
+      return
+    }
+
     const debounce = setTimeout(() => {
       fetchAutocomplete(searchTerm)
     }, 300)
 
     return () => clearTimeout(debounce)
-  }, [searchTerm, fetchAutocomplete])
+  }, [searchTerm, fetchAutocomplete, showCreateForm])
 
   // Fetch images when creating new taste
   useEffect(() => {
@@ -408,108 +420,167 @@ export default function TastesPage() {
             <Input
               placeholder="Search for dishes or ingredients..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                // Reset create form when user modifies search term
+                if (showCreateForm) {
+                  setShowCreateForm(false)
+                }
+              }}
               className="pl-9"
               onFocus={() => searchTerm.length >= 2 && setShowAutocomplete(true)}
-              onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
+              onBlur={() => {
+                // Don't hide autocomplete if create form is active
+                // if (!showCreateForm) {
+                //   setTimeout(() => setShowAutocomplete(false), 200)
+                // }
+              }}
             />
+
+            {/* Autocomplete dropdown area */}
+            {showAutocomplete && searchTerm.length >= 2 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {isAutocompleteLoading ? (
+                  <div className="px-4 py-3 text-center text-muted-foreground flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span className="text-sm">Searching...</span>
+                  </div>
+                ) : (
+                  <>
+                    {autocompleteResults.length > 0 && (
+                      <>
+                        {autocompleteResults.map((result) => (
+                          <button
+                            type="button"
+                            key={result.id}
+                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                            onClick={() => addTaste(result)}
+                          >
+                            {result.image_url && (
+                              <Image
+                                src={result.image_url}
+                                alt={result.name}
+                                width={24}
+                                height={24}
+                                className="w-6 h-6 rounded object-cover"
+                              />
+                            )}
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{result.name}</div>
+                              <Badge variant="secondary" className="text-xs">
+                                {result.type}
+                              </Badge>
+                            </div>
+                          </button>
+                        ))}
+                        <div className="border-t border-gray-200">
+                          <button
+                            type="button"
+                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-muted-foreground"
+                            onClick={() => {
+                              setShowCreateForm(true)
+                              setNewTaste({ name: searchTerm, type: "dish" })
+                            }}
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span className="text-sm">Create "{searchTerm}"</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {autocompleteResults.length === 0 && !showCreateForm && (
+                      <>
+                        <div className="px-4 py-3 text-center text-muted-foreground text-sm">No results found.</div>
+                        <div className="border-t border-gray-200">
+                          <button
+                            type="button"
+                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-muted-foreground"
+                            onClick={() => {
+                              setShowCreateForm(true)
+                              setNewTaste({ name: searchTerm, type: "dish" })
+                            }}
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span className="text-sm">Create "{searchTerm}"</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
-          {showAutocomplete && autocompleteResults.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {autocompleteResults.map((result) => (
-                <button
-                  type="button"
-                  key={result.id}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-3"
-                  onClick={() => addTaste(result)}
+          {showCreateForm && (
+            <div className="mt-4 p-4 border rounded bg-muted space-y-3">
+              <div className="flex gap-2 items-center">
+                <Input
+                  value={newTaste.name}
+                  onChange={(e) => setNewTaste((nt) => ({ ...nt, name: e.target.value }))}
+                  placeholder="Name"
+                  className="w-48"
+                  disabled={isCreatingTaste}
+                />
+                <select
+                  value={newTaste.type}
+                  onChange={(e) => setNewTaste((nt) => ({ ...nt, type: e.target.value as "dish" | "ingredient" }))}
+                  className="border rounded px-2 py-1"
+                  disabled={isCreatingTaste}
                 >
-                  {result.image_url && (
-                    <img src={result.image_url} alt={result.name} className="w-8 h-8 rounded object-cover" />
-                  )}
-                  <div className="flex-1">
-                    <div className="font-medium">{result.name}</div>
-                    <Badge variant="secondary" className="text-xs">
-                      {result.type}
-                    </Badge>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {showAutocomplete && autocompleteResults.length === 0 && searchTerm.length >= 2 && (
-            <div className="mt-4 p-4 border rounded bg-muted">
-              <div className="mb-2 font-semibold">No results found.</div>
-              {!showCreateForm ? (
+                  <option value="dish">Dish</option>
+                  <option value="ingredient">Ingredient</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
                 <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => cycleImage(-1)}
+                  disabled={isFetchingImages || !imageResults.length}
+                >
+                  &#8592;
+                </Button>
+                <div className="w-24 h-24 flex items-center justify-center bg-white border rounded overflow-hidden">
+                  {isFetchingImages ? (
+                    <span className="text-xs text-muted-foreground">Loading...</span>
+                  ) : selectedImage ? (
+                    <Image
+                      src={selectedImage.thumbnail || selectedImage.url}
+                      alt="Selected"
+                      width={96}
+                      height={96}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No image</span>
+                  )}
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => cycleImage(1)}
+                  disabled={isFetchingImages || !imageResults.length}
+                >
+                  &#8594;
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={createNewTaste} disabled={isCreatingTaste}>
+                  <Plus className="w-4 h-4 mr-1" /> Add "{newTaste.name}"
+                </Button>
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setShowCreateForm(true)
-                    setNewTaste({ name: searchTerm, type: "dish" })
+                    setShowCreateForm(false)
+                    setShowAutocomplete(false)
                   }}
                 >
-                  <Plus className="w-4 h-4 mr-1" /> Create "{searchTerm}"
+                  Cancel
                 </Button>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      value={newTaste.name}
-                      onChange={(e) => setNewTaste((nt) => ({ ...nt, name: e.target.value }))}
-                      placeholder="Name"
-                      className="w-48"
-                      disabled={isCreatingTaste}
-                    />
-                    <select
-                      value={newTaste.type}
-                      onChange={(e) => setNewTaste((nt) => ({ ...nt, type: e.target.value as "dish" | "ingredient" }))}
-                      className="border rounded px-2 py-1"
-                      disabled={isCreatingTaste}
-                    >
-                      <option value="dish">Dish</option>
-                      <option value="ingredient">Ingredient</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => cycleImage(-1)}
-                      disabled={isFetchingImages || !imageResults.length}
-                    >
-                      &#8592;
-                    </Button>
-                    <div className="w-24 h-24 flex items-center justify-center bg-white border rounded overflow-hidden">
-                      {isFetchingImages ? (
-                        <span className="text-xs text-muted-foreground">Loading...</span>
-                      ) : selectedImage ? (
-                        <img
-                          src={selectedImage.thumbnail || selectedImage.url}
-                          alt="Selected"
-                          className="object-cover w-full h-full"
-                        />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No image</span>
-                      )}
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => cycleImage(1)}
-                      disabled={isFetchingImages || !imageResults.length}
-                    >
-                      &#8594;
-                    </Button>
-                  </div>
-                  <Button onClick={createNewTaste} disabled={isCreatingTaste}>
-                    <Plus className="w-4 h-4 mr-1" /> Add "{newTaste.name}"
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setShowCreateForm(false)} disabled={isCreatingTaste}>
-                    Cancel
-                  </Button>
-                </div>
-              )}
+              </div>
             </div>
           )}
         </CardContent>
@@ -544,9 +615,11 @@ export default function TastesPage() {
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
 
                   {taste.taste_dictionary.image_url && (
-                    <img
+                    <Image
                       src={taste.taste_dictionary.image_url}
                       alt={taste.taste_dictionary.name}
+                      width={24}
+                      height={24}
                       className="w-10 h-10 rounded object-cover"
                     />
                   )}
