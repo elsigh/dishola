@@ -47,7 +47,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <SiteHeader />
-            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-2">
               <ViewTransition>{children}</ViewTransition>
             </main>
             <SiteFooter />

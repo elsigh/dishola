@@ -252,7 +252,6 @@ export default function SearchPage() {
         {/* Search section - always visible */}
         <div className="mb-6">
           <SearchSection
-            compact={true}
             includeTastesOption={true}
             isUserLoggedIn={!!user}
             initialQuery={currentQuery}

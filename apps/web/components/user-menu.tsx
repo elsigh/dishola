@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/auth-context"
 import { createClient } from "@/lib/supabase-client"
-import { ThemeSelectorInline } from "./theme-selector-inline"
 
 export function UserMenu() {
   const { user, signOut } = useAuth()
@@ -36,7 +35,7 @@ export function UserMenu() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <span>
-          <Avatar className="h-8 w-8 border border-gray-200 relative">
+          <Avatar className="h-10 w-10 border border-gray-200 relative cursor-pointer">
             {user ? (
               <AvatarImage
                 src={user.user_metadata?.avatar_url || undefined}

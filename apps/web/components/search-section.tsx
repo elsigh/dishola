@@ -1,7 +1,8 @@
 "use client"
 
 import { Loader as GoogleMapsLoader } from "@googlemaps/js-api-loader"
-import { Loader2, Map as MapIcon, SearchIcon } from "lucide-react"
+import { Loader2, Map as MapIcon, SearchIcon, X } from "lucide-react"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
@@ -24,7 +25,6 @@ function formatLatLng(lat: number, lng: number) {
 }
 
 interface SearchSectionProps {
-  compact?: boolean
   includeTastesOption?: boolean
   isUserLoggedIn?: boolean
   neighborhood?: string
@@ -34,7 +34,6 @@ interface SearchSectionProps {
 }
 
 export default function SearchSection({
-  compact = false,
   isUserLoggedIn = false,
   neighborhood,
   initialQuery = "",
@@ -442,79 +441,69 @@ export default function SearchSection({
   const canSearch = (isUserLoggedIn || dishQuery.trim() !== "") && latitude !== null && longitude !== null
 
   return (
-    <form onSubmit={handleSearch} className={`w-full ${compact ? "max-w-full" : "max-w-xl space-y-6"}`}>
-      <div className={compact ? "flex flex-col md:flex-row gap-2 items-end" : ""}>
-        <div className={compact ? "flex-grow" : ""}>
-          {!compact && (
-            <div className="block text-sm font-medium text-brand-text-muted mb-1">What are you craving?</div>
-          )}
-          <Input
+    <form onSubmit={handleSearch} className="w-full">
+      <div className="relative w-full">
+        <div className="relative flex items-center w-full px-4 bg-white rounded-full shadow-sm border border-gray-200 hover:shadow-md focus-within:shadow-lg focus-within:border-brand-primary transition-all duration-200">
+          <div className="flex-shrink-0 mr-3 bg-brand-bg rounded-full p-1">
+            <Image src="/img/dishola_logo_32x32.png" alt="Dishola" width={24} height={24} className="w-6 h-6" />
+          </div>
+
+          {/* Input field */}
+          <input
             type="text"
             value={dishQuery}
             onChange={(e) => setDishQuery(e.target.value)}
             placeholder={
               isUserLoggedIn && dishQuery.trim() === ""
                 ? "Search based on your Tastes..."
-                : compact
-                  ? "Search for dishes..."
-                  : "e.g., Spicy Ramen, Tacos al Pastor, Best Burger"
+                : "e.g., Spicy Ramen, Tacos al Pastor, Best Burger"
             }
-            className={`input-custom w-full ${compact ? "text-base p-2" : "text-lg p-3"}`}
+            className="flex-1 bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 text-lg py-3"
           />
-        </div>
 
-        <div className={compact ? "flex-shrink-0" : "mt-4"}>
-          <div className={`flex items-center ${compact ? "space-x-1" : "space-x-2"}`}>
-            <Button
-              type="submit"
-              className={`btn-custom-primary ${compact ? "text-sm p-2" : "text-lg p-3"}`}
-              disabled={!canSearch || isLocating}
-            >
-              <SearchIcon className={`${compact ? "" : "mr-2"} h-5 w-5`} />
-              {!compact && "Find My Dish"}
-            </Button>
-
-            <Button
+          {/* Clear button */}
+          {dishQuery && (
+            <button
               type="button"
-              onClick={() => {
-                if (mapOpen) {
-                  setMapOpen(false)
-                } else {
-                  setTempLat(latitude || 37.7749) // Default to San Francisco if no location
-                  setTempLng(longitude || -122.4194)
-                  setMapOpen(true)
-                }
-              }}
-              variant="outline"
-              className={`btn-custom-secondary whitespace-nowrap ${compact ? "text-sm p-2" : "flex-grow sm:flex-grow-0"}`}
-              disabled={isLocating}
+              onClick={() => setDishQuery("")}
+              className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              aria-label="Clear search"
             >
-              {isLocating ? (
-                <Loader2 className={`${compact ? "mr-0" : "mr-2"} h-4 w-4 animate-spin`} />
-              ) : (
-                <MapIcon className={`${compact ? "mr-0" : "mr-2"} h-4 w-4`} />
-              )}
-              {!compact && (neighborhood ? `Map (${neighborhood})` : "Set Location")}
-            </Button>
-            {!compact && (
-              <button
-                type="button"
-                className="text-sm ml-2 text-brand-text-muted flex-grow truncate p-2 border border-transparent rounded-md bg-white/50 flex items-center cursor-pointer focus:outline-none border-none text-left"
-                onClick={() => {
-                  if (latitude !== null && longitude !== null) {
-                    const url = `https://www.google.com/maps?q=${latitude},${longitude}`
-                    window.open(url, "_blank", "noopener,noreferrer")
-                  }
-                }}
-                disabled={latitude === null || longitude === null}
-                tabIndex={0}
-                aria-label="Open location in Google Maps"
-              >
-                {locationStatus}
-                {isImproving && <BluePulseDot />}
-              </button>
-            )}
-          </div>
+              <X className="w-5 h-5" />
+            </button>
+          )}
+
+          {/* Separator line */}
+          {(dishQuery || true) && <div className="flex-shrink-0 w-px h-10 bg-gray-300 mx-1" />}
+
+          {/* Map button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (mapOpen) {
+                setMapOpen(false)
+              } else {
+                setTempLat(latitude || 37.7749)
+                setTempLng(longitude || -122.4194)
+                setMapOpen(true)
+              }
+            }}
+            className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            disabled={isLocating}
+            aria-label="Set location"
+          >
+            {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapIcon className="w-5 h-5" />}
+          </button>
+
+          {/* Search icon */}
+          <button
+            type="submit"
+            className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            disabled={!canSearch || isLocating}
+            aria-label="Search"
+          >
+            <SearchIcon className="w-5 h-5" />
+          </button>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import DishCard from "@/components/dish-card"
 import SearchSection from "@/components/search-section"
 import LocationDot from "@/components/ui/location-dot"
+import { UserMenu } from "@/components/user-menu"
 import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
 import type { DishRecommendation } from "../../api/lib/types"
@@ -106,23 +107,25 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="flex flex-col">
-        {/* Search section */}
-        <div className="mb-6">
-          <SearchSection compact={true} includeTastesOption={true} isUserLoggedIn={true} neighborhood={neighborhood} />
+        <div className="flex mb-6 gap-8 items-center">
+          <div className="flex-grow">
+            <SearchSection includeTastesOption={true} isUserLoggedIn={true} neighborhood={neighborhood} />
+          </div>
+          <UserMenu />
         </div>
 
         {/* Results section */}
         {isLoadingResults ? (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-brand-primary mb-4" />
-            <p className="text-brand-text-muted">Finding dishes based on your tastes...</p>
           </div>
         ) : tasteResults.length > 0 ? (
           <div>
-            <div className="flex justify-between items-center">
+            <div className="flex gap-2">
               <h2 className=" text-brand-primary mb-4">
                 <LocationDot /> Results for <strong>{neighborhood}</strong>
               </h2>
+              <span>∙</span>
               <Link href="/profile/tastes" className="text-sm text-brand-text-muted hover:text-brand-primary">
                 Manage my Tastes
               </Link>
