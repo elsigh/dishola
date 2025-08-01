@@ -1,11 +1,14 @@
 "use client"
 
+import { Loader as GoogleMapsLoader } from "@googlemaps/js-api-loader"
 import { AlertTriangle, Loader2, SearchSlash } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
 import DishCard from "@/components/dish-card"
+import SearchSection from "@/components/search-section"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
 import type { DishRecommendation } from "../../../api/lib/types"
 
@@ -14,51 +17,144 @@ function SearchResultsContent() {
   const q = searchParams.get("q")
   const lat = searchParams.get("lat")
   const long = searchParams.get("long")
+  const includeTastes = searchParams.get("includeTastes") === "true"
 
   const [aiDishes, setAiDishes] = useState<DishRecommendation[]>([])
   const [dbDishes, setDbDishes] = useState<DishRecommendation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [displayLocation, setDisplayLocation] = useState<string>("")
+  const [neighborhood, setNeighborhood] = useState<string | undefined>(undefined)
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const abortController = useRef<AbortController | null>(null)
 
+  const { user, getAuthToken } = useAuth()
+  const [userTastes, setUserTastes] = useState<string[]>([])
+
+  const [mapOpen, setMapOpen] = useState(false)
+  const [tempLat, setTempLat] = useState<number | null>(null)
+  const [tempLng, setTempLng] = useState<number | null>(null)
+  const mapRef = useRef<HTMLDivElement>(null)
+
+  // Google Maps modal logic
   useEffect(() => {
-    if (q && lat && long) {
+    if (mapOpen && mapRef.current && tempLat !== null && tempLng !== null) {
+      const loader = new GoogleMapsLoader({
+        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+        version: "weekly"
+      })
+      let map: google.maps.Map
+      let marker: google.maps.Marker
+      loader.load().then(() => {
+        map = new google.maps.Map(mapRef.current!, {
+          center: { lat: tempLat, lng: tempLng },
+          zoom: 13
+        })
+        marker = new google.maps.Marker({
+          position: { lat: tempLat, lng: tempLng },
+          map,
+          draggable: false
+        })
+        map.addListener("click", (e: google.maps.MapMouseEvent) => {
+          if (e.latLng) {
+            const lat = e.latLng.lat()
+            const lng = e.latLng.lng()
+            marker.setPosition({ lat, lng })
+            setTempLat(lat)
+            setTempLng(lng)
+          }
+        })
+      })
+      return () => {
+        /* cleanup */
+      }
+    }
+  }, [mapOpen, tempLat, tempLng])
+
+  useEffect(() => {
+    // Allow search with just lat/long and includeTastes (for taste-based recommendations)
+    if ((q !== null || includeTastes) && lat && long) {
       setIsLoading(true)
       setError(null)
       // Debounce the fetch
       if (debounceTimeout.current) clearTimeout(debounceTimeout.current)
       if (abortController.current) abortController.current.abort()
-      debounceTimeout.current = setTimeout(() => {
+      debounceTimeout.current = setTimeout(async () => {
         abortController.current = new AbortController()
-        fetch(`${API_BASE_URL}/api/search?q=${encodeURIComponent(q)}&lat=${lat}&long=${long}`, {
-          signal: abortController.current.signal
-        })
-          .then((res) => {
-            if (!res.ok) {
-              throw new Error("Failed to fetch search results. Please try again.")
+
+        try {
+          // Build search URL
+          const searchUrl = new URL(`${API_BASE_URL}/api/search`)
+
+          // Add query param if present
+          if (q) {
+            searchUrl.searchParams.append("q", q)
+          }
+
+          searchUrl.searchParams.append("lat", lat)
+          searchUrl.searchParams.append("long", long)
+
+          // Add includeTastes param if enabled
+          if (includeTastes) {
+            searchUrl.searchParams.append("includeTastes", "true")
+          }
+
+          // Prepare headers
+          const headers: HeadersInit = {}
+
+          // Add auth token if user is signed in and includeTastes is enabled
+          if (includeTastes && user) {
+            try {
+              const token = getAuthToken()
+              if (token) {
+                headers["Authorization"] = `Bearer ${token}`
+              }
+            } catch (error) {
+              console.warn("Could not get auth token:", error)
             }
-            return res.json()
+          }
+
+          const response = await fetch(searchUrl.toString(), {
+            signal: abortController.current.signal,
+            headers
           })
-          .then((data) => {
-            if (data.error) {
-              throw new Error(data.error)
-            }
-            setAiDishes(data.aiResults || [])
-            setDbDishes(data.dbResults || [])
-            setDisplayLocation(data.displayLocation || "")
-            setIsLoading(false)
-          })
-          .catch((err) => {
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch search results. Please try again.")
+          }
+
+          const data = await response.json()
+
+          if (data.error) {
+            throw new Error(data.error)
+          }
+
+          setAiDishes(data.aiResults || [])
+          setDbDishes(data.dbResults || [])
+          setDisplayLocation(data.displayLocation || "")
+          setNeighborhood(data.neighborhood)
+          if (data.includedTastes) {
+            setUserTastes(data.includedTastes)
+          }
+          setIsLoading(false)
+        } catch (err) {
+          if (err instanceof Error) {
             if (err.name === "AbortError") return
             console.error("Search API error:", err)
             setError(err.message || "An unknown error occurred.")
-            setIsLoading(false)
-          })
+          } else {
+            console.error("An unexpected error occurred:", err)
+            setError("An unknown error occurred.")
+          }
+          setIsLoading(false)
+        }
       }, 300)
     } else {
-      setError("Search query or location is missing.")
+      if (includeTastes) {
+        setError("Location is required for taste-based recommendations.")
+      } else {
+        setError("Search query and location are required.")
+      }
       setIsLoading(false)
     }
     // Cleanup on unmount or param change
@@ -66,13 +162,19 @@ function SearchResultsContent() {
       if (debounceTimeout.current) clearTimeout(debounceTimeout.current)
       if (abortController.current) abortController.current.abort()
     }
-  }, [q, lat, long])
+  }, [q, lat, long, includeTastes, user])
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-20">
         <Loader2 className="h-12 w-12 animate-spin text-brand-primary mb-4" />
-        <p className="text-brand-text-muted">Searching for {q} deliciousness...</p>
+        <p className="text-brand-text-muted">
+          {q
+            ? `Searching for ${q} deliciousness...`
+            : includeTastes
+              ? "Finding dishes based on your location and tastes..."
+              : "Searching..."}
+        </p>
       </div>
     )
   }
@@ -105,14 +207,14 @@ function SearchResultsContent() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-brand-text mb-2">Results for &quot;{q}&quot;</h1>
-      <p className="text-brand-text-muted mb-8">
-        Showing dishes found near <span className="font-semibold">{decodeURIComponent(displayLocation)}</span>.
-      </p>
+      {q && (
+        <h1 className="text-brand-text mb-2">
+          Results for <strong>{neighborhood}</strong>
+        </h1>
+      )}
 
       {aiDishes.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-2xl font-semibold text-brand-primary mb-4">AI-Powered Recommendations</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
             {aiDishes.map((rec) => (
               <DishCard key={`ai-${rec.id}`} recommendation={rec} />
@@ -131,14 +233,39 @@ function SearchResultsContent() {
           </div>
         </section>
       )}
+      <Button onClick={() => setMapOpen(true)}>Set Location</Button>
+      {mapOpen && <div ref={mapRef} style={{ width: "100%", height: "400px" }} />}
     </div>
   )
 }
 
 export default function SearchPage() {
+  const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const currentQuery = searchParams.get("q") || ""
+  const currentLat = searchParams.get("lat") ? parseFloat(searchParams.get("lat")!) : undefined
+  const currentLng = searchParams.get("long") ? parseFloat(searchParams.get("long")!) : undefined
+
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <SearchResultsContent />
-    </Suspense>
+    <div className="container mx-auto px-4 py-4">
+      <div className="flex flex-col">
+        {/* Search section - always visible */}
+        <div className="mb-6">
+          <SearchSection
+            compact={true}
+            includeTastesOption={true}
+            isUserLoggedIn={!!user}
+            initialQuery={currentQuery}
+            initialLat={currentLat}
+            initialLng={currentLng}
+          />
+        </div>
+
+        {/* Results section */}
+        <Suspense fallback={<div>Loading...</div>}>
+          <SearchResultsContent />
+        </Suspense>
+      </div>
+    </div>
   )
 }

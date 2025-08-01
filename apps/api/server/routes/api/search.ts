@@ -1,10 +1,18 @@
 import { createGatewayProvider } from "@ai-sdk/gateway"
 import { supabase } from "@dishola/supabase/admin"
+import { createClient } from "@supabase/supabase-js"
 import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
 import { generateText } from "ai"
-import { setHeader } from "h3"
+import { type H3Event, setHeader } from "h3"
 import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/types"
+
+// Add cache at the top
+const SEARCH_CACHE = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
+const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
+function getCacheKey(q: string, lat: string, long: string, includeTastes: boolean) {
+  return JSON.stringify({ q, lat, long, includeTastes })
+}
 
 const gateway = createGatewayProvider({
   apiKey: process.env.GATEWAY_API_KEY
@@ -30,8 +38,15 @@ async function getModel(): Promise<LanguageModel> {
   return gateway(fallbackModel)
 }
 
-function getPrompt(dishName: string, location: Location) {
-  const prompt = `Return the top 5 best ${dishName} recommendations
+function getPrompt(dishName: string, location: Location, userTastes: string[] = []) {
+  let promptBase = `Return the top 5 best ${dishName} recommendations`
+
+  // If user has tastes, include them in the prompt
+  if (userTastes.length > 0) {
+    promptBase = `Return the top 5 best ${dishName} recommendations that would appeal to someone who likes ${userTastes.join(", ")}`
+  }
+
+  const prompt = `${promptBase}
 	as close as possible to (${location.lat}, ${location.long}))
 	sorted by closeness, rating, and popularity, 
 	as a JSON array with this structure:
@@ -77,7 +92,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Location fallback logic
-  function getLocationFromRequest(event: any) {
+  function getLocationFromRequest(event: H3Event) {
     const query = getQuery(event)
     // 1. Use query params if present
     const lat = typeof query.lat === "string" ? query.lat : Array.isArray(query.lat) ? query.lat[0] : undefined
@@ -114,6 +129,14 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const locationInfo = getLocationFromRequest(event)
 
+  // ---- CACHE CHECK ----
+  const cacheKey = getCacheKey(query.q as string, locationInfo.lat, locationInfo.long, query.includeTastes === "true")
+  const cached = SEARCH_CACHE.get(cacheKey)
+  const now = Date.now()
+  if (cached && now - cached.timestamp < CACHE_TTL) {
+    return cached.data
+  }
+
   if (!query.q) {
     throw createError({
       statusCode: 400,
@@ -136,14 +159,58 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
+    // Get auth token if provided
+    const authHeader = getHeader(event, "authorization")
+    let userTastes: string[] = []
+    const includeTastes = query.includeTastes === "true"
+
+    // If auth token is provided and includeTastes is true, fetch user tastes
+    if (authHeader?.startsWith("Bearer ") && includeTastes) {
+      const token = authHeader.split(" ")[1]
+      // Create Supabase client with user's token
+      const supabaseClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      )
+
+      // Validate the user token and get their tastes
+      const {
+        data: { user }
+      } = await supabaseClient.auth.getUser()
+      if (!user) return
+
+      if (user) {
+        const { data } = await supabaseClient
+          .from("user_tastes")
+          .select(`
+            taste_dictionary:taste_dictionary_id (
+              name,
+              type
+            )
+          `)
+          .eq("user_id", user.id)
+          .order("order_position")
+
+        // Extract taste names for the prompt
+        userTastes = (data || []).map((item: any) => item.taste_dictionary?.name).filter(Boolean)
+      }
+    }
+
     // Parse the user query to extract structured data
     const parsedQuery = await parseUserQuery(searchPrompt)
     // Get AI-powered recommendations
-    const aiResults = await getDishRecommendationa(parsedQuery, locationInfo)
+    const aiResults = await getDishRecommendationa(parsedQuery, locationInfo, userTastes)
     // Get community (database) recommendations
-    const dbResults = await getDbDishRecommendations(parsedQuery.dishName, locationInfo)
+    const dbResults = await getDbDishRecommendations(parsedQuery.dishName)
 
-    return {
+    const result = {
       query: searchPrompt,
       location: location,
       lat: locationInfo.lat,
@@ -151,8 +218,12 @@ export default defineEventHandler(async (event) => {
       displayLocation,
       parsedQuery: parsedQuery,
       aiResults,
-      dbResults
+      dbResults,
+      includedTastes: userTastes.length > 0 ? userTastes : null,
+      neighborhood: undefined // Add neighborhood if available
     }
+    SEARCH_CACHE.set(cacheKey, { data: result, timestamp: now })
+    return result
   } catch (error) {
     console.error("Search error:", error)
     throw createError({
@@ -185,13 +256,16 @@ Respond with valid, strict JSON only. Do not include comments, trailing commas, 
   }
 }
 
-async function getDishRecommendationa(q: ParsedQuery, location: Location): Promise<DishRecommendation[]> {
-  const prompt = getPrompt(q.dishName, location)
+async function getDishRecommendationa(
+  q: ParsedQuery,
+  location: Location,
+  userTastes: string[] = []
+): Promise<DishRecommendation[]> {
+  const prompt = getPrompt(q.dishName, location, userTastes)
   try {
     const response = await generateAIResponse(prompt)
     const parsed = JSON.parse(response)
-    // Assign a unique id to each recommendation
-    return parsed.map((rec: any, idx: number) => ({
+    return parsed.map((rec: { dish: { name: string }; restaurant: { name: string } }, idx: number) => ({
       ...rec,
       id: `${rec.dish.name.replace(/\s+/g, "_")}-${rec.restaurant.name.replace(/\s+/g, "_")}-${idx}`
     }))
@@ -201,16 +275,12 @@ async function getDishRecommendationa(q: ParsedQuery, location: Location): Promi
   }
 }
 
-async function getDbDishRecommendations(dishName: string, location: Location): Promise<DishRecommendation[]> {
-  // Search for dishes matching the name (case-insensitive, partial match)
-  // and join the related restaurant information. Because the legacy data
-  // does not include full-text search indexes, we rely on an ILIKE filter.
-  // For now we fetch the top results ordered by rating (vote_avg).
+async function getDbDishRecommendations(dishName: string): Promise<DishRecommendation[]> {
   const { data, error } = await supabase
     .from("dishes")
     .select(
       `id,name,vote_avg,vote_count,
-			restaurant:restaurants(id,name,address_line1,city,state,latitude,longitude)`
+      restaurant:restaurants(id,name,address_line1,city,state,latitude,longitude)`
     )
     .ilike("name", `%${dishName}%`)
     .order("vote_avg", { ascending: false })
@@ -222,21 +292,21 @@ async function getDbDishRecommendations(dishName: string, location: Location): P
   }
 
   return (data || []).map((rec: any, idx: number) => {
-    const restaurantAddrParts = [rec.restaurant.address_line1, rec.restaurant.city, rec.restaurant.state].filter(
+    const restaurantAddrParts = [rec.restaurant?.address_line1, rec.restaurant?.city, rec.restaurant?.state].filter(
       Boolean
     )
     return {
-      id: `${rec.name.replace(/\s+/g, "_")}-${rec.restaurant.name.replace(/\s+/g, "_")}-${idx}`,
+      id: `${rec.name.replace(/\s+/g, "_")}-${rec.restaurant?.name.replace(/\s+/g, "_")}-${idx}`,
       dish: {
         name: rec.name,
         description: "",
         rating: rec.vote_avg ? (Number(rec.vote_avg) / 2).toFixed(1) : "0"
       },
       restaurant: {
-        name: rec.restaurant.name,
+        name: rec.restaurant?.name,
         address: restaurantAddrParts.join(", "),
-        lat: rec.restaurant.latitude ? String(rec.restaurant.latitude) : "",
-        lng: rec.restaurant.longitude ? String(rec.restaurant.longitude) : "",
+        lat: rec.restaurant?.latitude ? String(rec.restaurant.latitude) : "",
+        lng: rec.restaurant?.longitude ? String(rec.restaurant.longitude) : "",
         website: ""
       }
     }
@@ -245,12 +315,36 @@ async function getDbDishRecommendations(dishName: string, location: Location): P
 
 async function generateAIResponse(prompt: string): Promise<string> {
   const model = await getModel()
-  const { text } = await generateText({
-    model,
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.3
-  })
-  return text
+
+  try {
+    const { text } = await generateText({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      // Set a higher max tokens for Claude to ensure complete responses
+      maxOutputTokens: 1500
+    })
+    return text
+  } catch (error) {
+    console.error("AI model error:", error)
+    // Fall back to a simpler response format if the AI call fails
+    return JSON.stringify([
+      {
+        dish: {
+          name: "Error generating recommendations",
+          description: "We couldn't generate personalized recommendations at this time. Please try again later.",
+          rating: "N/A"
+        },
+        restaurant: {
+          name: "Unknown",
+          address: "N/A",
+          lat: "0",
+          lng: "0",
+          website: null
+        }
+      }
+    ])
+  }
 }
 
 // defineRouteMeta({

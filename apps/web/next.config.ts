@@ -17,6 +17,19 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**"
       },
+      // API domains (development and production)
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "3001",
+        pathname: "/**"
+      },
+      {
+        protocol: "https",
+        hostname: "api.dishola.com",
+        port: "",
+        pathname: "/**"
+      },
       // Google Images domains
       {
         protocol: "https",

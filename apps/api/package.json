@@ -15,12 +15,13 @@
     "nitropack": "latest"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "1.0.0",
+    "@dishola/supabase": "workspace:*",
     "@dishola/types": "workspace:*",
-    "@ai-sdk/gateway": "1.0.0-alpha.6",
-    "@vercel/edge-config": "^1.4.0",
-    "ai": "5.0.0-alpha.15",
-    "h3": "^1.15.3",
     "@supabase/supabase-js": "^2.42.3",
-    "@dishola/supabase": "workspace:*"
+    "@vercel/edge-config": "^1.4.0",
+    "ai": "5.0.0",
+    "h3": "^1.15.3",
+    "zod": "^4.0.14"
   }
 }

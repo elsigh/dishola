@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
+import { capitalize } from "@/lib/utils"
 import type { UserTaste } from "./user-tastes"
 
 interface AutocompleteResult {
@@ -89,7 +90,7 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
 
       if (response.ok) {
         const data = await response.json()
-        setUserTastes((prev) => [...prev, ...data.tastes])
+        setUserTastes((prev) => [...data.tastes, ...prev])
         setSearchTerm("")
         setShowAutocomplete(false)
         toast.success(`Added ${taste.name} to your tastes`)
@@ -102,11 +103,25 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
     }
   }
 
+  // Track which taste is being deleted
+  const [deletingTasteId, setDeletingTasteId] = useState<number | null>(null)
+
   // Remove taste from user's list
-  const removeTaste = async (tasteId: number) => {
+  const removeTaste = async (tasteId: number, tasteName: string) => {
+    // Show confirmation dialog
+    if (!window.confirm(`Are you sure you want to remove "${tasteName}" from your tastes?`)) {
+      return
+    }
+
+    // Set the deleting state
+    setDeletingTasteId(tasteId)
+
     try {
       const token = getAuthToken()
-      if (!token) return
+      if (!token) {
+        setDeletingTasteId(null)
+        return
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/tastes/user?id=${tasteId}`, {
         method: "DELETE",
@@ -117,13 +132,16 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
 
       if (response.ok) {
         setUserTastes((prev) => prev.filter((taste) => taste.id !== tasteId))
-        toast.success("Taste removed")
+        toast.success(`"${tasteName}" removed from your tastes`)
       } else {
         toast.error("Failed to remove taste")
       }
     } catch (error) {
       console.error("Error removing taste:", error)
       toast.error("Failed to remove taste")
+    } finally {
+      // Clear the deleting state
+      setDeletingTasteId(null)
     }
   }
 
@@ -305,7 +323,7 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
         },
         body: JSON.stringify({
           action: "createTaste",
-          name: newTaste.name.trim(),
+          name: capitalize(newTaste.name.trim()),
           type: newTaste.type,
           image_url: imageUrl,
           addToProfile: true
@@ -321,7 +339,7 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
             order_position: data.userTaste.order_position,
             taste_dictionary: data.taste
           }
-          setUserTastes((prev) => [...prev, newUserTaste])
+          setUserTastes((prev) => [newUserTaste, ...prev])
         }
 
         // Reset form
@@ -347,18 +365,14 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
   }
 
   return (
-    <>
-      {/* Add new taste */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Add New Taste
-          </CardTitle>
-          <CardDescription>Search for dishes or ingredients to add to your preferences</CardDescription>
-        </CardHeader>
-        <CardContent className="relative">
-          <div className="relative">
+    <Card>
+      <CardHeader>
+        <CardTitle>Your Tastes ({userTastes.length})</CardTitle>
+        <CardDescription>Your top preferences will be weighted more heavily in recommendations.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="relative mb-4">
+          <div>
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search for dishes or ingredients..."
@@ -405,7 +419,7 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
                             <div className="flex-1">
                               <div className="font-medium text-sm">{result.name}</div>
                               <Badge variant="secondary" className="text-xs pl-0">
-                                {result.type.charAt(0).toUpperCase() + result.type.slice(1)}
+                                {capitalize(result.type)}
                               </Badge>
                             </div>
                           </button>
@@ -484,7 +498,7 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
                 </Button>
                 <div className="w-36 h-36 flex items-center justify-center bg-white border rounded overflow-hidden dark:bg-gray-800 dark:border-gray-700">
                   {isFetchingImages ? (
-                    <span className="text-xs text-muted-foreground">Loading...</span>
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   ) : selectedImage ? (
                     <Image
                       src={selectedImage.thumbnail || selectedImage.url}
@@ -513,7 +527,7 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
                   ) : (
                     <Plus className="w-4 h-4 mr-1" />
                   )}
-                  {isCreatingTaste ? "Creating..." : `Add "${newTaste.name}"`}
+                  {isCreatingTaste ? "Creating..." : `Add "${capitalize(newTaste.name)}"`}
                 </Button>
                 <Button
                   variant="ghost"
@@ -528,68 +542,61 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* User tastes list */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Tastes ({userTastes.length})</CardTitle>
-          <CardDescription>
-            Drag and drop to reorder by preference. Your top preferences will be weighted more heavily in
-            recommendations.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {userTastes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No tastes added yet. Start by searching above!</div>
-          ) : (
-            <ul className="space-y-2 list-none p-0">
-              {userTastes.map((taste, index) => (
-                <li
-                  key={taste.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  aria-label={`Taste item: ${taste.taste_dictionary.name}`}
-                  className={`flex items-center gap-3 p-3 border rounded-lg transition-colors ${
-                    draggedIndex === index ? "opacity-50" : ""
-                  } hover:bg-gray-50 cursor-move dark:hover:bg-gray-800 dark:border-gray-700`}
+        {userTastes.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">No tastes added yet. Start by searching above!</div>
+        ) : (
+          <ul className="space-y-2 list-none p-0">
+            {userTastes.map((taste, index) => (
+              <li
+                key={taste.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, index)}
+                aria-label={`Taste item: ${taste.taste_dictionary.name}`}
+                className={`flex items-center gap-3 p-3 border rounded-lg transition-colors ${
+                  draggedIndex === index ? "opacity-50" : ""
+                } hover:bg-gray-50 cursor-move dark:hover:bg-gray-800 dark:border-gray-700`}
+              >
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+
+                {taste.taste_dictionary.image_url && (
+                  <Image
+                    src={taste.taste_dictionary.image_url}
+                    alt={taste.taste_dictionary.name}
+                    width={36}
+                    height={36}
+                    className="w-10 h-10 rounded object-cover"
+                  />
+                )}
+
+                <div className="flex-1">
+                  <div className="font-medium">{taste.taste_dictionary.name}</div>
+                  <Badge variant="secondary" className="text-xs pl-0">
+                    {capitalize(taste.taste_dictionary.type)}
+                  </Badge>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeTaste(taste.id, taste.taste_dictionary.name)}
+                  className="text-red-500 hover:text-red-700"
+                  disabled={deletingTasteId === taste.id}
                 >
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-
-                  {taste.taste_dictionary.image_url && (
-                    <Image
-                      src={taste.taste_dictionary.image_url}
-                      alt={taste.taste_dictionary.name}
-                      width={36}
-                      height={36}
-                      className="w-10 h-10 rounded object-cover"
-                    />
-                  )}
-
-                  <div className="flex-1">
-                    <div className="font-medium">{taste.taste_dictionary.name}</div>
-                    <Badge variant="secondary" className="text-xs">
-                      {taste.taste_dictionary.type}
-                    </Badge>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeTaste(taste.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
+                  {deletingTasteId === taste.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
                     <Trash2 className="h-4 w-4" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-    </>
+                  )}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import type { User, Session } from "@supabase/supabase-js"
+import type { Session, User } from "@supabase/supabase-js"
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react"
 import { AuthModal } from "@/components/auth-modal"
 import { createClient } from "@/lib/supabase-client"
@@ -47,8 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const {
           data: { subscription }
         } = supabase.auth.onAuthStateChange((_event, session) => {
-          setUser(session?.user || null)
-          setSession(session)
+          console.log("[AuthContext] Auth state changed:", _event)
+          // Only update if the session actually changed
+          setUser((prevUser) => {
+            const newUser = session?.user || null
+            if (prevUser?.id !== newUser?.id) {
+              return newUser
+            }
+            return prevUser
+          })
+          setSession((prevSession) => {
+            if (prevSession?.access_token !== session?.access_token) {
+              return session
+            }
+            return prevSession
+          })
           if (session?.user && pendingCallback) {
             // Execute the pending action after successful auth
             pendingCallback()
