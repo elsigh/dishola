@@ -5,7 +5,7 @@ import { Loader2, Map as MapIcon, SearchIcon, X } from "lucide-react"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import type React from "react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -43,11 +43,7 @@ export default function SearchSection({
   const [dishQuery, setDishQuery] = useState(initialQuery)
   const [latitude, setLatitude] = useState<number | null>(initialLat || null)
   const [longitude, setLongitude] = useState<number | null>(initialLng || null)
-  const [locationStatus, setLocationStatus] = useState(
-    initialLat && initialLng ? formatLatLng(initialLat, initialLng) : "Set your location to search"
-  )
   const [isLocating, setIsLocating] = useState(false)
-  const [isImproving, setIsImproving] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const [mapOpen, setMapOpen] = useState(false)
@@ -65,11 +61,38 @@ export default function SearchSection({
     if (initialLat && initialLng) {
       setLatitude(initialLat)
       setLongitude(initialLng)
-      setLocationStatus(formatLatLng(initialLat, initialLng))
       setTempLat(initialLat)
       setTempLng(initialLng)
     }
   }, [initialLat, initialLng])
+
+  // Function to handle location changes and trigger new search
+  const handleLocationChange = useCallback(
+    (newLat: number, newLng: number) => {
+      setLatitude(newLat)
+      setLongitude(newLng)
+      setTempLat(newLat)
+      setTempLng(newLng)
+
+      // If we're on the search page, trigger a new search with the new location
+      if (pathname === "/search") {
+        const searchParams = new URLSearchParams()
+        searchParams.append("lat", newLat.toString())
+        searchParams.append("long", newLng.toString())
+
+        // Preserve the current search query if it exists
+        if (dishQuery.trim()) {
+          searchParams.append("q", dishQuery)
+          searchParams.append("includeTastes", "false")
+        } else if (isUserLoggedIn) {
+          searchParams.append("includeTastes", "true")
+        }
+
+        router.push(`/search?${searchParams.toString()}`)
+      }
+    },
+    [dishQuery, isUserLoggedIn, pathname, router]
+  )
 
   // Google Maps modal logic
   useEffect(() => {
@@ -124,6 +147,7 @@ export default function SearchSection({
             const lng = position.lng()
             setTempLat(lat)
             setTempLng(lng)
+            handleLocationChange(lat, lng)
           }
         })
 
@@ -254,7 +278,6 @@ export default function SearchSection({
                 } else {
                   setLatitude(lat)
                   setLongitude(lng)
-                  setLocationStatus(formatLatLng(lat, lng))
                 }
               },
               (error) => {
@@ -274,12 +297,12 @@ export default function SearchSection({
 
       return () => {
         // Cleanup
-        if (locationButton && locationButton.parentNode) {
+        if (locationButton?.parentNode) {
           locationButton.parentNode.removeChild(locationButton)
         }
       }
     }
-  }, [mapOpen, tempLat, tempLng])
+  }, [mapOpen, tempLat, tempLng, pathname, handleLocationChange])
 
   // Only request geolocation on mount if we don't have initial coordinates
   useEffect(() => {
@@ -287,19 +310,16 @@ export default function SearchSection({
     if ((!initialLat || !initialLng) && (latitude === null || longitude === null)) {
       if (navigator.geolocation) {
         setIsLocating(true)
-        setLocationStatus("Fetching location...")
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude: lat, longitude: lng, accuracy } = position.coords
             console.debug(`[Geolocation:onLoad] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}`)
             setLatitude(lat)
             setLongitude(lng)
-            setLocationStatus(formatLatLng(lat, lng))
             setIsLocating(false)
           },
           (error) => {
             console.error("Geolocation error (onLoad):", error)
-            setLocationStatus(`Error: ${error.message}. You offline?`)
             setIsLocating(false)
           },
           { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
@@ -307,74 +327,6 @@ export default function SearchSection({
       }
     }
   }, []) // Only run on mount, not on pathname changes
-
-  const handleGeolocate = () => {
-    if (!navigator.geolocation) {
-      setLocationStatus("Geolocation is not supported by your browser.")
-      return
-    }
-
-    setIsLocating(true)
-    setIsImproving(false)
-    setLocationStatus("Fetching location...")
-
-    let bestAccuracy = Infinity
-    let watchId: number | null = null
-    let timeoutId: number | null = null
-    const accuracyThreshold = 20
-
-    const updatePosition = (position: GeolocationPosition) => {
-      const { latitude: lat, longitude: lng, accuracy } = position.coords
-      console.debug(`[Geolocation:updatePosition] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}`)
-      setLatitude(lat)
-      setLongitude(lng)
-      setLocationStatus(formatLatLng(lat, lng))
-      setIsLocating(false)
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        updatePosition(position)
-        bestAccuracy = position.coords.accuracy
-
-        // If accuracy is not good, start watchPosition for up to 20s
-        if (bestAccuracy > accuracyThreshold) {
-          setIsImproving(true)
-          watchId = navigator.geolocation.watchPosition(
-            (pos) => {
-              console.debug(
-                `[Geolocation:watch] lat: ${pos.coords.latitude}, lng: ${pos.coords.longitude}, accuracy: ${pos.coords.accuracy}`
-              )
-              bestAccuracy = pos.coords.accuracy
-              updatePosition(pos)
-              if (bestAccuracy <= accuracyThreshold) {
-                if (watchId !== null) navigator.geolocation.clearWatch(watchId)
-                setIsImproving(false)
-                if (timeoutId !== null) clearTimeout(timeoutId)
-                console.debug("[Geolocation:watchPosition] stopped watching - good accuracy")
-              }
-            },
-            (err) => {
-              console.error("[Geolocation:watchPosition] error:", err)
-            },
-            { enableHighAccuracy: true }
-          )
-          timeoutId = window.setTimeout(() => {
-            if (watchId !== null) navigator.geolocation.clearWatch(watchId)
-            setIsImproving(false)
-            console.debug("[Geolocation:watchPosition] stopped watching - timeout")
-          }, 20000)
-        }
-      },
-      (error) => {
-        console.error("Geolocation error:", error)
-        setLocationStatus(`Error: ${error.message}. You offline?`)
-        setIsLocating(false)
-        setIsImproving(false)
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-    )
-  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -412,38 +364,12 @@ export default function SearchSection({
     }
   }
 
-  // Function to handle location changes and trigger new search
-  const handleLocationChange = (newLat: number, newLng: number) => {
-    setLatitude(newLat)
-    setLongitude(newLng)
-    setLocationStatus(formatLatLng(newLat, newLng))
-    setTempLat(newLat)
-    setTempLng(newLng)
-
-    // If we're on the search page, trigger a new search with the new location
-    if (pathname === "/search") {
-      const searchParams = new URLSearchParams()
-      searchParams.append("lat", newLat.toString())
-      searchParams.append("long", newLng.toString())
-
-      // Preserve the current search query if it exists
-      if (dishQuery.trim()) {
-        searchParams.append("q", dishQuery)
-        searchParams.append("includeTastes", "false")
-      } else if (isUserLoggedIn) {
-        searchParams.append("includeTastes", "true")
-      }
-
-      router.push(`/search?${searchParams.toString()}`)
-    }
-  }
-
   const canSearch = (isUserLoggedIn || dishQuery.trim() !== "") && latitude !== null && longitude !== null
 
   return (
-    <form onSubmit={handleSearch} className="w-full">
+    <form onSubmit={handleSearch} className="w-full max-w-[850px]">
       <div className="relative w-full">
-        <div className="relative flex items-center w-full px-4 bg-white rounded-full shadow-sm border border-gray-200 hover:shadow-md focus-within:shadow-lg focus-within:border-brand-primary transition-all duration-200">
+        <div className="relative flex items-center w-full px-4 bg-white rounded-full shadow-md border focus-within:shadow-lg transition-all duration-200">
           <div className="flex-shrink-0 mr-3 bg-brand-bg rounded-full p-1">
             <Image src="/img/dishola_logo_32x32.png" alt="Dishola" width={24} height={24} className="w-6 h-6" />
           </div>
@@ -511,24 +437,6 @@ export default function SearchSection({
       {mapOpen && (
         <div className="mt-4">
           <div ref={mapRef} style={{ width: "100%", height: "400px" }} />
-          <div className="flex justify-between items-center mt-4">
-            <Button
-              type="button"
-              onClick={() => {
-                if (tempLat !== null && tempLng !== null) {
-                  handleLocationChange(tempLat, tempLng)
-                  setMapOpen(false)
-                }
-              }}
-              className="btn-custom-primary"
-              disabled={tempLat === null || tempLng === null}
-            >
-              Set Location & Search
-            </Button>
-            <Button type="button" onClick={() => setMapOpen(false)} variant="outline" className="btn-custom-secondary">
-              Cancel
-            </Button>
-          </div>
         </div>
       )}
     </form>

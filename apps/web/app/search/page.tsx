@@ -25,54 +25,12 @@ function SearchResultsContent() {
   const [aiDishes, setAiDishes] = useState<DishRecommendation[]>([])
   const [dbDishes, setDbDishes] = useState<DishRecommendation[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [displayLocation, setDisplayLocation] = useState<string>("")
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const abortController = useRef<AbortController | null>(null)
 
   const { user, getAuthToken } = useAuth()
-  const [userTastes, setUserTastes] = useState<string[]>([])
-
-  const [mapOpen, setMapOpen] = useState(false)
-  const [tempLat, setTempLat] = useState<number | null>(null)
-  const [tempLng, setTempLng] = useState<number | null>(null)
-  const mapRef = useRef<HTMLDivElement>(null)
 
   const { neighborhood, city, isLoading } = useLocationData()
-
-  // Google Maps modal logic
-  useEffect(() => {
-    if (mapOpen && mapRef.current && tempLat !== null && tempLng !== null) {
-      const loader = new GoogleMapsLoader({
-        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-        version: "weekly"
-      })
-      let map: google.maps.Map
-      let marker: google.maps.Marker
-      loader.load().then(() => {
-        map = new google.maps.Map(mapRef.current!, {
-          center: { lat: tempLat, lng: tempLng },
-          zoom: 13
-        })
-        marker = new google.maps.Marker({
-          position: { lat: tempLat, lng: tempLng },
-          map,
-          draggable: false
-        })
-        map.addListener("click", (e: google.maps.MapMouseEvent) => {
-          if (e.latLng) {
-            const lat = e.latLng.lat()
-            const lng = e.latLng.lng()
-            marker.setPosition({ lat, lng })
-            setTempLat(lat)
-            setTempLng(lng)
-          }
-        })
-      })
-      return () => {
-        /* cleanup */
-      }
-    }
-  }, [mapOpen, tempLat, tempLng])
 
   // Update useEffect to listen for changes in the search query
   useEffect(() => {
@@ -133,15 +91,11 @@ function SearchResultsContent() {
 
           setAiDishes(data.aiResults || [])
           setDbDishes(data.dbResults || [])
-          setDisplayLocation(data.displayLocation || "")
           console.log("API Response:", data)
           // setNeighborhood(data.neighborhood) // This line is removed
           console.log("Neighborhood set to:", data.neighborhood)
           // setCity(data.city) // This line is removed
           console.log("City set to:", data.city)
-          if (data.includedTastes) {
-            setUserTastes(data.includedTastes)
-          }
           // setIsLoading(false) // This line is removed
         } catch (err) {
           if (err instanceof Error) {
@@ -235,21 +189,17 @@ function SearchResultsContent() {
           </div>
         </section>
       )}
-      <Button onClick={() => setMapOpen(true)}>Set Location</Button>
-      {mapOpen && <div ref={mapRef} style={{ width: "100%", height: "400px" }} />}
     </div>
   )
 }
 
 export default function SearchPage() {
   return (
-    <div className="container mx-auto px-4 py-4">
-      <div className="flex flex-col">
-        {/* Results section */}
-        <Suspense fallback={<div>Loading...</div>}>
-          <SearchResultsContent />
-        </Suspense>
-      </div>
+    <div className="flex flex-col">
+      {/* Results section */}
+      <Suspense fallback={<div>Loading...</div>}>
+        <SearchResultsContent />
+      </Suspense>
     </div>
   )
 }

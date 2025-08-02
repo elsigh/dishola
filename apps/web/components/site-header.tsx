@@ -10,17 +10,18 @@ export default function SiteHeader() {
   const isHome = pathname === "/"
   const isSearchPage = pathname === "/search"
   const { user } = useAuth()
-  if (isHome && user) return null
   return (
     <header className="py-4">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-        <nav>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex gap-8">
+        <nav className="hidden md:block py-2">
           <Link href="/" className="text-3xl font-serif font-bold text-brand-primary">
             dishola
           </Link>
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-grow">
           {(isHome || isSearchPage) && <SearchSection includeTastesOption={true} isUserLoggedIn={!!user} />}
+        </div>
+        <div className="py-2">
           <UserMenu />
         </div>
       </div>

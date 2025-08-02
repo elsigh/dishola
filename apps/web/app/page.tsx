@@ -87,42 +87,40 @@ export default function HomePage() {
 
   // User is signed in - show Google-style search page with results
   return (
-    <div className="container mx-auto px-4 py-4">
-      <div className="flex flex-col">
-        {isLoadingResults ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-primary mb-4" />
+    <div className="flex flex-col">
+      {isLoadingResults ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-primary mb-4" />
+        </div>
+      ) : tasteResults.length > 0 ? (
+        <div>
+          <ResultsFor neighborhood={neighborhood} city={city} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+            {tasteResults.map((rec) => (
+              <DishCard key={`taste-${rec.id}`} recommendation={rec} />
+            ))}
           </div>
-        ) : tasteResults.length > 0 ? (
-          <div>
-            <ResultsFor neighborhood={neighborhood} city={city} />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-              {tasteResults.map((rec) => (
-                <DishCard key={`taste-${rec.id}`} recommendation={rec} />
-              ))}
-            </div>
-          </div>
-        ) : userTastes.length > 0 ? (
-          <div className="text-center py-12">
-            <p className="text-lg text-brand-text-muted">
-              No recommendations found based on your taste preferences.
-              <br />
-              Try searching for a specific dish above.
-            </p>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-lg text-brand-text-muted">
-              You haven't added any taste preferences yet.
-              <br />
-              <Link href="/profile" className="text-brand-primary hover:underline">
-                Add some tastes to your profile
-              </Link>{" "}
-              to get personalized recommendations!
-            </p>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : userTastes.length > 0 ? (
+        <div className="text-center py-12">
+          <p className="text-lg text-brand-text-muted">
+            No recommendations found based on your taste preferences.
+            <br />
+            Try searching for a specific dish above.
+          </p>
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <p className="text-lg text-brand-text-muted">
+            You haven't added any taste preferences yet.
+            <br />
+            <Link href="/profile" className="text-brand-primary hover:underline">
+              Add some tastes to your profile
+            </Link>{" "}
+            to get personalized recommendations!
+          </p>
+        </div>
+      )}
     </div>
   )
 }
