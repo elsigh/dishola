@@ -5,6 +5,7 @@ import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
 import { generateText } from "ai"
 import { type H3Event, setHeader } from "h3"
+import fetch from "node-fetch"
 import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/types"
 
 // Add cache at the top
@@ -210,6 +211,8 @@ export default defineEventHandler(async (event) => {
     // Get community (database) recommendations
     const dbResults = await getDbDishRecommendations(parsedQuery.dishName)
 
+    const { neighborhood, city } = await getGeocodeData(locationInfo.lat, locationInfo.long)
+
     const result = {
       query: searchPrompt,
       location: location,
@@ -220,7 +223,8 @@ export default defineEventHandler(async (event) => {
       aiResults,
       dbResults,
       includedTastes: userTastes.length > 0 ? userTastes : null,
-      neighborhood: undefined // Add neighborhood if available
+      neighborhood, // Add neighborhood to the response
+      city // Add city to the response
     }
     SEARCH_CACHE.set(cacheKey, { data: result, timestamp: now })
     return result
@@ -345,6 +349,23 @@ async function generateAIResponse(prompt: string): Promise<string> {
       }
     ])
   }
+}
+
+async function getGeocodeData(lat, long) {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${long}&key=${apiKey}`
+  const response = await fetch(url)
+  const data = await response.json()
+  console.log("Geocoding API Response:", data)
+  if (data.status === "OK" && data.results.length > 0) {
+    const addressComponents = data.results[0].address_components
+    const neighborhood = addressComponents.find((component) => component.types.includes("neighborhood"))?.long_name
+    const city = addressComponents.find((component) => component.types.includes("locality"))?.long_name
+    console.log("Extracted Neighborhood:", neighborhood)
+    console.log("Extracted City:", city)
+    return { neighborhood, city }
+  }
+  return { neighborhood: undefined, city: undefined }
 }
 
 // defineRouteMeta({

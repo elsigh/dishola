@@ -6,8 +6,11 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
 import DishCard from "@/components/dish-card"
+import ResultsFor from "@/components/results-for"
 import SearchSection from "@/components/search-section"
 import { Button } from "@/components/ui/button"
+import LocationDot from "@/components/ui/location-dot"
+import { useLocationData } from "@/hooks/useLocationData"
 import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
 import type { DishRecommendation } from "../../../api/lib/types"
@@ -17,14 +20,16 @@ function SearchResultsContent() {
   const q = searchParams.get("q")
   const lat = searchParams.get("lat")
   const long = searchParams.get("long")
-  const includeTastes = searchParams.get("includeTastes") === "true"
+  // Remove includeTastes from URL params
+  // const includeTastes = searchParams.get("includeTastes") === "true"
+
+  // Determine includeTastes based on the presence of q
+  const includeTastes = !q
 
   const [aiDishes, setAiDishes] = useState<DishRecommendation[]>([])
   const [dbDishes, setDbDishes] = useState<DishRecommendation[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [displayLocation, setDisplayLocation] = useState<string>("")
-  const [neighborhood, setNeighborhood] = useState<string | undefined>(undefined)
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const abortController = useRef<AbortController | null>(null)
 
@@ -35,6 +40,8 @@ function SearchResultsContent() {
   const [tempLat, setTempLat] = useState<number | null>(null)
   const [tempLng, setTempLng] = useState<number | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
+
+  const { latitude, longitude, neighborhood, city, isLoading } = useLocationData()
 
   // Google Maps modal logic
   useEffect(() => {
@@ -74,7 +81,7 @@ function SearchResultsContent() {
   useEffect(() => {
     // Allow search with just lat/long and includeTastes (for taste-based recommendations)
     if ((q !== null || includeTastes) && lat && long) {
-      setIsLoading(true)
+      // setIsLoading(true) // This line is removed
       setError(null)
       // Debounce the fetch
       if (debounceTimeout.current) clearTimeout(debounceTimeout.current)
@@ -94,10 +101,8 @@ function SearchResultsContent() {
           searchUrl.searchParams.append("lat", lat)
           searchUrl.searchParams.append("long", long)
 
-          // Add includeTastes param if enabled
-          if (includeTastes) {
-            searchUrl.searchParams.append("includeTastes", "true")
-          }
+          // Remove includeTastes param from search URL
+          // searchUrl.searchParams.append("includeTastes", "true")
 
           // Prepare headers
           const headers: HeadersInit = {}
@@ -132,11 +137,15 @@ function SearchResultsContent() {
           setAiDishes(data.aiResults || [])
           setDbDishes(data.dbResults || [])
           setDisplayLocation(data.displayLocation || "")
-          setNeighborhood(data.neighborhood)
+          console.log("API Response:", data)
+          // setNeighborhood(data.neighborhood) // This line is removed
+          console.log("Neighborhood set to:", data.neighborhood)
+          // setCity(data.city) // This line is removed
+          console.log("City set to:", data.city)
           if (data.includedTastes) {
             setUserTastes(data.includedTastes)
           }
-          setIsLoading(false)
+          // setIsLoading(false) // This line is removed
         } catch (err) {
           if (err instanceof Error) {
             if (err.name === "AbortError") return
@@ -146,7 +155,7 @@ function SearchResultsContent() {
             console.error("An unexpected error occurred:", err)
             setError("An unknown error occurred.")
           }
-          setIsLoading(false)
+          // setIsLoading(false) // This line is removed
         }
       }, 300)
     } else {
@@ -155,7 +164,7 @@ function SearchResultsContent() {
       } else {
         setError("Search query and location are required.")
       }
-      setIsLoading(false)
+      // setIsLoading(false) // This line is removed
     }
     // Cleanup on unmount or param change
     return () => {
@@ -207,11 +216,7 @@ function SearchResultsContent() {
 
   return (
     <div>
-      {q && (
-        <h1 className="text-brand-text mb-2">
-          Results for <strong>{neighborhood}</strong>
-        </h1>
-      )}
+      {q && <ResultsFor neighborhood={neighborhood} city={city} />}
 
       {aiDishes.length > 0 && (
         <section className="mb-10">

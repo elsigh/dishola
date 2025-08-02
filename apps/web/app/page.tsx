@@ -4,9 +4,11 @@ import { Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import DishCard from "@/components/dish-card"
+import ResultsFor from "@/components/results-for"
 import SearchSection from "@/components/search-section"
 import LocationDot from "@/components/ui/location-dot"
 import { UserMenu } from "@/components/user-menu"
+import { useLocationData } from "@/hooks/useLocationData"
 import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
 import type { DishRecommendation } from "../../api/lib/types"
@@ -16,10 +18,7 @@ export default function HomePage() {
   const [tasteResults, setTasteResults] = useState<DishRecommendation[]>([])
   const [isLoadingResults, setIsLoadingResults] = useState(false)
   const [userTastes, setUserTastes] = useState<string[]>([])
-  const [latitude, setLatitude] = useState<number | null>(null)
-  const [longitude, setLongitude] = useState<number | null>(null)
-  const [neighborhood, setNeighborhood] = useState<string | undefined>(undefined)
-  const [city, setCity] = useState<string | undefined>(undefined)
+  const { latitude, longitude, neighborhood, city, isLoading } = useLocationData()
 
   //console.debug("authLoading", authLoading)
 
@@ -29,8 +28,8 @@ export default function HomePage() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude: lat, longitude: lng } = position.coords
-          setLatitude(lat)
-          setLongitude(lng)
+          // setLatitude(lat) // This is now handled by useLocationData
+          // setLongitude(lng) // This is now handled by useLocationData
         },
         (error) => {
           console.error("Geolocation error:", error)
@@ -71,8 +70,8 @@ export default function HomePage() {
           const data = await response.json()
           setTasteResults(data.aiResults || [])
           setUserTastes(data.userTastes || [])
-          setNeighborhood(data.neighborhood)
-          setCity(data.city)
+          // setNeighborhood(data.neighborhood) // This is now handled by useLocationData
+          // setCity(data.city) // This is now handled by useLocationData
         }
       } catch (error) {
         console.error("Error fetching taste recommendations:", error)
@@ -128,16 +127,7 @@ export default function HomePage() {
           </div>
         ) : tasteResults.length > 0 ? (
           <div>
-            <div className="flex gap-2 items-center mb-4">
-              <h2 className=" text-brand-primary">
-                <LocationDot /> Results for <strong>{neighborhood}</strong>
-                {city && <strong>, {city}</strong>}
-              </h2>
-              <span>∙</span>
-              <Link href="/profile" className="text-sm text-brand-text-muted hover:text-brand-primary">
-                Manage my Tastes
-              </Link>
-            </div>
+            <ResultsFor neighborhood={neighborhood} city={city} />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
               {tasteResults.map((rec) => (
                 <DishCard key={`taste-${rec.id}`} recommendation={rec} />
