@@ -58,12 +58,34 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
         throw createError({ statusCode: 500, statusMessage: `Failed to fetch profile for user.id: ${user.id}` })
       }
 
+      // Get user's tastes
+      const { data: tastesData, error: tastesError } = await supabase
+        .from("user_tastes")
+        .select(`
+          id,
+          order_position,
+          taste_dictionary:taste_dictionary_id (
+            id,
+            name,
+            type,
+            image_url
+          )
+        `)
+        .eq("user_id", user.id)
+        .order("order_position")
+
+      if (tastesError) {
+        console.error("Error fetching user tastes:", tastesError)
+        // Don't throw error for tastes, just log it and continue without tastes
+      }
+
       return {
         id: user.id,
         email: user.email,
         display_name: profileData?.display_name || null,
         avatar_url: profileData?.avatar_url || null,
-        username: profileData?.username || null
+        username: profileData?.username || null,
+        tastes: tastesData || []
       }
     } catch (error) {
       console.error("Profile fetch error:", error)

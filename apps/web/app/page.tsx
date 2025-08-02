@@ -6,25 +6,44 @@ import { useLocationData } from "@/hooks/useLocationData"
 import { useAuth } from "@/lib/auth-context"
 
 export default function HomePage() {
-  const { user, isLoading: authLoading } = useAuth()
-  const { latitude, longitude } = useLocationData()
+  const { user, isLoading: authLoading, getUserTastes } = useAuth()
+  const { latitude, longitude, isLoading: locationLoading } = useLocationData()
   const router = useRouter()
 
-  // Redirect logged-in users to search page with location and taste parameters
+  // Redirect logged-in users to search page with location and inline taste parameters
   useEffect(() => {
-    if (!authLoading && user && latitude !== null && longitude !== null) {
+    if (!authLoading && !locationLoading && user && latitude !== null && longitude !== null) {
       const searchParams = new URLSearchParams()
       searchParams.append("lat", latitude.toString())
       searchParams.append("long", longitude.toString())
-      searchParams.append("tastes", "true")
       
-      // Use replace to avoid adding to browser history
+      // Get user tastes from auth context (already loaded)
+      const userTastes = getUserTastes()
+      if (userTastes.length > 0) {
+        // Inline the actual taste names in the URL
+        searchParams.append("tastes", userTastes.join(","))
+      }
+      
+      // Always redirect with location parameters
       router.replace(`/search?${searchParams.toString()}`)
     }
-  }, [user, authLoading, latitude, longitude, router])
+  }, [user, authLoading, locationLoading, latitude, longitude, getUserTastes, router])
 
   // If user is not signed in, show the standard homepage
-  if (authLoading) return null
+  if (authLoading || locationLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-12 md:py-20">
+        <div className="animate-pulse">
+          <h1 className="text-5xl md:text-6xl font-bold text-brand-primary mb-4">dishola</h1>
+          {authLoading ? (
+            <p className="text-lg text-brand-text-muted">Loading...</p>
+          ) : (
+            <p className="text-lg text-brand-text-muted">Getting your location...</p>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   if (!user) {
     return (
@@ -40,7 +59,13 @@ export default function HomePage() {
     )
   }
 
-  // For logged-in users, we redirect to search page so this should not render
-  // But in case of race conditions, show a minimal loading state
-  return null
+  // For logged-in users, show loading state while redirecting
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-12 md:py-20">
+      <div className="animate-pulse">
+        <h1 className="text-5xl md:text-6xl font-bold text-brand-primary mb-4">dishola</h1>
+        <p className="text-lg text-brand-text-muted">Redirecting to search...</p>
+      </div>
+    </div>
+  )
 }

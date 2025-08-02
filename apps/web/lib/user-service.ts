@@ -181,6 +181,8 @@ export async function getUserProfileByUsername(username: string): Promise<Public
   }
 }
 
+// getUserTastes function removed - now available via useAuth().getUserTastes()
+
 export async function syncProfileFromAuthUser(userId: string) {
   // Use service role client for admin operations
   const adminClient = createServiceRoleClient()

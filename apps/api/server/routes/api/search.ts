@@ -5,13 +5,13 @@ import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
 import { generateText } from "ai"
 import { type H3Event, setHeader } from "h3"
-import fetch from "node-fetch"
+import { getNeighborhoodInfo } from "../../lib/location-utils"
 import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/types"
 
 // Add cache at the top
 const SEARCH_CACHE = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
 const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
-function getCacheKey(q: string, lat: string, long: string, tastes: boolean) {
+function getCacheKey(q: string, lat: string, long: string, tastes: string | undefined) {
   return JSON.stringify({ q, lat, long, tastes })
 }
 
@@ -131,21 +131,25 @@ export default defineEventHandler(async (event) => {
   const locationInfo = getLocationFromRequest(event)
 
   // ---- CACHE CHECK ----
-  const cacheKey = getCacheKey(query.q as string, locationInfo.lat, locationInfo.long, query.tastes === "true")
+  const cacheKey = getCacheKey(query.q as string, locationInfo.lat, locationInfo.long, query.tastes as string)
   const cached = SEARCH_CACHE.get(cacheKey)
   const now = Date.now()
   if (cached && now - cached.timestamp < CACHE_TTL) {
     return cached.data
   }
 
-  // Validate that we have either a query or tastes parameter
-  if (!query.q && query.tastes !== "true") {
+  // Validate that we have either a query or tastes parameter (but not both)
+  if (!query.q && !query.tastes) {
     console.error("Search API error: Missing required parameters", { q: query.q, tastes: query.tastes })
     throw createError({
       statusCode: 400,
-      statusMessage: "Missing required parameter: either 'q' (query) or 'tastes=true' is required"
+      statusMessage: "Missing required parameter: either 'q' (query) or 'tastes' is required"
     })
   }
+
+  // If both are present, prioritize q and ignore tastes
+  const useQuery = !!query.q
+  const useTastes = !useQuery && !!query.tastes
 
   const searchPrompt = query.q as string
   const location = locationInfo.address || `${locationInfo.lat},${locationInfo.long}`
@@ -165,55 +169,22 @@ export default defineEventHandler(async (event) => {
     // Get auth token if provided
     const authHeader = getHeader(event, "authorization")
     let userTastes: string[] = []
-    const tastes = query.tastes === "true"
 
-    // If auth token is provided and tastes is true, fetch user tastes
-    if (authHeader?.startsWith("Bearer ") && tastes) {
-      const token = authHeader.split(" ")[1]
-      // Create Supabase client with user's token
-      const supabaseClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-        {
-          global: {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        }
-      )
-
-      // Validate the user token and get their tastes
-      const {
-        data: { user }
-      } = await supabaseClient.auth.getUser()
-      if (!user) return
-
-      if (user) {
-        const { data } = await supabaseClient
-          .from("user_tastes")
-          .select(`
-            taste_dictionary:taste_dictionary_id (
-              name,
-              type
-            )
-          `)
-          .eq("user_id", user.id)
-          .order("order_position")
-
-        // Extract taste names for the prompt
-        userTastes = (data || []).map((item: any) => item.taste_dictionary?.name).filter(Boolean)
-      }
+    // Only process tastes if we're using tastes (not query)
+    if (useTastes && query.tastes) {
+      // Parse comma-separated taste names directly from URL
+      userTastes = query.tastes.split(",").map((taste: string) => taste.trim()).filter(Boolean)
     }
 
-    // Parse the user query to extract structured data
-    const parsedQuery = await parseUserQuery(searchPrompt)
+    // Parse the user query to extract structured data (only if using query search)
+    const parsedQuery = useQuery ? await parseUserQuery(searchPrompt) : { dishName: userTastes.join(", "), cuisine: "Any" }
     // Get AI-powered recommendations
     const aiResults = await getDishRecommendationa(parsedQuery, locationInfo, userTastes)
     // Get community (database) recommendations
     const dbResults = await getDbDishRecommendations(parsedQuery.dishName)
 
-    const { neighborhood, city } = await getGeocodeData(locationInfo.lat, locationInfo.long)
+    const locationData = await getNeighborhoodInfo(locationInfo.lat, locationInfo.long, event.headers)
+    const { neighborhood, city } = locationData
 
     const result = {
       query: searchPrompt,
@@ -353,22 +324,6 @@ async function generateAIResponse(prompt: string): Promise<string> {
   }
 }
 
-async function getGeocodeData(lat, long) {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${long}&key=${apiKey}`
-  const response = await fetch(url)
-  const data = await response.json()
-  console.log("Geocoding API Response:", data)
-  if (data.status === "OK" && data.results.length > 0) {
-    const addressComponents = data.results[0].address_components
-    const neighborhood = addressComponents.find((component) => component.types.includes("neighborhood"))?.long_name
-    const city = addressComponents.find((component) => component.types.includes("locality"))?.long_name
-    console.log("Extracted Neighborhood:", neighborhood)
-    console.log("Extracted City:", city)
-    return { neighborhood, city }
-  }
-  return { neighborhood: undefined, city: undefined }
-}
 
 // defineRouteMeta({
 //   openAPI: {

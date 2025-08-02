@@ -109,7 +109,7 @@ export default function SearchSection({
       // Preserve the current search query if it exists
       if (dishQuery.trim()) {
         searchParams.append("q", dishQuery)
-        searchParams.append("tastes", "false")
+        // Don't add tastes parameter when we have a query
       } else if (isUserLoggedIn) {
         searchParams.append("tastes", "true")
       }
@@ -226,9 +226,7 @@ export default function SearchSection({
     } else {
       // Add query param when search box has content
       searchParams.append("q", dishQuery)
-
-      // Don't include tastes when explicitly searching for something
-      searchParams.append("tastes", "false")
+      // Don't add tastes parameter when we have a query
     }
 
     // If we're already on the search page, update the current URL
@@ -255,11 +253,7 @@ export default function SearchSection({
             type="text"
             value={dishQuery}
             onChange={(e) => setDishQuery(e.target.value)}
-            placeholder={
-              isUserLoggedIn && dishQuery.trim() === ""
-                ? "Search based on your Tastes..."
-                : "e.g., Spicy Ramen, Tacos al Pastor, Best Burger"
-            }
+            placeholder="What are you craving?"
             className="flex-1 bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 text-lg py-3"
           />
 
@@ -335,9 +329,7 @@ export default function SearchSection({
                       : locationInfo.displayName || locationInfo.city || locationInfo.neighborhood}
                   </span>
                   {tempLat !== null && tempLng !== null && (
-                    <span className="text-gray-400 ml-2">
-                      ({formatLatLng(tempLat, tempLng)})
-                    </span>
+                    <span className="text-gray-400 ml-2">({formatLatLng(tempLat, tempLng)})</span>
                   )}
                 </div>
               ) : tempLat !== null && tempLng !== null ? (

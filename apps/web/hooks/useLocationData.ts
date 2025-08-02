@@ -2,7 +2,12 @@ import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
 
-export function useLocationData() {
+interface UseLocationDataProps {
+  urlLat?: string | null
+  urlLng?: string | null
+}
+
+export function useLocationData(props?: UseLocationDataProps) {
   const { user, getAuthToken } = useAuth()
   const [latitude, setLatitude] = useState<number | null>(null)
   const [longitude, setLongitude] = useState<number | null>(null)
@@ -10,21 +15,37 @@ export function useLocationData() {
   const [city, setCity] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Prioritize URL parameters over geolocation
   useEffect(() => {
+    if (props?.urlLat && props?.urlLng) {
+      // Use coordinates from URL
+      const lat = parseFloat(props.urlLat)
+      const lng = parseFloat(props.urlLng)
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setLatitude(lat)
+        setLongitude(lng)
+        return // Skip geolocation
+      }
+    }
+
+    // Only use geolocation if no URL coordinates
     if (navigator.geolocation) {
+      setIsLoading(true)
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude: lat, longitude: lng } = position.coords
           setLatitude(lat)
           setLongitude(lng)
+          setIsLoading(false)
         },
         (error) => {
           console.error("Geolocation error:", error)
+          setIsLoading(false)
         },
         { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
       )
     }
-  }, [])
+  }, [props?.urlLat, props?.urlLng])
 
   useEffect(() => {
     const fetchLocationData = async () => {

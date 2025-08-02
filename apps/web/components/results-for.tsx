@@ -9,7 +9,7 @@ interface ResultsForProps {
 
 const ResultsFor: FC<ResultsForProps> = ({ neighborhood, city }) => {
   return (
-    <div className="flex gap-2 items-center mb-4">
+    <div className="flex gap-2 items-center">
       <h2 className="text-brand-primary">
         <LocationDot /> Results for <strong>{neighborhood}</strong>
         {city && <strong>, {city}</strong>}
