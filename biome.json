@@ -32,8 +32,8 @@
     "rules": {
       "recommended": true,
       "correctness": {
-        "noUnusedImports": "warn",
-        "noUnusedVariables": "warn",
+        "noUnusedImports": { "level": "on", "fix": "unsafe" },
+        "noUnusedVariables": { "level": "on", "fix": "unsafe" },
         "useExhaustiveDependencies": "warn"
       },
       "a11y": {

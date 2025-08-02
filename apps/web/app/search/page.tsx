@@ -7,9 +7,7 @@ import { useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useRef, useState } from "react"
 import DishCard from "@/components/dish-card"
 import ResultsFor from "@/components/results-for"
-import SearchSection from "@/components/search-section"
 import { Button } from "@/components/ui/button"
-import LocationDot from "@/components/ui/location-dot"
 import { useLocationData } from "@/hooks/useLocationData"
 import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
@@ -20,8 +18,6 @@ function SearchResultsContent() {
   const q = searchParams.get("q")
   const lat = searchParams.get("lat")
   const long = searchParams.get("long")
-  // Remove includeTastes from URL params
-  // const includeTastes = searchParams.get("includeTastes") === "true"
 
   // Determine includeTastes based on the presence of q
   const includeTastes = !q
@@ -41,7 +37,7 @@ function SearchResultsContent() {
   const [tempLng, setTempLng] = useState<number | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
 
-  const { latitude, longitude, neighborhood, city, isLoading } = useLocationData()
+  const { neighborhood, city, isLoading } = useLocationData()
 
   // Google Maps modal logic
   useEffect(() => {
@@ -78,6 +74,7 @@ function SearchResultsContent() {
     }
   }, [mapOpen, tempLat, tempLng])
 
+  // Update useEffect to listen for changes in the search query
   useEffect(() => {
     // Allow search with just lat/long and includeTastes (for taste-based recommendations)
     if ((q !== null || includeTastes) && lat && long) {
@@ -245,26 +242,9 @@ function SearchResultsContent() {
 }
 
 export default function SearchPage() {
-  const { user } = useAuth()
-  const searchParams = useSearchParams()
-  const currentQuery = searchParams.get("q") || ""
-  const currentLat = searchParams.get("lat") ? parseFloat(searchParams.get("lat")!) : undefined
-  const currentLng = searchParams.get("long") ? parseFloat(searchParams.get("long")!) : undefined
-
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="flex flex-col">
-        {/* Search section - always visible */}
-        <div className="mb-6">
-          <SearchSection
-            includeTastesOption={true}
-            isUserLoggedIn={!!user}
-            initialQuery={currentQuery}
-            initialLat={currentLat}
-            initialLng={currentLng}
-          />
-        </div>
-
         {/* Results section */}
         <Suspense fallback={<div>Loading...</div>}>
           <SearchResultsContent />

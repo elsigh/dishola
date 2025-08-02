@@ -1,12 +1,14 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import SearchSection from "@/components/search-section"
 import { useAuth } from "@/lib/auth-context"
 import { UserMenu } from "./user-menu"
 
 export default function SiteHeader() {
   const pathname = usePathname()
   const isHome = pathname === "/"
+  const isSearchPage = pathname === "/search"
   const { user } = useAuth()
   if (isHome && user) return null
   return (
@@ -18,6 +20,7 @@ export default function SiteHeader() {
           </Link>
         </nav>
         <div className="flex items-center gap-2">
+          {(isHome || isSearchPage) && <SearchSection includeTastesOption={true} isUserLoggedIn={!!user} />}
           <UserMenu />
         </div>
       </div>

@@ -1,5 +1,9 @@
 # Cursor Rules for Dishola Project
 
+## Package Manager Preference
+- **ALWAYS use `pnpm`** for package management commands instead of `npm`.
+- Use `pnpm install`, `pnpm run`, `pnpm exec`, etc., for all package management tasks.
+
 ## API URL Guidelines (CRITICAL)
 - **NEVER hardcode API URLs** like `http://localhost:3001` or `https://api.dishola.com`
 - **ALWAYS use `API_BASE_URL`** from `@/lib/constants` when making fetch requests to the Nitro API server

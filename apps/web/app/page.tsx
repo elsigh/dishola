@@ -5,9 +5,6 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import DishCard from "@/components/dish-card"
 import ResultsFor from "@/components/results-for"
-import SearchSection from "@/components/search-section"
-import LocationDot from "@/components/ui/location-dot"
-import { UserMenu } from "@/components/user-menu"
 import { useLocationData } from "@/hooks/useLocationData"
 import { useAuth } from "@/lib/auth-context"
 import { API_BASE_URL } from "@/lib/constants"
@@ -18,26 +15,7 @@ export default function HomePage() {
   const [tasteResults, setTasteResults] = useState<DishRecommendation[]>([])
   const [isLoadingResults, setIsLoadingResults] = useState(false)
   const [userTastes, setUserTastes] = useState<string[]>([])
-  const { latitude, longitude, neighborhood, city, isLoading } = useLocationData()
-
-  //console.debug("authLoading", authLoading)
-
-  // Get geolocation on mount
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude: lat, longitude: lng } = position.coords
-          // setLatitude(lat) // This is now handled by useLocationData
-          // setLongitude(lng) // This is now handled by useLocationData
-        },
-        (error) => {
-          console.error("Geolocation error:", error)
-        },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-      )
-    }
-  }, [])
+  const { latitude, longitude, neighborhood, city } = useLocationData()
 
   // Fetch taste-based recommendations if user is signed in
   useEffect(() => {
@@ -83,12 +61,12 @@ export default function HomePage() {
     if (!authLoading && user) {
       fetchTasteRecommendations()
     }
-  }, [user, authLoading, latitude, longitude])
+  }, [user, authLoading, latitude, longitude, getAuthToken])
 
   // Debug useEffect to log city changes
   useEffect(() => {
     //console.log("City state changed to:", city)
-  }, [city])
+  }, [])
 
   // If user is not signed in, show the standard homepage
   if (authLoading) return null
@@ -102,8 +80,6 @@ export default function HomePage() {
           The ultimate source to find real meals at real places that rule.
         </p>
 
-        <SearchSection neighborhood={neighborhood} />
-
         <p className="mt-12 text-md text-brand-text-muted max-w-xl">So, what's your favorite dish?</p>
       </div>
     )
@@ -113,14 +89,6 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="flex flex-col">
-        <div className="flex mb-4 gap-8 items-center">
-          <div className="flex-grow">
-            <SearchSection includeTastesOption={true} isUserLoggedIn={true} neighborhood={neighborhood} />
-          </div>
-          <UserMenu />
-        </div>
-
-        {/* Results section */}
         {isLoadingResults ? (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-brand-primary mb-4" />
