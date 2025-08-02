@@ -5,8 +5,8 @@ import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
 import { generateText } from "ai"
 import { type H3Event, setHeader } from "h3"
-import { getNeighborhoodInfo } from "../../lib/location-utils"
 import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/types"
+import { getNeighborhoodInfo } from "../../lib/location-utils"
 
 // Add cache at the top
 const SEARCH_CACHE = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
@@ -167,17 +167,21 @@ export default defineEventHandler(async (event) => {
 
   try {
     // Get auth token if provided
-    const authHeader = getHeader(event, "authorization")
     let userTastes: string[] = []
 
     // Only process tastes if we're using tastes (not query)
-    if (useTastes && query.tastes) {
+    if (useTastes && typeof query.tastes === "string") {
       // Parse comma-separated taste names directly from URL
-      userTastes = query.tastes.split(",").map((taste: string) => taste.trim()).filter(Boolean)
+      userTastes = query.tastes
+        .split(",")
+        .map((taste: string) => taste.trim())
+        .filter(Boolean)
     }
 
     // Parse the user query to extract structured data (only if using query search)
-    const parsedQuery = useQuery ? await parseUserQuery(searchPrompt) : { dishName: userTastes.join(", "), cuisine: "Any" }
+    const parsedQuery = useQuery
+      ? await parseUserQuery(searchPrompt)
+      : { dishName: userTastes.join(", "), cuisine: "Any" }
     // Get AI-powered recommendations
     const aiResults = await getDishRecommendationa(parsedQuery, locationInfo, userTastes)
     // Get community (database) recommendations
@@ -323,7 +327,6 @@ async function generateAIResponse(prompt: string): Promise<string> {
     ])
   }
 }
-
 
 // defineRouteMeta({
 //   openAPI: {

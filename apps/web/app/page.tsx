@@ -1,18 +1,44 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-import { useLocationData } from "@/hooks/useLocationData"
+import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 
 export default function HomePage() {
   const { user, isLoading: authLoading, getUserTastes } = useAuth()
-  const { latitude, longitude, isLoading: locationLoading } = useLocationData()
+  const [latitude, setLatitude] = useState<number | null>(null)
+  const [longitude, setLongitude] = useState<number | null>(null)
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
   const router = useRouter()
+
+  // Get geolocation for signed-in users
+  useEffect(() => {
+    if (!authLoading && user && latitude === null && longitude === null && !isGettingLocation) {
+      setIsGettingLocation(true)
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude: lat, longitude: lng } = position.coords
+            setLatitude(lat)
+            setLongitude(lng)
+            setIsGettingLocation(false)
+          },
+          (error) => {
+            console.error("Geolocation error:", error)
+            setIsGettingLocation(false)
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        )
+      } else {
+        setIsGettingLocation(false)
+      }
+    }
+  }, [user, authLoading, latitude, longitude, isGettingLocation])
 
   // Redirect logged-in users to search page with location and inline taste parameters
   useEffect(() => {
-    if (!authLoading && !locationLoading && user && latitude !== null && longitude !== null) {
+    if (!authLoading && user && latitude !== null && longitude !== null) {
       const searchParams = new URLSearchParams()
       searchParams.append("lat", latitude.toString())
       searchParams.append("long", longitude.toString())
@@ -27,10 +53,10 @@ export default function HomePage() {
       // Always redirect with location parameters
       router.replace(`/search?${searchParams.toString()}`)
     }
-  }, [user, authLoading, locationLoading, latitude, longitude, getUserTastes, router])
+  }, [user, authLoading, latitude, longitude, getUserTastes, router])
 
   // If user is not signed in, show the standard homepage
-  if (authLoading || locationLoading) {
+  if (authLoading || (user && isGettingLocation)) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-12 md:py-20">
         <div className="animate-pulse">

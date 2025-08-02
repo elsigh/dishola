@@ -2,7 +2,7 @@ import { Star } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { API_BASE_URL } from "@/lib/constants";
-import type { DishRecommendation } from "../../api/lib/types";
+import type { DishRecommendation } from "@dishola/types";
 
 function GoogleMapsIcon() {
 	return (
@@ -108,6 +108,7 @@ export default function DishCard({ recommendation }: DishCardProps) {
 					src={imageSrc}
 					alt={`Image of ${dishName} at ${restaurantName}`}
 					fill
+					sizes="(max-width: 640px) 100vw, 33vw"
 					className="bg-gray-100 object-cover"
 				/>
 			</div>
