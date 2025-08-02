@@ -1,72 +1,27 @@
 "use client"
 
-import { Loader2 } from "lucide-react"
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import DishCard from "@/components/dish-card"
-import ResultsFor from "@/components/results-for"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import { useLocationData } from "@/hooks/useLocationData"
 import { useAuth } from "@/lib/auth-context"
-import { API_BASE_URL } from "@/lib/constants"
-import type { DishRecommendation } from "../../api/lib/types"
 
 export default function HomePage() {
-  const { user, isLoading: authLoading, getAuthToken } = useAuth()
-  const [tasteResults, setTasteResults] = useState<DishRecommendation[]>([])
-  const [isLoadingResults, setIsLoadingResults] = useState(false)
-  const [userTastes, setUserTastes] = useState<string[]>([])
-  const { latitude, longitude, neighborhood, city } = useLocationData()
+  const { user, isLoading: authLoading } = useAuth()
+  const { latitude, longitude } = useLocationData()
+  const router = useRouter()
 
-  // Fetch taste-based recommendations if user is signed in
+  // Redirect logged-in users to search page with location and taste parameters
   useEffect(() => {
-    const fetchTasteRecommendations = async () => {
-      if (!user || !latitude || !longitude) return
-
-      try {
-        setIsLoadingResults(true)
-        // Get the token from the auth context
-        let token: string | null = null
-        try {
-          token = getAuthToken()
-        } catch (error) {
-          console.warn("Could not get auth token:", error)
-        }
-
-        if (!token) {
-          console.error("No auth token available")
-          setIsLoadingResults(false)
-          return
-        }
-
-        const response = await fetch(`${API_BASE_URL}/api/taste-recommendations?lat=${latitude}&long=${longitude}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          setTasteResults(data.aiResults || [])
-          setUserTastes(data.userTastes || [])
-          // setNeighborhood(data.neighborhood) // This is now handled by useLocationData
-          // setCity(data.city) // This is now handled by useLocationData
-        }
-      } catch (error) {
-        console.error("Error fetching taste recommendations:", error)
-      } finally {
-        setIsLoadingResults(false)
-      }
+    if (!authLoading && user && latitude !== null && longitude !== null) {
+      const searchParams = new URLSearchParams()
+      searchParams.append("lat", latitude.toString())
+      searchParams.append("long", longitude.toString())
+      searchParams.append("tastes", "true")
+      
+      // Use replace to avoid adding to browser history
+      router.replace(`/search?${searchParams.toString()}`)
     }
-
-    if (!authLoading && user) {
-      fetchTasteRecommendations()
-    }
-  }, [user, authLoading, latitude, longitude, getAuthToken])
-
-  // Debug useEffect to log city changes
-  useEffect(() => {
-    //console.log("City state changed to:", city)
-  }, [])
+  }, [user, authLoading, latitude, longitude, router])
 
   // If user is not signed in, show the standard homepage
   if (authLoading) return null
@@ -85,42 +40,7 @@ export default function HomePage() {
     )
   }
 
-  // User is signed in - show Google-style search page with results
-  return (
-    <div className="flex flex-col">
-      {isLoadingResults ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-primary mb-4" />
-        </div>
-      ) : tasteResults.length > 0 ? (
-        <div>
-          <ResultsFor neighborhood={neighborhood} city={city} />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-            {tasteResults.map((rec) => (
-              <DishCard key={`taste-${rec.id}`} recommendation={rec} />
-            ))}
-          </div>
-        </div>
-      ) : userTastes.length > 0 ? (
-        <div className="text-center py-12">
-          <p className="text-lg text-brand-text-muted">
-            No recommendations found based on your taste preferences.
-            <br />
-            Try searching for a specific dish above.
-          </p>
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <p className="text-lg text-brand-text-muted">
-            You haven't added any taste preferences yet.
-            <br />
-            <Link href="/profile" className="text-brand-primary hover:underline">
-              Add some tastes to your profile
-            </Link>{" "}
-            to get personalized recommendations!
-          </p>
-        </div>
-      )}
-    </div>
-  )
+  // For logged-in users, we redirect to search page so this should not render
+  // But in case of race conditions, show a minimal loading state
+  return null
 }

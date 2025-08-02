@@ -11,8 +11,8 @@ import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/typ
 // Add cache at the top
 const SEARCH_CACHE = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
 const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
-function getCacheKey(q: string, lat: string, long: string, includeTastes: boolean) {
-  return JSON.stringify({ q, lat, long, includeTastes })
+function getCacheKey(q: string, lat: string, long: string, tastes: boolean) {
+  return JSON.stringify({ q, lat, long, tastes })
 }
 
 const gateway = createGatewayProvider({
@@ -131,17 +131,19 @@ export default defineEventHandler(async (event) => {
   const locationInfo = getLocationFromRequest(event)
 
   // ---- CACHE CHECK ----
-  const cacheKey = getCacheKey(query.q as string, locationInfo.lat, locationInfo.long, query.includeTastes === "true")
+  const cacheKey = getCacheKey(query.q as string, locationInfo.lat, locationInfo.long, query.tastes === "true")
   const cached = SEARCH_CACHE.get(cacheKey)
   const now = Date.now()
   if (cached && now - cached.timestamp < CACHE_TTL) {
     return cached.data
   }
 
-  if (!query.q) {
+  // Validate that we have either a query or tastes parameter
+  if (!query.q && query.tastes !== "true") {
+    console.error("Search API error: Missing required parameters", { q: query.q, tastes: query.tastes })
     throw createError({
       statusCode: 400,
-      statusMessage: "Missing required parameter: q (query) is required"
+      statusMessage: "Missing required parameter: either 'q' (query) or 'tastes=true' is required"
     })
   }
 
@@ -163,10 +165,10 @@ export default defineEventHandler(async (event) => {
     // Get auth token if provided
     const authHeader = getHeader(event, "authorization")
     let userTastes: string[] = []
-    const includeTastes = query.includeTastes === "true"
+    const tastes = query.tastes === "true"
 
-    // If auth token is provided and includeTastes is true, fetch user tastes
-    if (authHeader?.startsWith("Bearer ") && includeTastes) {
+    // If auth token is provided and tastes is true, fetch user tastes
+    if (authHeader?.startsWith("Bearer ") && tastes) {
       const token = authHeader.split(" ")[1]
       // Create Supabase client with user's token
       const supabaseClient = createClient(

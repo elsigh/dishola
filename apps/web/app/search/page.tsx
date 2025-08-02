@@ -18,9 +18,10 @@ function SearchResultsContent() {
   const q = searchParams.get("q")
   const lat = searchParams.get("lat")
   const long = searchParams.get("long")
+  const tastesParam = searchParams.get("tastes")
 
-  // Determine includeTastes based on the presence of q
-  const includeTastes = !q
+  // Determine tastes: use URL param if present, otherwise based on presence of q
+  const tastes = tastesParam === "true" || (!q && tastesParam !== "false")
 
   const [aiDishes, setAiDishes] = useState<DishRecommendation[]>([])
   const [dbDishes, setDbDishes] = useState<DishRecommendation[]>([])
@@ -34,8 +35,8 @@ function SearchResultsContent() {
 
   // Update useEffect to listen for changes in the search query
   useEffect(() => {
-    // Allow search with just lat/long and includeTastes (for taste-based recommendations)
-    if ((q !== null || includeTastes) && lat && long) {
+    // Allow search with just lat/long and tastes (for taste-based recommendations)
+    if ((q !== null || tastes) && lat && long) {
       // setIsLoading(true) // This line is removed
       setError(null)
       // Debounce the fetch
@@ -56,14 +57,16 @@ function SearchResultsContent() {
           searchUrl.searchParams.append("lat", lat)
           searchUrl.searchParams.append("long", long)
 
-          // Remove includeTastes param from search URL
-          // searchUrl.searchParams.append("includeTastes", "true")
+          // Add tastes param to search URL
+          if (tastes) {
+            searchUrl.searchParams.append("tastes", "true")
+          }
 
           // Prepare headers
           const headers: HeadersInit = {}
 
-          // Add auth token if user is signed in and includeTastes is enabled
-          if (includeTastes && user) {
+          // Add auth token if user is signed in and tastes is enabled
+          if (tastes && user) {
             try {
               const token = getAuthToken()
               if (token) {
@@ -80,7 +83,12 @@ function SearchResultsContent() {
           })
 
           if (!response.ok) {
-            throw new Error("Failed to fetch search results. Please try again.")
+            console.error("Search API request failed:", {
+              status: response.status,
+              statusText: response.statusText,
+              url: response.url
+            })
+            throw new Error(`Failed to fetch search results (${response.status}). Please try again.`)
           }
 
           const data = await response.json()
@@ -110,7 +118,7 @@ function SearchResultsContent() {
         }
       }, 300)
     } else {
-      if (includeTastes) {
+      if (tastes) {
         setError("Location is required for taste-based recommendations.")
       } else {
         setError("Search query and location are required.")
@@ -122,7 +130,7 @@ function SearchResultsContent() {
       if (debounceTimeout.current) clearTimeout(debounceTimeout.current)
       if (abortController.current) abortController.current.abort()
     }
-  }, [q, lat, long, includeTastes, user])
+  }, [q, lat, long, tastes, user])
 
   if (isLoading) {
     return (
@@ -131,7 +139,7 @@ function SearchResultsContent() {
         <p className="text-brand-text-muted">
           {q
             ? `Searching for ${q} deliciousness...`
-            : includeTastes
+            : tastes
               ? "Finding dishes based on your location and tastes..."
               : "Searching..."}
         </p>
@@ -167,7 +175,7 @@ function SearchResultsContent() {
 
   return (
     <div>
-      {q && <ResultsFor neighborhood={neighborhood} city={city} />}
+      <ResultsFor neighborhood={neighborhood} city={city} />
 
       {aiDishes.length > 0 && (
         <section className="mb-10">

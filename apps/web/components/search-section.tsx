@@ -8,6 +8,7 @@ import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { API_BASE_URL } from "@/lib/constants"
 
 function BluePulseDot() {
   return (
@@ -49,6 +50,12 @@ export default function SearchSection({
   const [mapOpen, setMapOpen] = useState(false)
   const [tempLat, setTempLat] = useState<number | null>(initialLat || null)
   const [tempLng, setTempLng] = useState<number | null>(initialLng || null)
+  const [locationInfo, setLocationInfo] = useState<{
+    neighborhood?: string
+    city?: string
+    displayName?: string
+  } | null>(null)
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const mapRef = useRef<HTMLDivElement>(null)
 
   // Update dishQuery when initialQuery changes (e.g., when navigating to search page)
@@ -66,6 +73,26 @@ export default function SearchSection({
     }
   }, [initialLat, initialLng])
 
+  // Function to fetch location information from coordinates
+  const fetchLocationInfo = useCallback(async (lat: number, lng: number) => {
+    setIsLoadingLocation(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/geocode?lat=${lat}&lng=${lng}`)
+      if (response.ok) {
+        const data = await response.json()
+        setLocationInfo(data)
+      } else {
+        console.error("Failed to fetch location info")
+        setLocationInfo(null)
+      }
+    } catch (error) {
+      console.error("Error fetching location info:", error)
+      setLocationInfo(null)
+    } finally {
+      setIsLoadingLocation(false)
+    }
+  }, [])
+
   // Function to handle location changes and trigger new search
   const handleLocationChange = useCallback(
     (newLat: number, newLng: number) => {
@@ -74,24 +101,23 @@ export default function SearchSection({
       setTempLat(newLat)
       setTempLng(newLng)
 
-      // If we're on the search page, trigger a new search with the new location
-      if (pathname === "/search") {
-        const searchParams = new URLSearchParams()
-        searchParams.append("lat", newLat.toString())
-        searchParams.append("long", newLng.toString())
+      // Always trigger a search with the new location (from any page)
+      const searchParams = new URLSearchParams()
+      searchParams.append("lat", newLat.toString())
+      searchParams.append("long", newLng.toString())
 
-        // Preserve the current search query if it exists
-        if (dishQuery.trim()) {
-          searchParams.append("q", dishQuery)
-          searchParams.append("includeTastes", "false")
-        } else if (isUserLoggedIn) {
-          searchParams.append("includeTastes", "true")
-        }
-
-        router.push(`/search?${searchParams.toString()}`)
+      // Preserve the current search query if it exists
+      if (dishQuery.trim()) {
+        searchParams.append("q", dishQuery)
+        searchParams.append("tastes", "false")
+      } else if (isUserLoggedIn) {
+        searchParams.append("tastes", "true")
       }
+
+      // Navigate to search page with new location parameters
+      router.push(`/search?${searchParams.toString()}`)
     },
-    [dishQuery, isUserLoggedIn, pathname, router]
+    [dishQuery, isUserLoggedIn, router]
   )
 
   // Google Maps modal logic
@@ -101,54 +127,17 @@ export default function SearchSection({
         apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
         version: "weekly"
       })
+
       let map: google.maps.Map
-      let marker: google.maps.Marker
       let accuracyCircle: google.maps.Circle
-      let locationButton: HTMLDivElement
 
       loader.load().then(() => {
         map = new google.maps.Map(mapRef.current!, {
           center: { lat: tempLat, lng: tempLng },
           zoom: 13,
-          streetViewControl: false, // Remove street view button
-          mapTypeControl: false, // Remove map type control for cleaner look
-          fullscreenControl: false // Remove fullscreen control
-        })
-
-        marker = new google.maps.Marker({
-          position: { lat: tempLat, lng: tempLng },
-          map,
-          draggable: true,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: "#4285F4",
-            fillOpacity: 1,
-            strokeColor: "#FFFFFF",
-            strokeWeight: 2
-          }
-        })
-
-        map.addListener("click", (e: google.maps.MapMouseEvent) => {
-          if (e.latLng) {
-            const lat = e.latLng.lat()
-            const lng = e.latLng.lng()
-            marker.setPosition({ lat, lng })
-            setTempLat(lat)
-            setTempLng(lng)
-          }
-        })
-
-        // Add dragend listener to marker to update location when user drags it
-        marker.addListener("dragend", () => {
-          const position = marker.getPosition()
-          if (position) {
-            const lat = position.lat()
-            const lng = position.lng()
-            setTempLat(lat)
-            setTempLng(lng)
-            handleLocationChange(lat, lng)
-          }
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: false
         })
 
         accuracyCircle = new google.maps.Circle({
@@ -159,150 +148,37 @@ export default function SearchSection({
           fillOpacity: 0.25,
           map,
           center: { lat: tempLat, lng: tempLng },
-          radius: 50 // Default radius if accuracy is not available
+          radius: 50
         })
 
-        // Update circle position and radius on marker drag
-        marker.addListener("dragend", () => {
-          const position = marker.getPosition()
-          if (position) {
-            accuracyCircle.setCenter(position)
+        // Update latitude and longitude based on map center when drag ends
+        map.addListener("dragend", () => {
+          const center = map.getCenter()
+          if (center) {
+            const lat = center.lat()
+            const lng = center.lng()
+            setTempLat(lat)
+            setTempLng(lng)
+            accuracyCircle.setCenter(center)
+            // Fetch location info for the new coordinates
+            fetchLocationInfo(lat, lng)
           }
         })
 
-        // Create custom location button
-        locationButton = document.createElement("div")
-        locationButton.style.cssText = `
-          background-color: white;
-          border: 1px solid #ccc;
-          border-radius: 2px;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-          cursor: pointer;
-          margin: 10px;
-          text-align: center;
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-        `
-
-        // Add tooltip
-        locationButton.title = "Reset to current location"
-
-        // Create the location icon (blue dot with crosshairs)
-        const locationIcon = document.createElement("div")
-        locationIcon.style.cssText = `
-          width: 18px;
-          height: 18px;
-          background-color: #4285F4;
-          border-radius: 50%;
-          position: relative;
-        `
-
-        // Add crosshairs to the icon (more like Google Maps)
-        const crosshair = document.createElement("div")
-        crosshair.style.cssText = `
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 10px;
-          height: 10px;
-          border: 2px solid white;
-          border-radius: 50%;
-        `
-
-        // Add the four lines extending from the crosshair
-        const lines = document.createElement("div")
-        lines.style.cssText = `
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 18px;
-          height: 18px;
-        `
-
-        // Create the four lines
-        for (let i = 0; i < 4; i++) {
-          const line = document.createElement("div")
-          line.style.cssText = `
-            position: absolute;
-            background-color: #4285F4;
-            width: 2px;
-            height: 4px;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(${i * 90}deg) translateY(-9px);
-          `
-          lines.appendChild(line)
+        // Fetch initial location info when map loads
+        if (tempLat && tempLng) {
+          fetchLocationInfo(tempLat, tempLng)
         }
-
-        locationIcon.appendChild(crosshair)
-        locationIcon.appendChild(lines)
-        locationButton.appendChild(locationIcon)
-
-        // Add hover effect
-        locationButton.addEventListener("mouseenter", () => {
-          locationButton.style.backgroundColor = "#f8f9fa"
-        })
-
-        locationButton.addEventListener("mouseleave", () => {
-          locationButton.style.backgroundColor = "white"
-        })
-
-        // Add click handler for location button
-        locationButton.addEventListener("click", () => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                const { latitude: lat, longitude: lng, accuracy } = position.coords
-                console.debug(`[Geolocation:mapButton] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}`)
-
-                // Update map and marker
-                const newPosition = { lat, lng }
-                map.setCenter(newPosition)
-                marker.setPosition(newPosition)
-                accuracyCircle.setCenter(newPosition)
-                accuracyCircle.setRadius(accuracy || 50)
-
-                // Update state
-                setTempLat(lat)
-                setTempLng(lng)
-
-                // If we're on the search page, trigger a new search with the new location
-                if (pathname === "/search") {
-                  handleLocationChange(lat, lng)
-                } else {
-                  setLatitude(lat)
-                  setLongitude(lng)
-                }
-              },
-              (error) => {
-                console.error("Geolocation error (map button):", error)
-                alert("Could not get your current location. Please try again.")
-              },
-              { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-            )
-          } else {
-            alert("Geolocation is not supported by your browser.")
-          }
-        })
-
-        // Position the button in the bottom right
-        map.controls[google.maps.ControlPosition.RIGHT_BOTTOM].push(locationButton)
       })
 
       return () => {
         // Cleanup
-        if (locationButton?.parentNode) {
-          locationButton.parentNode.removeChild(locationButton)
+        if (accuracyCircle) {
+          accuracyCircle.setMap(null)
         }
       }
     }
-  }, [mapOpen, tempLat, tempLng, pathname, handleLocationChange])
+  }, [mapOpen, tempLat, tempLng, pathname, fetchLocationInfo])
 
   // Only request geolocation on mount if we don't have initial coordinates
   useEffect(() => {
@@ -341,7 +217,7 @@ export default function SearchSection({
 
     // If user is logged in and search box is empty, use taste-based search
     if (isUserLoggedIn && dishQuery.trim() === "") {
-      searchParams.append("includeTastes", "true")
+      searchParams.append("tastes", "true")
     }
     // Otherwise, require a query term
     else if (!dishQuery.trim()) {
@@ -352,7 +228,7 @@ export default function SearchSection({
       searchParams.append("q", dishQuery)
 
       // Don't include tastes when explicitly searching for something
-      searchParams.append("includeTastes", "false")
+      searchParams.append("tastes", "false")
     }
 
     // If we're already on the search page, update the current URL
@@ -436,7 +312,52 @@ export default function SearchSection({
       {/* Map and location controls */}
       {mapOpen && (
         <div className="mt-4">
-          <div ref={mapRef} style={{ width: "100%", height: "400px" }} />
+          <div className="relative">
+            <div ref={mapRef} style={{ width: "100%", height: "400px" }} />
+            {/* Absolutely positioned blue dot in the center */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
+              <BluePulseDot />
+            </div>
+          </div>
+          {/* Location info and confirm button */}
+          <div className="mt-3 flex items-center justify-between bg-gray-50 rounded-lg p-3">
+            <div className="text-sm text-gray-600">
+              {isLoadingLocation ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading location...</span>
+                </div>
+              ) : locationInfo?.displayName || locationInfo?.neighborhood || locationInfo?.city ? (
+                <div>
+                  <span>
+                    {locationInfo.neighborhood && locationInfo.city
+                      ? `${locationInfo.neighborhood}, ${locationInfo.city}`
+                      : locationInfo.displayName || locationInfo.city || locationInfo.neighborhood}
+                  </span>
+                  {tempLat !== null && tempLng !== null && (
+                    <span className="text-gray-400 ml-2">
+                      ({formatLatLng(tempLat, tempLng)})
+                    </span>
+                  )}
+                </div>
+              ) : tempLat !== null && tempLng !== null ? (
+                formatLatLng(tempLat, tempLng)
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              onClick={() => {
+                if (tempLat !== null && tempLng !== null) {
+                  handleLocationChange(tempLat, tempLng)
+                  setMapOpen(false)
+                }
+              }}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Confirm Location
+            </Button>
+          </div>
         </div>
       )}
     </form>
