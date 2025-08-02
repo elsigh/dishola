@@ -1,5 +1,6 @@
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase-client"
+import type { PublicProfileResponse } from "@dishola/types"
 
 export interface UserProfile {
   id: string
@@ -9,21 +10,6 @@ export interface UserProfile {
   username?: string | null
 }
 
-export interface PublicUserProfile {
-  username: string
-  display_name?: string | null
-  avatar_url?: string | null
-  tastes: Array<{
-    id: number
-    order_position: number
-    taste_dictionary: {
-      id: number
-      name: string
-      type: "dish" | "ingredient"
-      image_url?: string
-    }
-  }>
-}
 
 // Create a separate admin client with service role key
 function createServiceRoleClient() {
@@ -140,7 +126,7 @@ export async function updateUserProfile(
   }
 }
 
-export async function getUserProfileByUsername(username: string): Promise<PublicUserProfile | null> {
+export async function getUserProfileByUsername(username: string): Promise<PublicProfileResponse | null> {
   const adminClient = createServiceRoleClient()
   if (!adminClient) return null
 
@@ -176,11 +162,18 @@ export async function getUserProfileByUsername(username: string): Promise<Public
       console.error("Error fetching user tastes:", tastesError)
     }
 
+    // Transform the tastes data to match the expected type
+    const transformedTastes = (tastesData || []).map((taste: any) => ({
+      id: taste.id,
+      order_position: taste.order_position,
+      taste_dictionary: taste.taste_dictionary
+    }))
+
     return {
       username: profileData.username,
       display_name: profileData.display_name,
       avatar_url: profileData.avatar_url,
-      tastes: tastesData || []
+      tastes: transformedTastes
     }
   } catch (error) {
     console.error("Error in getUserProfileByUsername:", error)

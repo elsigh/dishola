@@ -4,11 +4,12 @@ import { useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import type { PublicProfileResponse } from "@dishola/types"
 
 export default function PublicProfilePage() {
   const params = useParams()
   const username = Array.isArray(params?.username) ? params.username[0] : params?.username
-  const [profile, setProfile] = useState(null)
+  const [profile, setProfile] = useState<PublicProfileResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
