@@ -84,7 +84,6 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Tastes Section */}
         <TastesManager initialTastes={userTastes} />
       </div>
     </div>

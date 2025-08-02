@@ -193,7 +193,7 @@ export default defineEventHandler(async (event) => {
 
   // Get enhanced location info with neighborhood
   const headers = event.node.req.headers
-  const enhancedLocationInfo = getNeighborhoodInfo(locationInfo.lat, locationInfo.long, headers)
+  const enhancedLocationInfo = await getNeighborhoodInfo(locationInfo.lat, locationInfo.long, headers)
 
   // Use neighborhood info for display if available
   let displayLocation: string
@@ -302,19 +302,19 @@ async function getTasteRecommendations(userTastes: string[], location: Location)
   const promptStart = Date.now()
   const prompt = getPrompt(userTastes, location)
   const promptTime = Date.now() - promptStart
-  console.debug(`Prompt generation took ${promptTime}ms`)
+  //console.debug(`Prompt generation took ${promptTime}ms`)
   //console.debug("Prompt:", prompt)
 
   const aiStart = Date.now()
   try {
     const response = await generateAIResponse(prompt)
     const aiResponseTime = Date.now() - aiStart
-    console.debug(`AI response received in ${aiResponseTime}ms`)
+    //console.debug(`AI response received in ${aiResponseTime}ms`)
 
     const parseStart = Date.now()
     const parsed = JSON.parse(response)
     const parseTime = Date.now() - parseStart
-    console.debug(`JSON parsing took ${parseTime}ms`)
+    //console.debug(`JSON parsing took ${parseTime}ms`)
 
     const recommendations = parsed.map((rec: Record<string, unknown>, idx: number) => {
       const dish = rec.dish as { name: string }
@@ -327,9 +327,9 @@ async function getTasteRecommendations(userTastes: string[], location: Location)
     })
 
     const totalProcessingTime = Date.now() - aiStart
-    console.debug(
-      `Total AI processing breakdown - prompt: ${promptTime}ms, AI response: ${aiResponseTime}ms, parsing: ${parseTime}ms, total: ${totalProcessingTime}ms`
-    )
+    //console.debug(
+    //  `Total AI processing breakdown - prompt: ${promptTime}ms, AI response: ${aiResponseTime}ms, parsing: ${parseTime}ms, total: ${totalProcessingTime}ms`
+    //)
 
     return recommendations
   } catch (error) {
@@ -348,11 +348,11 @@ async function generateAIResponse(prompt: string): Promise<string> {
   const cached = AI_RESPONSE_CACHE.get(cacheKey)
   if (cached && now - cached.timestamp < AI_RESPONSE_CACHE_TTL) {
     const cacheTime = Date.now() - aiCacheStart
-    console.debug(`AI response cache hit - lookup: ${cacheTime}ms, saved AI API call`)
+    //console.debug(`AI response cache hit - lookup: ${cacheTime}ms, saved AI API call`)
     return cached.response
   }
 
-  console.debug(`AI response cache miss - making API call`)
+  //console.debug(`AI response cache miss - making API call`)
   const model = await getModel()
 
   try {
@@ -366,7 +366,7 @@ async function generateAIResponse(prompt: string): Promise<string> {
 
     // Cache the successful response
     AI_RESPONSE_CACHE.set(cacheKey, { response: text, timestamp: now })
-    console.debug(`AI response cached for future requests`)
+    //console.debug(`AI response cached for future requests`)
 
     return text
   } catch (error) {

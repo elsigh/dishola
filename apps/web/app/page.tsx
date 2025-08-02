@@ -19,6 +19,7 @@ export default function HomePage() {
   const [latitude, setLatitude] = useState<number | null>(null)
   const [longitude, setLongitude] = useState<number | null>(null)
   const [neighborhood, setNeighborhood] = useState<string | undefined>(undefined)
+  const [city, setCity] = useState<string | undefined>(undefined)
 
   //console.debug("authLoading", authLoading)
 
@@ -71,6 +72,7 @@ export default function HomePage() {
           setTasteResults(data.aiResults || [])
           setUserTastes(data.userTastes || [])
           setNeighborhood(data.neighborhood)
+          setCity(data.city)
         }
       } catch (error) {
         console.error("Error fetching taste recommendations:", error)
@@ -83,6 +85,11 @@ export default function HomePage() {
       fetchTasteRecommendations()
     }
   }, [user, authLoading, latitude, longitude])
+
+  // Debug useEffect to log city changes
+  useEffect(() => {
+    //console.log("City state changed to:", city)
+  }, [city])
 
   // If user is not signed in, show the standard homepage
   if (authLoading) return null
@@ -107,7 +114,7 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 py-4">
       <div className="flex flex-col">
-        <div className="flex mb-6 gap-8 items-center">
+        <div className="flex mb-4 gap-8 items-center">
           <div className="flex-grow">
             <SearchSection includeTastesOption={true} isUserLoggedIn={true} neighborhood={neighborhood} />
           </div>
@@ -121,12 +128,13 @@ export default function HomePage() {
           </div>
         ) : tasteResults.length > 0 ? (
           <div>
-            <div className="flex gap-2">
-              <h2 className=" text-brand-primary mb-4">
+            <div className="flex gap-2 items-center mb-4">
+              <h2 className=" text-brand-primary">
                 <LocationDot /> Results for <strong>{neighborhood}</strong>
+                {city && <strong>, {city}</strong>}
               </h2>
               <span>∙</span>
-              <Link href="/profile/tastes" className="text-sm text-brand-text-muted hover:text-brand-primary">
+              <Link href="/profile" className="text-sm text-brand-text-muted hover:text-brand-primary">
                 Manage my Tastes
               </Link>
             </div>
@@ -149,7 +157,7 @@ export default function HomePage() {
             <p className="text-lg text-brand-text-muted">
               You haven't added any taste preferences yet.
               <br />
-              <Link href="/profile/tastes" className="text-brand-primary hover:underline">
+              <Link href="/profile" className="text-brand-primary hover:underline">
                 Add some tastes to your profile
               </Link>{" "}
               to get personalized recommendations!

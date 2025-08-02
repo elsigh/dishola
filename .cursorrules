@@ -34,3 +34,16 @@
 - Use `useAuth()` hook and `getAuthToken()` for authenticated requests
 - Include `Authorization: Bearer ${token}` header for protected endpoints
 - Handle auth errors gracefully with user-friendly messages
+
+## Loading States and Error Handling (CRITICAL)
+- **ALWAYS show loading states** for any API/fetch interactions (spinners, skeletons, etc.)
+- **ALWAYS render errors on screen** if they happen - never let errors go unhandled
+- Use proper loading indicators like `<Loader2 className="animate-spin" />` or skeleton components
+- Display user-friendly error messages with clear actions users can take
+- Never leave users wondering if something is loading or if an error occurred
+
+## Code Comments Policy
+- **Do NOT write unnecessary comments** - component names and function names should be descriptive enough
+- Only add comments when explaining complex business logic, non-obvious algorithms, or important architectural decisions
+- Let the code be self-documenting through clear naming and structure
+- Avoid commenting obvious operations or simple variable assignments

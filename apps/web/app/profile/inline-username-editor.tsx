@@ -183,8 +183,8 @@ export function InlineUsernameEditor({ initialProfile, onProfileUpdate }: Inline
   // Show form if editing or no username exists
   if (isEditing) {
     return (
-      <div className="space-y-3">
-        <div className="block mb-1 font-medium text-sm text-muted-foreground">Username</div>
+      <div className="space-y-3 flex-grow">
+        <div className="block mb-1 font-bold text-sm text-muted-foreground">Username</div>
         <form onSubmit={handleSave} className="space-y-3">
           <div>
             <Input

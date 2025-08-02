@@ -1,7 +1,7 @@
 "use client"
 
 import type { TasteType } from "@dishola/types/constants"
-import { GripVertical, Loader2, Plus, Search, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, GripVertical, Loader2, Plus, Search, Trash2, X } from "lucide-react"
 import Image from "next/image"
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -431,11 +431,11 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
                               className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-muted-foreground dark:hover:bg-gray-700"
                               onClick={() => {
                                 setShowCreateForm(true)
-                                setNewTaste({ name: searchTerm, type: "dish" })
+                                setNewTaste({ name: capitalize(searchTerm), type: "dish" })
                               }}
                             >
                               <Plus className="w-4 h-4" />
-                              <span className="text-sm">Create "{searchTerm}"</span>
+                              <span className="text-sm">Create "{capitalize(searchTerm)}"</span>
                             </button>
                           </div>
                         )}
@@ -455,7 +455,7 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
                             }}
                           >
                             <Plus className="w-4 h-4" />
-                            <span className="text-sm">Create "{searchTerm}"</span>
+                            <span className="text-sm">Create "{capitalize(searchTerm)}"</span>
                           </button>
                         </div>
                       </>
@@ -467,78 +467,83 @@ export function TastesManager({ initialTastes }: TastesManagerProps) {
           </div>
 
           {showCreateForm && (
-            <div className="mt-4 p-4 border rounded bg-muted space-y-3 dark:border-gray-700">
-              <div className="flex gap-2 items-center">
-                <Input
-                  value={newTaste.name}
-                  onChange={(e) => setNewTaste((nt) => ({ ...nt, name: e.target.value }))}
-                  placeholder="Name"
-                  className="w-48"
-                  disabled={isCreatingTaste}
-                />
-                <select
-                  value={newTaste.type}
-                  onChange={(e) => setNewTaste((nt) => ({ ...nt, type: e.target.value as TasteType }))}
-                  className="border rounded px-2 py-1 dark:bg-gray-800 dark:border-gray-700"
-                  disabled={isCreatingTaste}
-                >
-                  <option value="dish">Dish</option>
-                  <option value="ingredient">Ingredient</option>
-                  <option value="cuisine">Cuisine</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => cycleImage(-1)}
-                  disabled={isFetchingImages || !imageResults.length}
-                >
-                  &#8592;
-                </Button>
-                <div className="w-36 h-36 flex items-center justify-center bg-white border rounded overflow-hidden dark:bg-gray-800 dark:border-gray-700">
-                  {isFetchingImages ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  ) : selectedImage ? (
-                    <Image
-                      src={selectedImage.thumbnail || selectedImage.url}
-                      alt="Selected"
-                      width={96}
-                      height={96}
-                      className="object-cover w-full h-full"
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">No image</span>
-                  )}
+            <div className="mt-4 p-4 border rounded bg-muted space-y-3 dark:border-gray-700 relative">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute top-2 right-2 h-6 w-6"
+                onClick={() => {
+                  setShowCreateForm(false)
+                  setShowAutocomplete(false)
+                }}
+              >
+                <X className="h-24 w-24" />
+              </Button>
+              <div className="inline-flex flex-col gap-2">
+                <div className="flex gap-2 justify-center">
+                  <input
+                    value={newTaste.name}
+                    //onChange={(e) => setNewTaste((nt) => ({ ...nt, name: e.target.value }))}
+                    placeholder="Name"
+                    disabled={isCreatingTaste}
+                    hidden
+                  />
+                  <select
+                    value={newTaste.type}
+                    onChange={(e) => setNewTaste((nt) => ({ ...nt, type: e.target.value as TasteType }))}
+                    className="border w-[142px] rounded px-2 py-1 dark:bg-gray-800 dark:border-gray-700"
+                    disabled={isCreatingTaste}
+                  >
+                    <option value="dish">Dish</option>
+                    <option value="ingredient">Ingredient</option>
+                    <option value="cuisine">Cuisine</option>
+                  </select>
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => cycleImage(1)}
-                  disabled={isFetchingImages || !imageResults.length}
-                >
-                  &#8594;
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={createNewTaste} disabled={isCreatingTaste}>
-                  {isCreatingTaste ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4 mr-1" />
-                  )}
-                  {isCreatingTaste ? "Creating..." : `Add "${capitalize(newTaste.name)}"`}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowCreateForm(false)
-                    setShowAutocomplete(false)
-                  }}
-                >
-                  Cancel
-                </Button>
+                <div className="flex jutify-center items-center gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => cycleImage(-1)}
+                    disabled={isFetchingImages || !imageResults.length}
+                    className="h-8 w-8"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <div className="w-36 h-36 flex items-center justify-center bg-white border rounded overflow-hidden dark:bg-gray-800 dark:border-gray-700">
+                    {isFetchingImages ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    ) : selectedImage ? (
+                      <Image
+                        src={selectedImage.thumbnail || selectedImage.url}
+                        alt="Selected"
+                        width={96}
+                        height={96}
+                        className="object-cover w-full h-full"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No image</span>
+                    )}
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => cycleImage(1)}
+                    disabled={isFetchingImages || !imageResults.length}
+                    className="h-8 w-8"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
+                <div className="flex justify-center">
+                  <Button onClick={createNewTaste} disabled={isCreatingTaste} className="w-[142px]">
+                    {isCreatingTaste ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4 mr-1" />
+                    )}
+                    {isCreatingTaste ? "Creating..." : `Add "${capitalize(newTaste.name)}"`}
+                  </Button>
+                </div>
               </div>
             </div>
           )}

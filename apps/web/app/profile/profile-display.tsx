@@ -16,12 +16,11 @@ export function ProfileDisplay({ profile: initialProfile }: ProfileDisplayProps)
   }
 
   return (
-    <div className="space-y-4">
-      {/* Inline Username Editor */}
+    <div className="flex items-center justify-start gap-16">
       <InlineUsernameEditor initialProfile={profile} onProfileUpdate={handleProfileUpdate} />
 
       <div>
-        <div className="block mb-1 font-medium text-sm text-muted-foreground">Email</div>
+        <div className="block mb-1 font-bold text-sm text-muted-foreground">Email</div>
         <div className="text-base">
           {profile.email || <span className="text-muted-foreground italic">Not available</span>}
         </div>

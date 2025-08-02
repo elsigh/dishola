@@ -199,6 +199,19 @@ Core entities: Users, Restaurants, Dishes, Reviews
 - Example: `<Image src={imageUrl} alt="Description" width={100} height={100} className="..." />`
 - Only use regular `<img>` tags in exceptional cases where Next.js Image component cannot be used
 
+### Loading States and Error Handling (CRITICAL)
+- **ALWAYS show loading states** for any API/fetch interactions (spinners, skeletons, etc.)
+- **ALWAYS render errors on screen** if they happen - never let errors go unhandled
+- Use proper loading indicators like `<Loader2 className="animate-spin" />` or skeleton components
+- Display user-friendly error messages with clear actions users can take
+- Never leave users wondering if something is loading or if an error occurred
+
+### Code Comments Policy
+- **Do NOT write unnecessary comments** - component names and function names should be descriptive enough
+- Only add comments when explaining complex business logic, non-obvious algorithms, or important architectural decisions
+- Let the code be self-documenting through clear naming and structure
+- Avoid commenting obvious operations or simple variable assignments
+
 ### Data and Service Policy
 **CRITICAL**: This application does NOT use any mock data, mock services, fake data, placeholder data, or dummy data anywhere. All components, APIs, and features must use real production data and services from the start. When implementing new features:
 - Connect directly to real Supabase database

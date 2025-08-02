@@ -15,6 +15,38 @@ export interface LocationInfo {
 }
 
 /**
+ * Reverse geocoding to get city from coordinates
+ * Uses Nominatim (OpenStreetMap) which is free and doesn't require API key
+ */
+async function getCityFromCoordinates(lat: number, lng: number): Promise<string | undefined> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Dishola/1.0 (https://dishola.com)"
+      }
+    })
+
+    if (!response.ok) {
+      return undefined
+    }
+
+    const data = await response.json()
+
+    // Try to get city from address components
+    const address = data.address
+    if (address) {
+      // Try different possible city fields
+      return address.city || address.town || address.village || address.municipality || address.county
+    }
+
+    return undefined
+  } catch (error) {
+    return undefined
+  }
+}
+
+/**
  * Gets neighborhood information based on coordinates
  * This is a server-side version that uses Vercel headers when available
  *
@@ -23,13 +55,19 @@ export interface LocationInfo {
  * @param headers Request headers (for Vercel geolocation)
  * @returns LocationInfo with neighborhood if available
  */
-export function getNeighborhoodInfo(lat: string, lng: string, headers: any = {}): LocationInfo {
+export async function getNeighborhoodInfo(lat: string, lng: string, headers: any = {}): Promise<LocationInfo> {
   const locationInfo: LocationInfo = { lat, long: lng }
 
   // Get city from Vercel headers if available
   const city = headers["x-vercel-ip-city"]
   if (city) {
     locationInfo.city = city
+  } else {
+    // Try reverse geocoding to get city from coordinates
+    const reverseGeocodedCity = await getCityFromCoordinates(parseFloat(lat), parseFloat(lng))
+    if (reverseGeocodedCity) {
+      locationInfo.city = reverseGeocodedCity
+    }
   }
 
   // Get neighborhood based on coordinates
