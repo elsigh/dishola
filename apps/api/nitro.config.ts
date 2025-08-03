@@ -5,6 +5,10 @@ export default defineNitroConfig({
 	experimental: {
 		openAPI: true,
 	},
+	alias: {
+		"@dishola/types": "../../packages/types/index.ts",
+		"@dishola/types/constants": "../../packages/types/constants.ts",
+	},
 	openAPI: {
 		meta: {
 			title: "Dishola API",

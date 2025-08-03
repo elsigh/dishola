@@ -1,5 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
-import type { TasteType } from "@dishola/types/constants.js"
+import type { TasteType } from "@dishola/types/constants"
 import { setHeader } from "h3"
 
 // Admin emails that can access this endpoint

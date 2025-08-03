@@ -12,7 +12,7 @@ interface UserTasteReorderRequest {
   }>
 }
 
-import type { TasteType } from "@dishola/types/constants.js"
+import type { TasteType } from "@dishola/types/constants"
 
 interface CreateTasteRequest {
   name: string
