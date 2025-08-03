@@ -47,9 +47,14 @@ export default function HomePage() {
       
       // Get user tastes from auth context (now guaranteed to be loaded)
       const userTastes = getUserTastes()
+      console.log("[HomePage] Profile loaded, tastes found:", userTastes.length, userTastes)
+      
       if (userTastes.length > 0) {
         // Inline the actual taste names in the URL
         searchParams.append("tastes", userTastes.join(","))
+        console.log("[HomePage] Redirecting with tastes:", searchParams.toString())
+      } else {
+        console.log("[HomePage] No tastes found, redirecting without tastes parameter")
       }
       
       // Always redirect with location parameters

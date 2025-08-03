@@ -51,6 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const profileData: ProfileResponse = await response.json()
+        console.log("[AuthContext] Profile fetched successfully:", { 
+          id: profileData.id, 
+          email: profileData.email,
+          tastesCount: profileData.tastes?.length || 0,
+          tastes: profileData.tastes?.map(t => t.taste_dictionary.name) || []
+        })
         setProfile(profileData)
       } else {
         console.error("Failed to fetch profile:", response.status)
@@ -149,8 +155,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const getUserTastes = (): string[] => {
-    if (!profile?.tastes) return []
-    return profile.tastes.map(taste => taste.taste_dictionary.name).filter(Boolean)
+    if (!profile?.tastes) {
+      console.log("[AuthContext] getUserTastes called but no profile.tastes:", { profile: !!profile, tastes: profile?.tastes })
+      return []
+    }
+    const tasteNames = profile.tastes.map(taste => taste.taste_dictionary.name).filter(Boolean)
+    console.log("[AuthContext] getUserTastes returning:", tasteNames)
+    return tasteNames
   }
 
   const handleAuthSuccess = () => {

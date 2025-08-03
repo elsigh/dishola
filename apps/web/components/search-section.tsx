@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { API_BASE_URL } from "@/lib/constants"
+import { getLocationInfo } from "@/lib/location-utils"
 
 function BluePulseDot() {
   return (
@@ -74,18 +75,16 @@ export default function SearchSection({
     }
   }, [initialLat, initialLng])
 
-  // Function to fetch location information from coordinates
-  const fetchLocationInfo = useCallback(async (lat: number, lng: number) => {
+  // Function to fetch location information from coordinates (using client-side lookup)
+  const fetchLocationInfo = useCallback((lat: number, lng: number) => {
     setIsLoadingLocation(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/geocode?lat=${lat}&lng=${lng}`)
-      if (response.ok) {
-        const data = await response.json()
-        setLocationInfo(data)
-      } else {
-        console.error("Failed to fetch location info")
-        setLocationInfo(null)
-      }
+      const locationData = getLocationInfo(lat, lng)
+      setLocationInfo({
+        neighborhood: locationData.neighborhood,
+        city: locationData.city,
+        displayName: locationData.displayName
+      })
     } catch (error) {
       console.error("Error fetching location info:", error)
       setLocationInfo(null)
