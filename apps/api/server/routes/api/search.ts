@@ -121,7 +121,7 @@ export default defineEventHandler(async (event) => {
       return {
         lat: headerLat,
         long: headerLong,
-        address: [city, region, country].filter(Boolean).join(", ")
+        address: [city, region, country].map(h => h ? decodeURIComponent(h) : h).filter(Boolean).join(", ")
       }
     }
     // 3. Fallback to Vercel HQ
@@ -167,7 +167,7 @@ export default defineEventHandler(async (event) => {
 
   let displayLocation: string
   if (city && postal) {
-    displayLocation = `${city} ${postal}`
+    displayLocation = `${decodeURIComponent(city)} ${postal}`
   } else {
     displayLocation = `${locationInfo.lat},${locationInfo.long}`
   }

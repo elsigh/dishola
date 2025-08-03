@@ -139,7 +139,7 @@ export async function getNeighborhoodInfo(lat: string, lng: string, headers: any
     // 2. Fallback to Vercel headers if available
     const city = headers["x-vercel-ip-city"]
     if (city) {
-      locationInfo.city = city
+      locationInfo.city = decodeURIComponent(city)
     } else {
       // 3. Last resort: network-based reverse geocoding (only for cities not in our database)
       const reverseGeocodedCity = await getCityFromCoordinatesNetwork(numLat, numLng)
