@@ -3,7 +3,7 @@
 import { Loader as GoogleMapsLoader } from "@googlemaps/js-api-loader"
 import { Loader2, Map as MapIcon, SearchIcon, X } from "lucide-react"
 import Image from "next/image"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -47,6 +47,7 @@ export default function SearchSection({
   const [isLocating, setIsLocating] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [mapOpen, setMapOpen] = useState(false)
   const [tempLat, setTempLat] = useState<number | null>(initialLat || null)
   const [tempLng, setTempLng] = useState<number | null>(initialLng || null)
@@ -102,22 +103,31 @@ export default function SearchSection({
       setTempLng(newLng)
 
       // Always trigger a search with the new location (from any page)
-      const searchParams = new URLSearchParams()
-      searchParams.append("lat", newLat.toString())
-      searchParams.append("long", newLng.toString())
+      const params = new URLSearchParams()
+      params.append("lat", newLat.toString())
+      params.append("long", newLng.toString())
 
       // Preserve the current search query if it exists
       if (dishQuery.trim()) {
-        searchParams.append("q", dishQuery)
+        params.append("q", dishQuery)
         // Don't add tastes parameter when we have a query
       } else if (isUserLoggedIn) {
-        searchParams.append("tastes", "true")
+        params.append("tastes", "true")
+      }
+
+      // Preserve sort parameter from current URL
+      const currentSort = searchParams.get("sort")
+      if (currentSort) {
+        params.append("sort", currentSort)
+      } else {
+        // Default to distance if no sort parameter exists
+        params.append("sort", "distance")
       }
 
       // Navigate to search page with new location parameters
-      router.push(`/search?${searchParams.toString()}`)
+      router.push(`/search?${params.toString()}`)
     },
-    [dishQuery, isUserLoggedIn, router]
+    [dishQuery, isUserLoggedIn, router, searchParams]
   )
 
   // Google Maps modal logic
@@ -211,13 +221,13 @@ export default function SearchSection({
       return
     }
 
-    const searchParams = new URLSearchParams()
-    searchParams.append("lat", latitude.toString())
-    searchParams.append("long", longitude.toString())
+    const params = new URLSearchParams()
+    params.append("lat", latitude.toString())
+    params.append("long", longitude.toString())
 
     // If user is logged in and search box is empty, use taste-based search
     if (isUserLoggedIn && dishQuery.trim() === "") {
-      searchParams.append("tastes", "true")
+      params.append("tastes", "true")
     }
     // Otherwise, require a query term
     else if (!dishQuery.trim()) {
@@ -225,16 +235,25 @@ export default function SearchSection({
       return
     } else {
       // Add query param when search box has content
-      searchParams.append("q", dishQuery)
+      params.append("q", dishQuery)
       // Don't add tastes parameter when we have a query
+    }
+
+    // Preserve sort parameter from current URL
+    const currentSort = searchParams.get("sort")
+    if (currentSort) {
+      params.append("sort", currentSort)
+    } else {
+      // Default to distance if no sort parameter exists
+      params.append("sort", "distance")
     }
 
     // If we're already on the search page, update the current URL
     if (pathname === "/search") {
-      router.push(`/search?${searchParams.toString()}`)
+      router.push(`/search?${params.toString()}`)
     } else {
       // Navigate to search page from other pages
-      router.push(`/search?${searchParams.toString()}`)
+      router.push(`/search?${params.toString()}`)
     }
   }
 

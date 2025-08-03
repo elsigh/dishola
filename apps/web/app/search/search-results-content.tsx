@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import DishCard from "@/components/dish-card"
 import ResultsFor from "@/components/results-for"
+import SortSelector from "@/components/sort-selector"
 import { Button } from "@/components/ui/button"
 import { useLocationData } from "@/hooks/useLocationData"
 import { useAuth } from "@/lib/auth-context"
@@ -22,6 +23,7 @@ export default function SearchResultsContent({ locationDisplayName }: SearchResu
   const lat = searchParams.get("lat")
   const long = searchParams.get("long")
   const tastesParam = searchParams.get("tastes")
+  const sortParam = searchParams.get("sort") || "distance"
 
   // Only allow one parameter type - q takes precedence
   const hasQuery = !!q
@@ -83,6 +85,9 @@ export default function SearchResultsContent({ locationDisplayName }: SearchResu
             searchUrl.searchParams.append("tastes", tastesParam)
           }
 
+          // Add sort parameter
+          searchUrl.searchParams.append("sort", sortParam)
+
           const response = await fetch(searchUrl.toString(), {
             signal: abortController.current?.signal
           })
@@ -128,7 +133,7 @@ export default function SearchResultsContent({ locationDisplayName }: SearchResu
     return () => {
       if (abortController.current) abortController.current.abort()
     }
-  }, [hasQuery, hasTastes, q, tastesParam, lat, long])
+  }, [hasQuery, hasTastes, q, tastesParam, lat, long, sortParam])
 
   // Only show location loading if we don't have URL coordinates and are waiting for geolocation
   const hasUrlCoordinates = !!(lat && long)
@@ -167,8 +172,8 @@ export default function SearchResultsContent({ locationDisplayName }: SearchResu
           <Loader2 className="h-8 w-8 animate-spin text-brand-primary mb-4" />
           <p className="text-brand-text-muted">
             {hasQuery
-              ? `Searching for ${q} deliciousness ${locationDisplayName}...`
-              : `Finding deliciousness ${locationDisplayName}...`}
+              ? `Searching for ${sortParam === "rating" ? "top-rated" : "nearby"} ${q} deliciousness ${locationDisplayName}...`
+              : `Finding ${sortParam === "rating" ? "top-rated" : "nearby"} deliciousness ${locationDisplayName}...`}
           </p>
         </div>
       )}
@@ -187,6 +192,11 @@ export default function SearchResultsContent({ locationDisplayName }: SearchResu
               </div>
             )}
           </div>
+
+          {/* Sort Selector - only show if we have results */}
+          {(aiDishes.length > 0 || dbDishes.length > 0) && (
+            <SortSelector currentSort={sortParam} />
+          )}
 
           {aiDishes.length === 0 && dbDishes.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-12">

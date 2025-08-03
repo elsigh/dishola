@@ -42,6 +42,7 @@ export default function HomePage() {
       const searchParams = new URLSearchParams()
       searchParams.append("lat", latitude.toString())
       searchParams.append("long", longitude.toString())
+      searchParams.append("sort", "distance") // Default sort by distance
       
       // Get user tastes from auth context (already loaded)
       const userTastes = getUserTastes()

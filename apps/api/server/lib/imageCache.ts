@@ -37,6 +37,11 @@ export class ImageCache {
 		});
 	}
 
+	// Clear all cached entries
+	clear(): void {
+		this.cache.clear();
+	}
+
 	// For debugging/monitoring
 	getStats(): { size: number } {
 		return {

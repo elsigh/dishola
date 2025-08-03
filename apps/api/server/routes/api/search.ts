@@ -7,13 +7,7 @@ import { generateText } from "ai"
 import { type H3Event, setHeader } from "h3"
 import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/types"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
-
-// Add cache at the top
-const SEARCH_CACHE = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
-const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
-function getCacheKey(q: string, lat: string, long: string, tastes: string | undefined) {
-  return JSON.stringify({ q, lat, long, tastes })
-}
+import { searchCache } from "../../lib/searchCache"
 
 const gateway = createGatewayProvider({
   apiKey: process.env.GATEWAY_API_KEY
@@ -39,7 +33,7 @@ async function getModel(): Promise<LanguageModel> {
   return gateway(fallbackModel)
 }
 
-function getPrompt(dishName: string, location: Location, userTastes: string[] = []) {
+function getPrompt(dishName: string, location: Location, userTastes: string[] = [], sortBy: string = "distance") {
   let promptBase = `Return the top 5 best ${dishName} recommendations`
 
   // If user has tastes, include them in the prompt
@@ -47,10 +41,21 @@ function getPrompt(dishName: string, location: Location, userTastes: string[] = 
     promptBase = `Return the top 5 best ${dishName} recommendations that would appeal to someone who likes ${userTastes.join(", ")}`
   }
 
-  const prompt = `${promptBase}
-	as close as possible to (${location.lat}, ${location.long}))
-	sorted by closeness, rating, and popularity, 
-	as a JSON array with this structure:
+  // Adjust sorting based on user preference
+  let sortInstruction = ""
+  if (sortBy === "rating") {
+    sortInstruction = "PRIORITIZE the highest rated restaurants (4.5+ stars preferred) even if they are further away. Sort by rating first (highest to lowest), then consider distance as a secondary factor"
+  } else {
+    sortInstruction = "PRIORITIZE the closest restaurants to the user's exact coordinates. Sort by distance first (closest to furthest), aiming for results within 1-2 miles when possible. Only consider rating as a secondary factor after distance"
+  }
+
+  const prompt = `${promptBase} near the coordinates (${location.lat}, ${location.long}).
+
+SORTING REQUIREMENTS: ${sortInstruction}
+
+LOCATION CONSTRAINT: All recommendations must be actual restaurants that exist near the provided coordinates. Calculate actual distances from the coordinates.
+
+Return results as a JSON array with this structure:
 [
   {
     "dish": {
@@ -130,12 +135,14 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const locationInfo = getLocationFromRequest(event)
 
+  // Get sort parameter (default to distance)
+  const sortBy = typeof query.sort === "string" ? query.sort : "distance"
+
   // ---- CACHE CHECK ----
-  const cacheKey = getCacheKey(query.q as string, locationInfo.lat, locationInfo.long, query.tastes as string)
-  const cached = SEARCH_CACHE.get(cacheKey)
-  const now = Date.now()
-  if (cached && now - cached.timestamp < CACHE_TTL) {
-    return cached.data
+  const cacheKey = searchCache.createKey(query.q as string, locationInfo.lat, locationInfo.long, query.tastes as string, sortBy)
+  const cached = searchCache.get(cacheKey)
+  if (cached) {
+    return cached
   }
 
   // Validate that we have either a query or tastes parameter (but not both)
@@ -182,8 +189,8 @@ export default defineEventHandler(async (event) => {
     const parsedQuery = useQuery
       ? await parseUserQuery(searchPrompt)
       : { dishName: userTastes.join(", "), cuisine: "Any" }
-    // Get AI-powered recommendations
-    const aiResults = await getDishRecommendationa(parsedQuery, locationInfo, userTastes)
+    // Get AI-powered recommendations with sort preference
+    const aiResults = await getDishRecommendationa(parsedQuery, locationInfo, userTastes, sortBy)
     // Get community (database) recommendations
     const dbResults = await getDbDishRecommendations(parsedQuery.dishName)
 
@@ -201,9 +208,10 @@ export default defineEventHandler(async (event) => {
       dbResults,
       includedTastes: userTastes.length > 0 ? userTastes : null,
       neighborhood, // Add neighborhood to the response
-      city // Add city to the response
+      city, // Add city to the response
+      sortBy // Add sort parameter to the response
     }
-    SEARCH_CACHE.set(cacheKey, { data: result, timestamp: now })
+    searchCache.set(cacheKey, result)
     return result
   } catch (error) {
     console.error("Search error:", error)
@@ -240,9 +248,10 @@ Respond with valid, strict JSON only. Do not include comments, trailing commas, 
 async function getDishRecommendationa(
   q: ParsedQuery,
   location: Location,
-  userTastes: string[] = []
+  userTastes: string[] = [],
+  sortBy: string = "distance"
 ): Promise<DishRecommendation[]> {
-  const prompt = getPrompt(q.dishName, location, userTastes)
+  const prompt = getPrompt(q.dishName, location, userTastes, sortBy)
   try {
     const response = await generateAIResponse(prompt)
     const parsed = JSON.parse(response)
