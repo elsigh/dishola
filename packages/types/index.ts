@@ -1,6 +1,6 @@
 import { z } from "zod"
-import type { TasteType } from "./constants.js"
-import { TASTE_TYPES } from "./constants.js"
+import type { TasteType } from "./constants"
+import { TASTE_TYPES } from "./constants"
 
 // ========================================
 // Database Table Types

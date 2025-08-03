@@ -20,6 +20,7 @@
     ],
     "paths": {
       "@/*": ["./*"],
+      "@dishola/types": ["../../packages/types/index.ts"],
       "@dishola/types/constants": ["../../packages/types/constants.ts"]
     }
   },

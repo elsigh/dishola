@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     cacheComponents: true,
     clientSegmentCache: true
   },
+  transpilePackages: ["@dishola/types", "@dishola/supabase"],
   eslint: {
     ignoreDuringBuilds: true
   },
