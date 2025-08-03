@@ -13,8 +13,14 @@ export default async function SearchPage({
 
   // Server-side location lookup when coordinates are available
   let locationDisplayName = ""
+  let neighborhood: string | undefined
+  let city: string | undefined
+  
   if (lat && long) {
     const locationInfo = getLocationInfo(parseFloat(lat), parseFloat(long))
+    neighborhood = locationInfo.neighborhood
+    city = locationInfo.city
+    
     if (locationInfo.neighborhood && locationInfo.city) {
       locationDisplayName = `in ${locationInfo.neighborhood}, ${locationInfo.city}`
     } else if (locationInfo.city) {
@@ -27,7 +33,11 @@ export default async function SearchPage({
   return (
     <div className="flex flex-col">
       <Suspense fallback={<div>Loading...</div>}>
-        <SearchResultsContent locationDisplayName={locationDisplayName} />
+        <SearchResultsContent 
+          locationDisplayName={locationDisplayName}
+          neighborhood={neighborhood}
+          city={city}
+        />
       </Suspense>
     </div>
   )

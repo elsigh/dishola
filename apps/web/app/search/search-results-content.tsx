@@ -15,9 +15,11 @@ import { API_BASE_URL } from "@/lib/constants"
 
 interface SearchResultsContentProps {
   locationDisplayName: string
+  neighborhood?: string
+  city?: string
 }
 
-export default function SearchResultsContent({ locationDisplayName }: SearchResultsContentProps) {
+export default function SearchResultsContent({ locationDisplayName, neighborhood, city }: SearchResultsContentProps) {
   const searchParams = useSearchParams()
   const q = searchParams.get("q")
   const lat = searchParams.get("lat")
@@ -49,9 +51,10 @@ export default function SearchResultsContent({ locationDisplayName }: SearchResu
 
   const { user, getUserTastes } = useAuth()
 
+  // Use server-provided location data when available, fallback to client-side hook
   const {
-    neighborhood,
-    city,
+    neighborhood: hookNeighborhood,
+    city: hookCity,
     isLoading: locationLoading,
     latitude,
     longitude
@@ -59,6 +62,10 @@ export default function SearchResultsContent({ locationDisplayName }: SearchResu
     urlLat: lat,
     urlLng: long
   })
+
+  // Prefer server-provided data over client-side data
+  const finalNeighborhood = neighborhood || hookNeighborhood
+  const finalCity = city || hookCity
 
   // Perform search when URL parameters change
   useEffect(() => {
@@ -182,7 +189,7 @@ export default function SearchResultsContent({ locationDisplayName }: SearchResu
       {!shouldShowLoading && hasSearched && (hasQuery || hasTastes) && (
         <>
           <div className="mb-6">
-            <ResultsFor neighborhood={neighborhood} city={city} />
+            <ResultsFor neighborhood={finalNeighborhood} city={finalCity} />
             {/* Show taste info if we have tastes */}
             {hasTastes && (
               <div className="mt-2">
