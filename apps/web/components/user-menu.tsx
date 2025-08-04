@@ -60,7 +60,7 @@ export function UserMenu() {
           </Avatar>
         </span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-36 bg-white border" align="end" forceMount>
+      <DropdownMenuContent className=" bg-white border" align="end" forceMount>
         {user ? (
           <>
             <DropdownMenuItem asChild>
