@@ -13,6 +13,30 @@ const gateway = createGatewayProvider({
   apiKey: process.env.GATEWAY_API_KEY
 })
 
+// Calculate distance between two coordinates using Haversine formula
+function calculateDistance(lat1: string, lon1: string, lat2: string, lon2: string): number {
+  const toRad = (value: number) => (value * Math.PI) / 180
+  
+  const lat1Num = parseFloat(lat1)
+  const lon1Num = parseFloat(lon1)
+  const lat2Num = parseFloat(lat2)
+  const lon2Num = parseFloat(lon2)
+  
+  const R = 3959 // Earth's radius in miles
+  const dLat = toRad(lat2Num - lat1Num)
+  const dLon = toRad(lon2Num - lon1Num)
+  
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1Num)) * Math.cos(toRad(lat2Num)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  const distance = R * c
+  
+  return Math.round(distance * 10) / 10 // Round to 1 decimal place
+}
+
 async function getModel(): Promise<LanguageModel> {
   try {
     // Try to get model from Edge Config
@@ -34,11 +58,11 @@ async function getModel(): Promise<LanguageModel> {
 }
 
 function getPrompt(dishName: string, location: Location, userTastes: string[] = [], sortBy: string = "distance") {
-  let promptBase = `Return the top 5 best ${dishName} recommendations`
+  let promptBase = `Return the top 15 best ${dishName} recommendations`
 
   // If user has tastes, include them in the prompt
   if (userTastes.length > 0) {
-    promptBase = `Return the top 5 best ${dishName} recommendations that would appeal to someone who likes ${userTastes.join(", ")}`
+    promptBase = `Return the top 15 best ${dishName} recommendations that would appeal to someone who likes ${userTastes.join(", ")}`
   }
 
   // Adjust sorting based on user preference
@@ -121,7 +145,7 @@ export default defineEventHandler(async (event) => {
       return {
         lat: headerLat,
         long: headerLong,
-        address: [city, region, country].map(h => h ? decodeURIComponent(h) : h).filter(Boolean).join(", ")
+        address: [city, region, country].map(h => h ? decodeURIComponent(Array.isArray(h) ? h[0] : h) : h).filter(Boolean).join(", ")
       }
     }
     // 3. Fallback to Vercel HQ
@@ -139,7 +163,7 @@ export default defineEventHandler(async (event) => {
   const sortBy = typeof query.sort === "string" ? query.sort : "distance"
 
   // ---- CACHE CHECK ----
-  const cacheKey = searchCache.createKey(query.q as string, locationInfo.lat, locationInfo.long, query.tastes as string, sortBy)
+  const cacheKey = searchCache.createKey(query.q as string, locationInfo.lat, locationInfo.long, Array.isArray(query.tastes) ? query.tastes.join(',') : (query.tastes as string || ''), sortBy)
   const cached = searchCache.get(cacheKey)
   if (cached) {
     return cached
@@ -167,7 +191,7 @@ export default defineEventHandler(async (event) => {
 
   let displayLocation: string
   if (city && postal) {
-    displayLocation = `${decodeURIComponent(city)} ${postal}`
+    displayLocation = `${decodeURIComponent(Array.isArray(city) ? city[0] : city)} ${Array.isArray(postal) ? postal[0] : postal}`
   } else {
     displayLocation = `${locationInfo.lat},${locationInfo.long}`
   }
@@ -192,7 +216,7 @@ export default defineEventHandler(async (event) => {
     // Get AI-powered recommendations with sort preference
     const aiResults = await getDishRecommendationa(parsedQuery, locationInfo, userTastes, sortBy)
     // Get community (database) recommendations
-    const dbResults = await getDbDishRecommendations(parsedQuery.dishName)
+    const dbResults = await getDbDishRecommendations(parsedQuery.dishName, locationInfo, sortBy)
 
     const locationData = await getNeighborhoodInfo(locationInfo.lat, locationInfo.long, event.headers)
     const { neighborhood, city } = locationData
@@ -254,18 +278,104 @@ async function getDishRecommendationa(
   const prompt = getPrompt(q.dishName, location, userTastes, sortBy)
   try {
     const response = await generateAIResponse(prompt)
-    const parsed = JSON.parse(response)
-    return parsed.map((rec: { dish: { name: string }; restaurant: { name: string } }, idx: number) => ({
-      ...rec,
-      id: `${rec.dish.name.replace(/\s+/g, "_")}-${rec.restaurant.name.replace(/\s+/g, "_")}-${idx}`
-    }))
+    
+    // Clean and validate JSON response
+    let cleanedResponse = response.trim()
+    
+    // Remove any markdown code blocks if present
+    if (cleanedResponse.startsWith('```json')) {
+      cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+    } else if (cleanedResponse.startsWith('```')) {
+      cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '')
+    }
+    
+    // Log the raw response for debugging if it's problematic
+    if (!cleanedResponse.startsWith('[') && !cleanedResponse.startsWith('{')) {
+      console.error("AI response doesn't look like JSON:", cleanedResponse.substring(0, 200) + '...')
+      return []
+    }
+    
+    let parsed: any
+    try {
+      parsed = JSON.parse(cleanedResponse)
+    } catch (parseError) {
+      console.error("JSON parse error. Raw response length:", cleanedResponse.length)
+      console.error("Raw response preview:", cleanedResponse.substring(0, 500) + '...')
+      console.error("Raw response ending:", '...' + cleanedResponse.substring(cleanedResponse.length - 200))
+      console.error("Parse error:", parseError)
+      
+      // Try to fix incomplete JSON by finding the last complete object
+      const lastCompleteArrayMatch = cleanedResponse.match(/^(.*})\s*,?\s*\{[^}]*$/s)
+      if (lastCompleteArrayMatch) {
+        const truncatedJson = lastCompleteArrayMatch[1] + ']'
+        console.log("Attempting to parse truncated JSON:", truncatedJson.length, "characters")
+        try {
+          parsed = JSON.parse(truncatedJson)
+          console.log("Successfully parsed truncated JSON with", parsed.length, "results")
+        } catch (truncatedError) {
+          console.error("Truncated JSON parsing also failed:", truncatedError)
+          return []
+        }
+      } else {
+        return []
+      }
+    }
+    
+    // Ensure we have an array
+    if (!Array.isArray(parsed)) {
+      console.error("AI response is not an array:", typeof parsed)
+      return []
+    }
+    
+    // Validate each result has required structure
+    const validResults = parsed.filter((rec: any) => {
+      return rec?.dish?.name && rec?.restaurant?.name && rec?.dish?.rating
+    })
+    
+    if (validResults.length === 0) {
+      console.error("No valid results from AI response")
+      return []
+    }
+    
+    // Map results and calculate distances for server-side verification/sorting
+    const resultsWithDistance = validResults.map((rec: any, idx: number) => {
+      const hasCoordinates = rec.restaurant?.lat && rec.restaurant?.lng
+      const distance = hasCoordinates 
+        ? calculateDistance(location.lat, location.long, rec.restaurant.lat, rec.restaurant.lng)
+        : 999 // Set high distance for restaurants without coordinates
+      
+      return {
+        ...rec,
+        id: `${rec.dish.name.replace(/\s+/g, "_")}-${rec.restaurant.name.replace(/\s+/g, "_")}-${idx}`,
+        distance,
+        numericRating: parseFloat(rec.dish.rating) || 0
+      }
+    })
+    
+    // Sort results server-side to ensure proper ordering regardless of AI response
+    const sortedResults = resultsWithDistance.sort((a, b) => {
+      if (sortBy === "rating") {
+        // Sort by rating first, then by distance
+        const ratingDiff = b.numericRating - a.numericRating
+        if (Math.abs(ratingDiff) > 0.1) return ratingDiff
+        return a.distance - b.distance
+      } else {
+        // Sort by distance first, then by rating
+        const distanceDiff = a.distance - b.distance
+        if (Math.abs(distanceDiff) > 0.1) return distanceDiff
+        return b.numericRating - a.numericRating
+      }
+    })
+    
+    // Return results without temporary sorting fields
+    return sortedResults.map(({ distance, numericRating, ...result }) => result)
   } catch (error) {
     console.error("Restaurant recommendation error:", error)
     return []
   }
 }
 
-async function getDbDishRecommendations(dishName: string): Promise<DishRecommendation[]> {
+async function getDbDishRecommendations(dishName: string, userLocation: Location, sortBy: string = "distance"): Promise<DishRecommendation[]> {
   const { data, error } = await supabase
     .from("dishes")
     .select(
@@ -273,18 +383,25 @@ async function getDbDishRecommendations(dishName: string): Promise<DishRecommend
       restaurant:restaurants(id,name,address_line1,city,state,latitude,longitude)`
     )
     .ilike("name", `%${dishName}%`)
-    .order("vote_avg", { ascending: false })
-    .limit(5)
+    .limit(50) // Get more results to sort and filter down to 15
 
   if (error) {
     console.error("Database search error:", error)
     return []
   }
 
-  return (data || []).map((rec: any, idx: number) => {
+  // Map results and calculate distances
+  const resultsWithDistance = (data || []).map((rec: any, idx: number) => {
     const restaurantAddrParts = [rec.restaurant?.address_line1, rec.restaurant?.city, rec.restaurant?.state].filter(
       Boolean
     )
+    
+    const hasCoordinates = rec.restaurant?.latitude && rec.restaurant?.longitude
+    const distance = hasCoordinates 
+      ? calculateDistance(userLocation.lat, userLocation.long, 
+          String(rec.restaurant.latitude), String(rec.restaurant.longitude))
+      : 999 // Set high distance for restaurants without coordinates
+    
     return {
       id: `${rec.name.replace(/\s+/g, "_")}-${rec.restaurant?.name.replace(/\s+/g, "_")}-${idx}`,
       dish: {
@@ -298,9 +415,32 @@ async function getDbDishRecommendations(dishName: string): Promise<DishRecommend
         lat: rec.restaurant?.latitude ? String(rec.restaurant.latitude) : "",
         lng: rec.restaurant?.longitude ? String(rec.restaurant.longitude) : "",
         website: ""
-      }
+      },
+      distance,
+      vote_avg: rec.vote_avg || 0
     }
   })
+  
+  // Filter out results > 75 miles away
+  const filteredResults = resultsWithDistance.filter(result => result.distance <= 75)
+  
+  // Sort based on user preference
+  const sortedResults = filteredResults.sort((a, b) => {
+    if (sortBy === "rating") {
+      // Sort by rating first, then by distance
+      const ratingDiff = b.vote_avg - a.vote_avg
+      if (Math.abs(ratingDiff) > 0.1) return ratingDiff
+      return a.distance - b.distance
+    } else {
+      // Sort by distance first, then by rating
+      const distanceDiff = a.distance - b.distance
+      if (Math.abs(distanceDiff) > 0.1) return distanceDiff
+      return b.vote_avg - a.vote_avg
+    }
+  })
+  
+  // Return top 15 results, removing temporary fields
+  return sortedResults.slice(0, 15).map(({ distance, vote_avg, ...result }) => result)
 }
 
 async function generateAIResponse(prompt: string): Promise<string> {
@@ -311,8 +451,8 @@ async function generateAIResponse(prompt: string): Promise<string> {
       model,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
-      // Set a higher max tokens for Claude to ensure complete responses
-      maxOutputTokens: 1500
+      // Increase max tokens to ensure complete JSON responses for 15 results
+      maxOutputTokens: 4000
     })
     return text
   } catch (error) {

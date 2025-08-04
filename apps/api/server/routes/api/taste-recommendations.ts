@@ -177,7 +177,10 @@ export default defineEventHandler(async (event) => {
       return {
         lat: headerLat,
         long: headerLong,
-        address: [city, region, country].map(h => h ? decodeURIComponent(h) : h).filter(Boolean).join(", ")
+        address: [city, region, country]
+          .map((h) => (h ? decodeURIComponent(Array.isArray(h) ? h[0] : h) : h))
+          .filter(Boolean)
+          .join(", ")
       }
     }
     // 3. Fallback to Vercel HQ
@@ -203,7 +206,7 @@ export default defineEventHandler(async (event) => {
     const city = headers["x-vercel-ip-city"]
     const postal = headers["x-vercel-ip-postal-code"]
     if (city && postal) {
-      displayLocation = `${decodeURIComponent(city)} ${postal}`
+      displayLocation = `${decodeURIComponent(Array.isArray(city) ? city[0] : city)} ${Array.isArray(postal) ? postal[0] : postal}`
     } else {
       displayLocation = `${locationInfo.lat},${locationInfo.long}`
     }
@@ -250,7 +253,8 @@ export default defineEventHandler(async (event) => {
       const cacheTime = Date.now() - cacheCheckStart
       const totalTime = Date.now() - startTime
       console.debug(
-        `[${requestId}] Cache hit for taste recommendations - cache lookup: ${cacheTime}ms, total: ${totalTime}ms`
+        `[${requestId}] Cache hit for taste recommendations - cache lookup: ${cacheTime}ms, total: ${totalTime}ms`,
+        { cacheKey }
       )
       return JSON.parse(JSON.stringify(cached.data)) as Record<string, unknown>
     }
