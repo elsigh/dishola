@@ -1,7 +1,7 @@
 "use client"
 
 import { Loader as GoogleMapsLoader } from "@googlemaps/js-api-loader"
-import { Loader2, Map as MapIcon, SearchIcon, X } from "lucide-react"
+import { Loader2, Map as MapIcon, SearchIcon, X, Edit3 } from "lucide-react"
 import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type React from "react"
@@ -58,7 +58,11 @@ export default function SearchSection({
     displayName?: string
   } | null>(null)
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
+  const [isEditingAddress, setIsEditingAddress] = useState(false)
+  const [addressInput, setAddressInput] = useState("")
   const mapRef = useRef<HTMLDivElement>(null)
+  const addressInputRef = useRef<HTMLInputElement>(null)
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
 
   // Update dishQuery when initialQuery changes (e.g., when navigating to search page)
   useEffect(() => {
@@ -91,6 +95,61 @@ export default function SearchSection({
     } finally {
       setIsLoadingLocation(false)
     }
+  }, [])
+
+  // Function to setup Google Places Autocomplete
+  const setupAutocomplete = useCallback(async () => {
+    if (!addressInputRef.current) return
+
+    try {
+      const loader = new GoogleMapsLoader({
+        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+        version: "weekly",
+        libraries: ["places"]
+      })
+      
+      await loader.load()
+      
+      autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
+        types: ["address"],
+        componentRestrictions: { country: "us" }
+      })
+
+      autocompleteRef.current.addListener("place_changed", () => {
+        const place = autocompleteRef.current?.getPlace()
+        if (place?.geometry?.location) {
+          const lat = place.geometry.location.lat()
+          const lng = place.geometry.location.lng()
+          
+          // Update map location
+          setTempLat(lat)
+          setTempLng(lng)
+          fetchLocationInfo(lat, lng)
+          
+          // Exit edit mode
+          setIsEditingAddress(false)
+          setAddressInput("")
+        }
+      })
+    } catch (error) {
+      console.error("Error setting up Google Places Autocomplete:", error)
+    }
+  }, [fetchLocationInfo])
+
+  // Function to handle edit address click
+  const handleEditAddress = useCallback(() => {
+    setIsEditingAddress(true)
+    setAddressInput("")
+    // Focus the input after state update
+    setTimeout(() => {
+      addressInputRef.current?.focus()
+    }, 0)
+  }, [])
+
+  // Function to cancel address editing
+  const handleCancelEdit = useCallback(() => {
+    setIsEditingAddress(false)
+    setAddressInput("")
   }, [])
 
   // Function to handle location changes and trigger new search
@@ -213,6 +272,21 @@ export default function SearchSection({
     }
   }, []) // Only run on mount, not on pathname changes
 
+  // Setup autocomplete when entering edit mode
+  useEffect(() => {
+    if (isEditingAddress && addressInputRef.current) {
+      setupAutocomplete()
+    }
+  }, [isEditingAddress, setupAutocomplete])
+
+  // Reset edit state when modal closes
+  useEffect(() => {
+    if (!mapOpen) {
+      setIsEditingAddress(false)
+      setAddressInput("")
+    }
+  }, [mapOpen])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (latitude === null || longitude === null) {
@@ -332,41 +406,85 @@ export default function SearchSection({
             </div>
           </div>
           {/* Location info and confirm button */}
-          <div className="mt-3 flex items-center justify-between bg-gray-50 rounded-lg p-3">
-            <div className="text-sm text-gray-600">
-              {isLoadingLocation ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Loading location...</span>
-                </div>
-              ) : locationInfo?.displayName || locationInfo?.neighborhood || locationInfo?.city ? (
-                <div>
-                  <span>
-                    {locationInfo.neighborhood && locationInfo.city
-                      ? `${locationInfo.neighborhood}, ${locationInfo.city}`
-                      : locationInfo.displayName || locationInfo.city || locationInfo.neighborhood}
-                  </span>
-                  {tempLat !== null && tempLng !== null && (
-                    <span className="text-gray-400 ml-2">({formatLatLng(tempLat, tempLng)})</span>
-                  )}
-                </div>
-              ) : tempLat !== null && tempLng !== null ? (
-                formatLatLng(tempLat, tempLng)
-              ) : null}
+          <div className="mt-3 bg-gray-50 rounded-lg p-3">
+            {isEditingAddress ? (
+              <div className="flex items-center gap-2 mb-3">
+                <Input
+                  ref={addressInputRef}
+                  value={addressInput}
+                  onChange={(e) => setAddressInput(e.target.value)}
+                  placeholder="Enter an address..."
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  size="sm"
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-600 mb-3">
+                {isLoadingLocation ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Loading location...</span>
+                  </div>
+                ) : locationInfo?.displayName || locationInfo?.neighborhood || locationInfo?.city ? (
+                  <div>
+                    <span>
+                      {locationInfo.neighborhood && locationInfo.city
+                        ? `${locationInfo.neighborhood}, ${locationInfo.city}`
+                        : locationInfo.displayName || locationInfo.city || locationInfo.neighborhood}
+                    </span>
+                    {tempLat !== null && tempLng !== null && (
+                      <span className="text-gray-400 ml-2">
+                        ({formatLatLng(tempLat, tempLng)})
+                        <button
+                          type="button"
+                          onClick={handleEditAddress}
+                          className="ml-2 text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+                          aria-label="Edit address"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          edit
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                ) : tempLat !== null && tempLng !== null ? (
+                  <div>
+                    {formatLatLng(tempLat, tempLng)}
+                    <button
+                      type="button"
+                      onClick={handleEditAddress}
+                      className="ml-2 text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
+                      aria-label="Edit address"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      edit
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                onClick={() => {
+                  if (tempLat !== null && tempLng !== null) {
+                    handleLocationChange(tempLat, tempLng)
+                    setMapOpen(false)
+                  }
+                }}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Confirm Location
+              </Button>
             </div>
-            <Button
-              type="button"
-              onClick={() => {
-                if (tempLat !== null && tempLng !== null) {
-                  handleLocationChange(tempLat, tempLng)
-                  setMapOpen(false)
-                }
-              }}
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Confirm Location
-            </Button>
           </div>
         </div>
       )}
