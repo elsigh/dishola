@@ -1,4 +1,18 @@
 // https://nitro.unjs.io/guide/typescript
 {
-	"extends": "./.nitro/types/tsconfig.json"
+	"extends": "./.nitro/types/tsconfig.json",
+	"compilerOptions": {
+		"skipLibCheck": true
+	},
+	"include": [
+		"./.nitro/types/nitro.d.ts",
+		"./.nitro/types/nitro-imports.d.ts",
+		"./server/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		"../../node_modules",
+		".nitro",
+		".output"
+	]
 }

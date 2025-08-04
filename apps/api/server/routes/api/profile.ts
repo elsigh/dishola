@@ -42,7 +42,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
     throw createError({ statusCode: 401, statusMessage: "Invalid authentication token" })
   }
 
-  console.log("Authenticated user ID:", user.id)
+  //console.log("Authenticated user ID:", user.id)
 
   if (event.method === "GET") {
     try {

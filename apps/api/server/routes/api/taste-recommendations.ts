@@ -1,11 +1,9 @@
 import { createGatewayProvider } from "@ai-sdk/gateway"
-// Import only what we need
-// import { supabase } from "@dishola/supabase/admin"
 import { createClient } from "@supabase/supabase-js"
 import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
 import { generateText } from "ai"
-import { getHeader, type H3Event, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, getQuery, type H3Event, setHeader } from "h3"
 import type { DishRecommendation, Location } from "../../../lib/types"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
 
