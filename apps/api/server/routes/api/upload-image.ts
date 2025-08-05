@@ -1,6 +1,6 @@
 import { supabase } from "@dishola/supabase/admin"
 import { put } from "@vercel/blob"
-import { setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, readBody, setHeader } from "h3"
 
 // Admin emails that can access this endpoint
 const ADMIN_EMAILS = ["elsigh@gmail.com"]

@@ -1,5 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
-import { type H3Event, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, type H3Event, setHeader } from "h3"
 import { imageCache } from "../../../../lib/imageCache"
 import { searchCache } from "../../../../lib/searchCache"
 

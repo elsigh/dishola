@@ -1,5 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
-import { setHeader } from "h3"
+import { createError, defineEventHandler, getRouterParam, setHeader } from "h3"
 
 export default defineEventHandler(async (event) => {
   // CORS headers

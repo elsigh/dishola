@@ -1,6 +1,6 @@
 import { type ProfileResponse, ProfileUpdateRequestSchema } from "@dishola/types"
 import { createClient } from "@supabase/supabase-js"
-import { createError, getHeader, readBody, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, readBody, setHeader } from "h3"
 
 export default defineEventHandler(async (event): Promise<ProfileResponse> => {
   setHeader(

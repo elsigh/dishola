@@ -1,5 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
-import { getQuery, setHeader } from "h3"
+import { createError, defineEventHandler, getQuery, setHeader } from "h3"
 
 export default defineEventHandler(async (event) => {
   setHeader(

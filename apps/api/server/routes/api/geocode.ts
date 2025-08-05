@@ -1,4 +1,4 @@
-import { getQuery, setHeader } from "h3"
+import { createError, defineEventHandler, getQuery, setHeader } from "h3"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
 
 export default defineEventHandler(async (event) => {

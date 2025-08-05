@@ -30,7 +30,6 @@
     "baseUrl": "."
   },
   "include": [
-    "global.d.ts",
     "server/**/*"
   ],
   "exclude": [

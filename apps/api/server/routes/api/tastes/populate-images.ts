@@ -1,5 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
-import { setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, setHeader } from "h3"
 import { googleImageSearch } from "../../../lib/googleImageSearch"
 import { unsplashImageSearch } from "../../../lib/unsplashImageSearch"
 

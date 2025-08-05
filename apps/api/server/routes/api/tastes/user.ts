@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { createError, getHeader, getQuery, readBody, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, getQuery, readBody, setHeader } from "h3"
 
 interface UserTasteRequest {
   tasteIds: number[]

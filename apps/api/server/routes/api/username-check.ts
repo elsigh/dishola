@@ -1,5 +1,5 @@
 import { supabase } from "@dishola/supabase/admin"
-import { createError, getHeader, getQuery, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, getQuery, setHeader } from "h3"
 
 // Basic bad words list - in production you'd want a more comprehensive list
 const BAD_WORDS = [

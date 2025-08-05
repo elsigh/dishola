@@ -1,6 +1,6 @@
 import { supabase } from "@dishola/supabase/admin"
 import type { TasteType } from "@dishola/types/constants"
-import { createError, getQuery, setHeader } from "h3"
+import { createError, defineEventHandler, getQuery, setHeader } from "h3"
 
 export default defineEventHandler(async (event) => {
   // CORS headers
