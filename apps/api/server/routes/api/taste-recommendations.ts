@@ -99,12 +99,6 @@ IMPORTANT FORMATTING INSTRUCTIONS:
 }
 
 export default defineEventHandler(async (event) => {
-  // Start timing for the entire request
-  const startTime = Date.now()
-  const requestId = Math.random().toString(36).substring(2, 15)
-
-  console.debug(`[${requestId}] Taste recommendations API started at ${new Date().toISOString()}`)
-
   // CORS headers
   setHeader(
     event,
@@ -116,6 +110,12 @@ export default defineEventHandler(async (event) => {
   if (event.method === "OPTIONS") {
     return new Response(null, { status: 204 })
   }
+
+  // Start timing for the entire request (only for non-preflight requests)
+  const startTime = Date.now()
+  const requestId = Math.random().toString(36).substring(2, 15)
+
+  console.debug(`[${requestId}] Taste recommendations API started at ${new Date().toISOString()}`)
 
   // Get auth token
   const authHeader = getHeader(event, "authorization")

@@ -8,10 +8,11 @@
     "preview": "node .output/server/index.mjs",
     "lint": "echo 'No linting configured'",
     "clean": "rm -rf .output",
-    "typecheck": "echo 'TypeScript checking disabled for Nitro API - using runtime type checking instead'"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
+    "h3": "^1.15.3",
     "nitropack": "latest"
   },
   "dependencies": {
@@ -19,9 +20,9 @@
     "@dishola/supabase": "workspace:*",
     "@dishola/types": "workspace:*",
     "@supabase/supabase-js": "^2.42.3",
+    "@vercel/blob": "^1.1.1",
     "@vercel/edge-config": "^1.4.0",
     "ai": "5.0.0",
-    "h3": "^1.15.3",
     "zod": "^4.0.14"
   }
 }

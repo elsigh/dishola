@@ -13,6 +13,19 @@ const gateway = createGatewayProvider({
   apiKey: process.env.GATEWAY_API_KEY
 })
 
+// Deduplicate results based on dish name + restaurant name
+function deduplicateResults(results: DishRecommendation[]): DishRecommendation[] {
+  const seen = new Set<string>()
+  return results.filter(result => {
+    const key = `${result.dish.name.toLowerCase().trim()}-${result.restaurant.name.toLowerCase().trim()}`
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
+}
+
 // Calculate distance between two coordinates using Haversine formula
 function calculateDistance(lat1: string, lon1: string, lat2: string, lon2: string): number {
   const toRad = (value: number) => (value * Math.PI) / 180
@@ -221,6 +234,12 @@ export default defineEventHandler(async (event) => {
     const locationData = await getNeighborhoodInfo(locationInfo.lat, locationInfo.long, event.headers)
     const { neighborhood, city } = locationData
 
+    // Deduplicate AI results
+    const deduplicatedAiResults = deduplicateResults(aiResults)
+    
+    // Deduplicate DB results  
+    const deduplicatedDbResults = deduplicateResults(dbResults)
+
     const result = {
       query: searchPrompt,
       location: location,
@@ -228,8 +247,8 @@ export default defineEventHandler(async (event) => {
       long: locationInfo.long,
       displayLocation,
       parsedQuery: parsedQuery,
-      aiResults,
-      dbResults,
+      aiResults: deduplicatedAiResults,
+      dbResults: deduplicatedDbResults,
       includedTastes: userTastes.length > 0 ? userTastes : null,
       neighborhood, // Add neighborhood to the response
       city, // Add city to the response

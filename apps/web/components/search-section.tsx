@@ -1,7 +1,7 @@
 "use client"
 
 import { Loader as GoogleMapsLoader } from "@googlemaps/js-api-loader"
-import { Loader2, Map as MapIcon, SearchIcon, X, Edit3 } from "lucide-react"
+import { Edit3, Loader2, Map as MapIcon, SearchIcon, X } from "lucide-react"
 import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type React from "react"
@@ -37,7 +37,6 @@ interface SearchSectionProps {
 
 export default function SearchSection({
   isUserLoggedIn = false,
-  neighborhood,
   initialQuery = "",
   initialLat,
   initialLng
@@ -62,6 +61,7 @@ export default function SearchSection({
   const [addressInput, setAddressInput] = useState("")
   const mapRef = useRef<HTMLDivElement>(null)
   const addressInputRef = useRef<HTMLInputElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
 
   // Update dishQuery when initialQuery changes (e.g., when navigating to search page)
@@ -107,9 +107,9 @@ export default function SearchSection({
         version: "weekly",
         libraries: ["places"]
       })
-      
+
       await loader.load()
-      
+
       autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
         types: ["address"],
         componentRestrictions: { country: "us" }
@@ -120,12 +120,12 @@ export default function SearchSection({
         if (place?.geometry?.location) {
           const lat = place.geometry.location.lat()
           const lng = place.geometry.location.lng()
-          
+
           // Update map location
           setTempLat(lat)
           setTempLng(lng)
           fetchLocationInfo(lat, lng)
-          
+
           // Exit edit mode
           setIsEditingAddress(false)
           setAddressInput("")
@@ -332,6 +332,47 @@ export default function SearchSection({
 
   const canSearch = (isUserLoggedIn || dishQuery.trim() !== "") && latitude !== null && longitude !== null
 
+  // Handle clear button click - clear search and focus input
+  const handleClearSearch = useCallback(() => {
+    setDishQuery("")
+    searchInputRef.current?.focus()
+  }, [])
+
+  // Handle search input blur - re-execute search if empty
+  const handleSearchBlur = useCallback(() => {
+    if (dishQuery.trim() === "" && latitude !== null && longitude !== null) {
+      const params = new URLSearchParams()
+      params.append("lat", latitude.toString())
+      params.append("long", longitude.toString())
+
+      // If user is logged in and search is empty, use taste-based search
+      if (isUserLoggedIn) {
+        params.append("tastes", "true")
+      } else {
+        // For non-logged-in users with empty search, clear results by going to search page without params
+        // This will show empty state or default behavior
+      }
+
+      // Preserve sort parameter from current URL
+      const currentSort = searchParams.get("sort")
+      if (currentSort) {
+        params.append("sort", currentSort)
+      } else {
+        params.append("sort", "distance")
+      }
+
+      // Only navigate if we're on the search page and have something to search
+      if (pathname === "/search") {
+        if (isUserLoggedIn) {
+          router.push(`/search?${params.toString()}`)
+        } else {
+          // Clear search results for non-logged-in users
+          router.push(`/search?lat=${latitude}&long=${longitude}&sort=${currentSort || "distance"}`)
+        }
+      }
+    }
+  }, [dishQuery, latitude, longitude, isUserLoggedIn, pathname, router, searchParams])
+
   return (
     <form onSubmit={handleSearch} className="w-full max-w-[850px]">
       <div className="relative w-full">
@@ -342,9 +383,11 @@ export default function SearchSection({
 
           {/* Input field */}
           <input
+            ref={searchInputRef}
             type="text"
             value={dishQuery}
             onChange={(e) => setDishQuery(e.target.value)}
+            onBlur={handleSearchBlur}
             placeholder="What are you craving?"
             className="flex-1 bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 text-lg py-3"
           />
@@ -353,7 +396,7 @@ export default function SearchSection({
           {dishQuery && (
             <button
               type="button"
-              onClick={() => setDishQuery("")}
+              onClick={handleClearSearch}
               className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
               aria-label="Clear search"
             >
@@ -416,12 +459,7 @@ export default function SearchSection({
                   placeholder="Enter an address..."
                   className="flex-1"
                 />
-                <Button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  size="sm"
-                  variant="outline"
-                >
+                <Button type="button" onClick={handleCancelEdit} size="sm" variant="outline">
                   Cancel
                 </Button>
               </div>
