@@ -27,9 +27,9 @@ export default function SiteFooter() {
           <a href="/privacy" className="underline text-blue-700 hover:text-blue-900">
             Privacy Policy
           </a>
-          <span>&copy; {currentYear} dishola. All rights reserved.</span>
         </div>
       </div>
+      <div className="mx-auto mt-2 text-xs text-center">&copy; {currentYear} dishola. All rights reserved.</div>
     </footer>
   )
 }

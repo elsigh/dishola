@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import SearchSection from "@/components/search-section"
 import { useAuth } from "@/lib/auth-context"
 
 export default function HomePage() {
@@ -89,7 +90,12 @@ export default function HomePage() {
           The ultimate source to find real meals at real places that rule.
         </p>
 
-        <p className="mt-12 text-md text-brand-text-muted max-w-xl">So, what's your favorite dish?</p>
+        <div className="homepage-search-container mt-8 w-full max-w-2xl">
+          <SearchSection 
+            includeTastesOption={true} 
+            isUserLoggedIn={false}
+          />
+        </div>
       </div>
     )
   }

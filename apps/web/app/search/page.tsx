@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react"
 import { Suspense } from "react"
 import { getLocationInfo } from "@/lib/location-utils"
 import SearchResultsContent from "./search-results-content"
@@ -15,12 +16,12 @@ export default async function SearchPage({
   let locationDisplayName = ""
   let neighborhood: string | undefined
   let city: string | undefined
-  
+
   if (lat && long) {
     const locationInfo = getLocationInfo(parseFloat(lat), parseFloat(long))
     neighborhood = locationInfo.neighborhood
     city = locationInfo.city
-    
+
     if (locationInfo.neighborhood && locationInfo.city) {
       locationDisplayName = `in ${locationInfo.neighborhood}, ${locationInfo.city}`
     } else if (locationInfo.city) {
@@ -32,12 +33,14 @@ export default async function SearchPage({
 
   return (
     <div className="flex flex-col">
-      <Suspense fallback={<div>Loading...</div>}>
-        <SearchResultsContent 
-          locationDisplayName={locationDisplayName}
-          neighborhood={neighborhood}
-          city={city}
-        />
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+          </div>
+        }
+      >
+        <SearchResultsContent locationDisplayName={locationDisplayName} neighborhood={neighborhood} city={city} />
       </Suspense>
     </div>
   )

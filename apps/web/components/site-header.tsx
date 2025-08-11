@@ -20,20 +20,26 @@ export default function SiteHeader() {
   return (
     <header className="py-4">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex gap-8">
-        <nav className="hidden md:block py-2">
+        <nav className={`hidden md:block py-2 transition-opacity duration-300 ${isHome ? 'opacity-0' : 'opacity-100'}`}>
           <Link href="/" className="text-3xl font-serif font-bold text-brand-primary">
             dishola
           </Link>
         </nav>
         <div className="flex flex-grow">
-          {(isHome || isSearchPage) && (
-            <SearchSection 
-              includeTastesOption={true} 
-              isUserLoggedIn={!!user}
-              initialQuery={currentQuery}
-              initialLat={currentLat ? parseFloat(currentLat) : undefined}
-              initialLng={currentLng ? parseFloat(currentLng) : undefined}
-            />
+          {/* Show search in header only when:
+              - On search page, OR
+              - On home page AND user is logged in 
+          */}
+          {(isSearchPage || (isHome && user)) && (
+            <div className="header-search-container">
+              <SearchSection 
+                includeTastesOption={true} 
+                isUserLoggedIn={!!user}
+                initialQuery={currentQuery}
+                initialLat={currentLat ? parseFloat(currentLat) : undefined}
+                initialLng={currentLng ? parseFloat(currentLng) : undefined}
+              />
+            </div>
           )}
         </div>
         <div className="py-2">

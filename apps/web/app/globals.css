@@ -35,4 +35,34 @@
 	.btn-custom-secondary {
 		@apply bg-transparent border border-brand-primary text-brand-primary hover:bg-brand-primary/10;
 	}
+
+	/* Search bar transition styles */
+	.homepage-search-container,
+	.header-search-container {
+		view-transition-name: search-bar;
+	}
+	
+	.homepage-search-container {
+		@apply px-4 sm:px-8;
+	}
+	
+	.header-search-container {
+		@apply w-full;
+	}
+
+	/* Blue dot pulse animation */
+	@keyframes blue-dot-pulse {
+		0%, 100% {
+			transform: scale(1);
+			opacity: 0.6;
+		}
+		50% {
+			transform: scale(1.5);
+			opacity: 0.3;
+		}
+	}
+	
+	.animate-blue-dot-pulse {
+		animation: blue-dot-pulse 2s ease-in-out infinite;
+	}
 }
