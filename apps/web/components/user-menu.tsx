@@ -19,7 +19,8 @@ import { createClient } from "@/lib/supabase-client"
 export function UserMenu() {
   const { user, signOut } = useAuth()
   const [open, setOpen] = useState(false)
-  //console.debug("UserMenu", user)
+  const [imageError, setImageError] = useState(false)
+  const [imageLoaded, setImageLoaded] = useState(false)
 
   // Direct Google sign-in
   const handleGoogleSignIn = async () => {
@@ -31,16 +32,46 @@ export function UserMenu() {
     })
   }
 
+  const avatarUrl = user?.user_metadata?.avatar_url
+  console.log("UserMenu debug:", {
+    hasUser: !!user,
+    avatarUrl,
+    imageError,
+    imageLoaded,
+    userMetadata: user?.user_metadata
+  })
+
+  const handleImageLoad = () => {
+    console.log("Avatar image loaded successfully")
+    setImageLoaded(true)
+    setImageError(false)
+  }
+
+  const handleImageError = (error: any) => {
+    console.error("Avatar image failed to load:", error, "URL:", avatarUrl)
+    setImageError(true)
+    setImageLoaded(false)
+  }
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <span>
           <Avatar className="h-10 w-10 border border-gray-200 relative cursor-pointer">
             {user ? (
-              <AvatarImage
-                src={user.user_metadata?.avatar_url || undefined}
-                alt={user.user_metadata?.display_name || "Profile"}
-              />
+              <>
+                {avatarUrl && !imageError ? (
+                  <AvatarImage
+                    src={avatarUrl}
+                    alt={user.user_metadata?.display_name || "Profile"}
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                  />
+                ) : null}
+                <AvatarFallback>
+                  {user.user_metadata?.display_name?.[0] || user.email?.[0]?.toUpperCase() || "U"}
+                </AvatarFallback>
+              </>
             ) : (
               // Skeleton avatar with user icon
               <span className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-200 animate-pulse">
@@ -56,7 +87,6 @@ export function UserMenu() {
                 </svg>
               </span>
             )}
-            <AvatarFallback>{user?.user_metadata?.display_name?.[0] || null}</AvatarFallback>
           </Avatar>
         </span>
       </DropdownMenuTrigger>

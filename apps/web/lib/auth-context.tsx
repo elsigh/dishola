@@ -90,32 +90,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Listen for auth changes
         const {
           data: { subscription }
-        } = supabase.auth.onAuthStateChange(async (_event, session) => {
-          //console.debug("[AuthContext] Auth state changed:", _event)
-          // Only update if the session actually changed
-          setUser((prevUser) => {
-            const newUser = session?.user || null
-            if (prevUser?.id !== newUser?.id) {
-              return newUser
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+          // Only fetch profile on actual auth events, not initial session
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            setUser(session?.user || null)
+            setSession(session)
+            
+            if (session?.user) {
+              await fetchProfile(session)
+              if (pendingCallback) {
+                // Execute the pending action after successful auth
+                pendingCallback()
+                setPendingCallback(null)
+              }
             }
-            return prevUser
-          })
-          setSession((prevSession) => {
-            if (prevSession?.access_token !== session?.access_token) {
-              return session
-            }
-            return prevSession
-          })
-          
-          // Fetch profile when user logs in
-          if (session?.user) {
-            await fetchProfile(session)
-            if (pendingCallback) {
-              // Execute the pending action after successful auth
-              pendingCallback()
-              setPendingCallback(null)
-            }
-          } else {
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null)
+            setSession(null)
             setProfile(null)
           }
         })

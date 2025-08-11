@@ -28,7 +28,10 @@ export const metadata: Metadata = {
   description:
     "dishola: Share the love of food, dish by dish. Find real meals at real places, reviewed by editors, pros, and food lovers.",
   generator: "v0.dev",
-  icons: [{ rel: "icon", url: "/img/favicon.png" }]
+  icons: {
+    icon: "/img/favicon.png",
+    shortcut: "/favicon.ico"
+  }
 }
 
 export default function RootLayout({
