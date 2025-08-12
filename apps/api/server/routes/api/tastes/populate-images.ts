@@ -2,11 +2,13 @@ import { supabase } from "@dishola/supabase/admin"
 import { createError, defineEventHandler, getHeader, setHeader } from "h3"
 import { googleImageSearch } from "../../../lib/googleImageSearch"
 import { unsplashImageSearch } from "../../../lib/unsplashImageSearch"
+import { createLogger } from "../../../lib/logger"
 
 // Admin emails that can access this endpoint
 const ADMIN_EMAILS = ['elsigh@gmail.com']
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'tastes-populate-images')
   // CORS headers
   setHeader(
     event,
@@ -117,7 +119,11 @@ export default defineEventHandler(async (event) => {
             .eq("id", taste.id)
 
           if (updateError) {
-            console.error(`Failed to update image for ${taste.name}:`, updateError)
+            logger.error('Failed to update image for taste', {
+              tasteName: taste.name,
+              tasteId: taste.id,
+              error: updateError
+            })
             results.push({
               id: taste.id,
               name: taste.name,
@@ -125,7 +131,12 @@ export default defineEventHandler(async (event) => {
               error: "Database update failed"
             })
           } else {
-            console.log(`✓ Found image for ${taste.name} via ${imageSource}`)
+            logger.info('Found image for taste', {
+              tasteName: taste.name,
+              tasteId: taste.id,
+              imageSource,
+              imageUrl
+            })
             results.push({
               id: taste.id,
               name: taste.name,
@@ -136,7 +147,10 @@ export default defineEventHandler(async (event) => {
             processed++
           }
         } else {
-          console.log(`✗ No image found for ${taste.name}`)
+          logger.warn('No image found for taste', {
+            tasteName: taste.name,
+            tasteId: taste.id
+          })
           results.push({
             id: taste.id,
             name: taste.name,
@@ -149,7 +163,11 @@ export default defineEventHandler(async (event) => {
         await new Promise(resolve => setTimeout(resolve, 200))
 
       } catch (error) {
-        console.error(`Error processing ${taste.name}:`, error)
+        logger.error('Error processing taste', {
+          tasteName: taste.name,
+          tasteId: taste.id,
+          error: error.message || 'Unknown error'
+        })
         results.push({
           id: taste.id,
           name: taste.name,
@@ -167,7 +185,9 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error("Error populating taste images:", error)
+    logger.error('Error populating taste images', {
+      error: error.message || 'Unknown error'
+    })
     throw createError({
       statusCode: 500,
       statusMessage: "Failed to populate taste images"

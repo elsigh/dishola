@@ -1,5 +1,6 @@
 import { supabase } from "@dishola/supabase/admin"
 import { createError, defineEventHandler, getHeader, getQuery, setHeader } from "h3"
+import { createLogger } from "../../lib/logger"
 
 // Admin emails that can access this endpoint
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
@@ -11,6 +12,7 @@ interface ImageResult {
 }
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'image-search')
   // CORS headers
   setHeader(
     event,
@@ -91,7 +93,7 @@ export default defineEventHandler(async (event) => {
             }
           }
         } catch (error) {
-          console.error("Google image search error:", error)
+          logger.error("Google image search failed", { error, searchTerm })
         }
       }
 
@@ -115,7 +117,7 @@ export default defineEventHandler(async (event) => {
             }
           }
         } catch (error) {
-          console.error("Unsplash image search error:", error)
+          logger.error("Unsplash image search failed", { error, searchTerm })
         }
       }
 
@@ -124,7 +126,7 @@ export default defineEventHandler(async (event) => {
         images
       }
     } catch (error) {
-      console.error("Image search error:", error)
+      logger.error("Image search failed", { error, searchTerm })
       throw createError({
         statusCode: 500,
         statusMessage: "Failed to search for images"

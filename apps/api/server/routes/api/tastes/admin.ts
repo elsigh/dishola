@@ -1,6 +1,7 @@
 import { supabase } from "@dishola/supabase/admin"
 import type { TasteType } from "@dishola/types/constants"
 import { createError, defineEventHandler, getHeader, getQuery, readBody, setHeader } from "h3"
+import { createLogger } from "../../../lib/logger"
 
 // Admin emails that can access this endpoint
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
@@ -12,6 +13,8 @@ interface AddItemRequest {
 }
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'tastes-admin')
+  
   // CORS headers
   setHeader(
     event,
@@ -197,7 +200,7 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Method not allowed"
     })
   } catch (error) {
-    console.error("Taste dictionary admin API error:", error)
+    logger.error('Taste dictionary admin API error', { error })
     if (error.statusCode) {
       throw error // Re-throw HTTP errors as-is
     }

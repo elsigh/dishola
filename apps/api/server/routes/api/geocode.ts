@@ -1,7 +1,9 @@
 import { createError, defineEventHandler, getQuery, setHeader } from "h3"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
+import { createLogger } from "../../lib/logger"
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'geocode')
   setHeader(
     event,
     "Access-Control-Allow-Origin",
@@ -25,7 +27,7 @@ export default defineEventHandler(async (event) => {
       const locationInfo = await getNeighborhoodInfo(lat, lng, event.headers)
       return locationInfo
     } catch (error) {
-      console.error("Error in geocode API:", error)
+      logger.error("Failed to geocode location", { error })
       throw createError({ statusCode: 500, statusMessage: "Failed to geocode location" })
     }
   }

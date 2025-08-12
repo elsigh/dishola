@@ -1,7 +1,10 @@
 import { supabase } from "@dishola/supabase/admin"
 import { createError, defineEventHandler, getRouterParam, setHeader } from "h3"
+import { createLogger } from "../../lib/logger"
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'dish-detail')
+  
   // CORS headers
   setHeader(
     event,
@@ -67,7 +70,7 @@ export default defineEventHandler(async (event) => {
       .order("created_at", { ascending: true })
 
     if (imagesError) {
-      console.error("Error fetching dish images:", imagesError)
+      logger.error("Error fetching dish images", { error: imagesError, dishId })
     }
 
     // Get reviews with user data
@@ -89,7 +92,7 @@ export default defineEventHandler(async (event) => {
       .order("created_at", { ascending: false })
 
     if (reviewsError) {
-      console.error("Error fetching reviews:", reviewsError)
+      logger.error("Error fetching reviews", { error: reviewsError, dishId })
     }
 
     // Transform the data to match the expected interface
@@ -119,7 +122,7 @@ export default defineEventHandler(async (event) => {
 
     return dish
   } catch (error) {
-    console.error("Error fetching dish:", error)
+    logger.error("Error fetching dish", { error, dishId })
     if (error.statusCode) {
       throw error
     }

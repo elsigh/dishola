@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { createError, defineEventHandler, getHeader, getQuery, readBody, setHeader } from "h3"
+import { createLogger } from "../../../lib/logger"
 
 interface UserTasteRequest {
   tasteIds: number[]
@@ -22,6 +23,8 @@ interface CreateTasteRequest {
 }
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'tastes-user')
+  
   // CORS headers
   setHeader(
     event,
@@ -278,7 +281,7 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Method not allowed"
     })
   } catch (error) {
-    console.error("User tastes API error:", error)
+    logger.error("User tastes API error", { error })
     if (error.statusCode) {
       throw error // Re-throw HTTP errors as-is
     }

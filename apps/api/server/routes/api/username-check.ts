@@ -1,5 +1,6 @@
 import { supabase } from "@dishola/supabase/admin"
 import { createError, defineEventHandler, getHeader, getQuery, setHeader } from "h3"
+import { createLogger } from "../../lib/logger"
 
 // Basic bad words list - in production you'd want a more comprehensive list
 const BAD_WORDS = [
@@ -76,6 +77,7 @@ function validateUsername(username: string): { valid: boolean; message?: string 
 }
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'username-check')
   setHeader(
     event,
     "Access-Control-Allow-Origin",
@@ -135,7 +137,7 @@ export default defineEventHandler(async (event) => {
 
     if (checkError && checkError.code !== "PGRST116") {
       // PGRST116 = no rows returned
-      console.error("Error checking username availability:", checkError)
+      logger.error("Error checking username availability", { error: checkError, username })
       throw createError({ statusCode: 500, statusMessage: "Failed to check username availability" })
     }
 
@@ -146,7 +148,7 @@ export default defineEventHandler(async (event) => {
       message: isAvailable ? "Username is available!" : "Username is already taken"
     }
   } catch (error) {
-    console.error("Username check error:", error)
+    logger.error("Username check error", { error, username })
     if (error.statusCode) {
       throw error
     }

@@ -1,9 +1,12 @@
 import { createClient } from "@supabase/supabase-js"
 import { createError, defineEventHandler, setHeader } from "h3"
+import { createLogger } from "../../lib/logger"
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'cities')
+
   // CORS headers
   setHeader(
     event,
@@ -30,7 +33,7 @@ export default defineEventHandler(async (event) => {
       .not("city", "eq", "")
 
     if (error) {
-      console.error("Database error:", error)
+      logger.error("Database error", { error })
       throw createError({
         statusCode: 500,
         statusMessage: "Failed to fetch cities"
@@ -56,7 +59,7 @@ export default defineEventHandler(async (event) => {
 
     return { cities }
   } catch (error) {
-    console.error("Error fetching cities:", error)
+    logger.error("Error fetching cities", { error })
     throw createError({
       statusCode: 500,
       statusMessage: "Internal server error"

@@ -1,5 +1,6 @@
 import { supabase } from "@dishola/supabase/admin"
 import { createError, defineEventHandler, getHeader, type H3Event, setHeader } from "h3"
+import { createLogger } from "../../../../lib/logger"
 import { imageCache } from "../../../../lib/imageCache"
 import { searchCache } from "../../../../lib/searchCache"
 
@@ -35,7 +36,7 @@ async function validateAdminAuth(event: H3Event) {
 
     return user
   } catch (error) {
-    console.error("Admin auth validation error:", error)
+    logger.error("Admin auth validation failed", { error })
     throw createError({
       statusCode: 401,
       statusMessage: "Authentication failed"
@@ -44,6 +45,8 @@ async function validateAdminAuth(event: H3Event) {
 }
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'admin-cache-stats')
+
   // CORS headers
   setHeader(
     event,
@@ -71,7 +74,7 @@ export default defineEventHandler(async (event) => {
       timestamp: new Date().toISOString()
     }
   } catch (error) {
-    console.error("Error getting cache stats:", error)
+    logger.error("Failed to get cache statistics", { error })
     throw createError({
       statusCode: 500,
       statusMessage: "Failed to get cache statistics"

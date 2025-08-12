@@ -1,6 +1,7 @@
 import { supabase } from "@dishola/supabase/admin"
 import { put } from "@vercel/blob"
 import { createError, defineEventHandler, getHeader, readBody, setHeader } from "h3"
+import { createLogger } from "../../lib/logger"
 
 // Admin emails that can access this endpoint
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
@@ -11,6 +12,7 @@ interface UploadImageRequest {
 }
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'upload-image')
   // CORS headers
   setHeader(
     event,
@@ -67,7 +69,7 @@ export default defineEventHandler(async (event) => {
 
     try {
       // Download the image from the URL
-      console.log(`Downloading image from: ${body.imageUrl}`)
+      logger.info('Downloading image from URL', { imageUrl: body.imageUrl })
       const imageResponse = await fetch(body.imageUrl)
 
       if (!imageResponse.ok) {
@@ -86,7 +88,7 @@ export default defineEventHandler(async (event) => {
       const extension = contentType.split("/")[1] || "jpg"
       const uniqueFilename = `taste-${body.filename}-${timestamp}.${extension}`
 
-      console.log(`Uploading to Vercel Blob: ${uniqueFilename}`)
+      logger.info('Uploading to Vercel Blob', { filename: uniqueFilename, contentType })
 
       // Upload to Vercel Blob
       const blob = await put(uniqueFilename, imageBuffer, {
@@ -95,7 +97,7 @@ export default defineEventHandler(async (event) => {
         addRandomSuffix: true
       })
 
-      console.log(`Successfully uploaded to Blob: ${blob.url}`)
+      logger.info('Successfully uploaded to Blob', { blobUrl: blob.url, filename: uniqueFilename })
 
       return {
         success: true,
@@ -104,7 +106,7 @@ export default defineEventHandler(async (event) => {
         filename: uniqueFilename
       }
     } catch (error) {
-      console.error("Error uploading image to blob:", error)
+      logger.error('Error uploading image to blob', { error: error.message || error })
 
       if (error.statusCode) {
         throw error

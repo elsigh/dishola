@@ -1,8 +1,10 @@
 import { type ProfileResponse, ProfileUpdateRequestSchema } from "@dishola/types"
 import { createClient } from "@supabase/supabase-js"
 import { createError, defineEventHandler, getHeader, readBody, setHeader } from "h3"
+import { createLogger } from "../../lib/logger"
 
 export default defineEventHandler(async (event): Promise<ProfileResponse> => {
+  const logger = createLogger(event, 'profile')
   setHeader(
     event,
     "Access-Control-Allow-Origin",
@@ -38,11 +40,11 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
     error: authError
   } = await supabase.auth.getUser()
   if (authError || !user) {
-    console.error("Auth error:", authError)
+    logger.error({ authError, message: "Auth error occurred" })
     throw createError({ statusCode: 401, statusMessage: "Invalid authentication token" })
   }
 
-  //console.log("Authenticated user ID:", user.id)
+  //logger.log({ userId: user.id, message: "Authenticated user ID" })
 
   if (event.method === "GET") {
     try {
@@ -54,7 +56,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
         .single()
 
       if (fetchError && fetchError.code !== "PGRST116") {
-        console.error("Error fetching profile:", fetchError)
+        logger.error({ fetchError, userId: user.id, message: "Error fetching profile" })
         throw createError({ statusCode: 500, statusMessage: `Failed to fetch profile for user.id: ${user.id}` })
       }
 
@@ -75,7 +77,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
         .order("order_position")
 
       if (tastesError) {
-        console.error("Error fetching user tastes:", tastesError)
+        logger.error({ tastesError, userId: user.id, message: "Error fetching user tastes" })
         // Don't throw error for tastes, just log it and continue without tastes
       }
 
@@ -88,7 +90,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
         tastes: tastesData || []
       }
     } catch (error) {
-      console.error("Profile fetch error:", error)
+      logger.error({ error, message: "Profile fetch error" })
       if (error.statusCode) {
         throw error
       }
@@ -103,7 +105,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
     const validatedBody = ProfileUpdateRequestSchema.parse(body)
     const { display_name, username } = validatedBody
 
-    console.log("Updating profile for user:", user.id, "with data:", validatedBody)
+    logger.log({ userId: user.id, data: validatedBody, message: "Updating profile for user" })
 
     try {
       // First, check if profile exists
@@ -114,7 +116,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
         .single()
 
       if (checkError && checkError.code !== "PGRST116") {
-        console.error("Error checking existing profile:", checkError)
+        logger.error({ checkError, userId: user.id, message: "Error checking existing profile" })
         throw createError({ statusCode: 500, statusMessage: "Failed to check existing profile" })
       }
 
@@ -122,7 +124,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
 
       if (existingProfile) {
         // Profile exists, update it using regular Supabase client
-        console.log("Updating existing profile:", existingProfile.id)
+        logger.log({ profileId: existingProfile.id, message: "Updating existing profile" })
 
         const { data: updateData, error } = await supabase
           .from("profiles")
@@ -134,11 +136,11 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
           .eq("user_id", user.id)
           .select()
 
-        console.log("Update result:", { data: updateData, error })
+        logger.log({ data: updateData, error, message: "Update result" })
         updateError = error
       } else {
         // Profile doesn't exist, create it
-        console.log("Creating new profile for user:", user.id)
+        logger.log({ userId: user.id, message: "Creating new profile for user" })
         const { error } = await supabase.from("profiles").insert({
           user_id: user.id,
           display_name,
@@ -150,7 +152,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
       }
 
       if (updateError) {
-        console.error("Error updating/creating profile:", updateError)
+        logger.error({ updateError, userId: user.id, message: "Error updating/creating profile" })
         throw createError({ statusCode: 500, statusMessage: "Failed to update profile" })
       }
 
@@ -162,7 +164,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
         .single()
 
       if (fetchError) {
-        console.error("Error fetching updated profile:", fetchError)
+        logger.error({ fetchError, userId: user.id, message: "Error fetching updated profile" })
         throw createError({ statusCode: 500, statusMessage: "Failed to fetch updated profile" })
       }
 
@@ -174,7 +176,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
         username: profileData?.username || null
       }
     } catch (error) {
-      console.error("Profile update error:", error)
+      logger.error({ error, message: "Profile update error" })
       if (error.statusCode) {
         throw error
       }

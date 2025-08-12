@@ -1,7 +1,9 @@
 import { supabase } from "@dishola/supabase/admin"
 import { createError, defineEventHandler, getQuery, setHeader } from "h3"
+import { createLogger } from "../../lib/logger"
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'public-profile')
   setHeader(
     event,
     "Access-Control-Allow-Origin",
@@ -49,7 +51,7 @@ export default defineEventHandler(async (event) => {
         .order("order_position")
 
       if (tastesError) {
-        console.error("Error fetching user tastes:", tastesError)
+        logger.error("Error fetching user tastes", { error: tastesError })
       }
 
       return {
@@ -59,7 +61,7 @@ export default defineEventHandler(async (event) => {
         tastes: tastesData || []
       }
     } catch (error) {
-      console.error("Error in getUserProfileByUsername:", error)
+      logger.error("Error in getUserProfileByUsername", { error })
       if (error.statusCode) {
         throw error
       }

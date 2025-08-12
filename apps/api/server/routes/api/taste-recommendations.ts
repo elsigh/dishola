@@ -6,6 +6,7 @@ import { generateText } from "ai"
 import { createError, defineEventHandler, getHeader, getQuery, type H3Event, setHeader } from "h3"
 import type { DishRecommendation, Location } from "../../../lib/types"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
+import { createLogger } from "../../lib/logger"
 
 // Add cache for taste recommendations
 const TASTE_CACHE = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
@@ -28,28 +29,22 @@ const gateway = createGatewayProvider({
   apiKey: process.env.GATEWAY_API_KEY
 })
 
-async function getModel(): Promise<LanguageModel> {
+async function getModel(logger: ReturnType<typeof createLogger>): Promise<LanguageModel> {
   try {
-    // Try to get model from Edge Config
-    const configModel = await get("SEARCH_AI_MODEL")
+    // Try to get taste recommendations model from Edge Config
+    const configModel = await get("TASTE_RECOMMENDATIONS_AI_MODEL")
     if (configModel) {
-      // Prefer Claude models for better JSON response reliability
-      const modelStr = String(configModel)
-      if (modelStr.includes("claude")) {
-        console.debug(`Using Claude model from Edge Config: ${modelStr}`)
-        // @ts-ignore
-        return gateway(modelStr)
-      } else {
-        console.debug(`Edge Config model ${modelStr} is not Claude, using fallback`)
-      }
+      logger.debug(`Using taste recommendations model from Edge Config: ${configModel}`)
+      // @ts-ignore
+      return gateway(configModel)
     }
   } catch (error) {
-    console.warn("Failed to fetch from Edge Config:", error)
+    logger.warn("Failed to fetch TASTE_RECOMMENDATIONS_AI_MODEL from Edge Config", { error })
   }
 
-  // Fallbacks if Edge Config fails or is not set
-  // Use Anthropic's Claude model instead of OpenAI as it handles this type of request better
-  const fallbackModel = "anthropic/claude-3-haiku"
+  // Fallback to Claude 3 Haiku - optimized for fast, reliable JSON responses
+  const fallbackModel = "anthropic/claude-3-haiku-20240307"
+  logger.debug(`Using fallback taste recommendations model: ${fallbackModel}`)
 
   // @ts-ignore
   return gateway(fallbackModel)
@@ -99,6 +94,8 @@ IMPORTANT FORMATTING INSTRUCTIONS:
 }
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'taste-recommendations')
+  
   // CORS headers
   setHeader(
     event,
@@ -113,9 +110,8 @@ export default defineEventHandler(async (event) => {
 
   // Start timing for the entire request (only for non-preflight requests)
   const startTime = Date.now()
-  const requestId = Math.random().toString(36).substring(2, 15)
 
-  console.debug(`[${requestId}] Taste recommendations API started at ${new Date().toISOString()}`)
+  logger.debug(`Taste recommendations API started at ${new Date().toISOString()}`)
 
   // Get auth token
   const authHeader = getHeader(event, "authorization")
@@ -234,7 +230,7 @@ export default defineEventHandler(async (event) => {
 
     if (userTastes.length === 0) {
       const totalTime = Date.now() - startTime
-      console.debug(`[${requestId}] No tastes found - returning early in ${totalTime}ms`)
+      logger.debug(`No tastes found - returning early in ${totalTime}ms`)
       return {
         error: "No taste preferences found. Please add some in your profile.",
         aiResults: [],
@@ -250,22 +246,19 @@ export default defineEventHandler(async (event) => {
     if (cached && now - cached.timestamp < TASTE_CACHE_TTL) {
       const cacheTime = Date.now() - cacheCheckStart
       const totalTime = Date.now() - startTime
-      console.debug(
-        `[${requestId}] Cache hit for taste recommendations - cache lookup: ${cacheTime}ms, total: ${totalTime}ms`,
-        { cacheKey }
-      )
+      logger.debug(`Cache hit - cache lookup: ${cacheTime}ms, total: ${totalTime}ms`, { cacheKey })
       return JSON.parse(JSON.stringify(cached.data)) as Record<string, unknown>
     }
 
     // AI processing timing
     const aiStartTime = Date.now()
-    console.debug(`[${requestId}] Cache miss - starting AI processing at ${new Date().toISOString()}`)
+    logger.debug(`Cache miss - starting processing at ${aiStartTime}`, { cacheKey })
 
     // Get AI-powered recommendations based on user tastes
-    const aiResults = await getTasteRecommendations(userTastes, locationInfo)
+    const aiResults = await getTasteRecommendations(userTastes, locationInfo, logger)
 
     const aiTime = Date.now() - aiStartTime
-    console.debug(`[${requestId}] AI processing completed in ${aiTime}ms`)
+    logger.debug(`AI processing completed in ${aiTime}ms`)
 
     const result = {
       location: location,
@@ -280,15 +273,15 @@ export default defineEventHandler(async (event) => {
 
     // Cache the result
     TASTE_CACHE.set(cacheKey, { data: result, timestamp: now })
-    console.debug("Cache set for taste recommendations:", cacheKey)
+    logger.debug("Cache set", { cacheKey })
 
     const totalTime = Date.now() - startTime
-    console.debug(`[${requestId}] Taste recommendations completed - AI: ${aiTime}ms, total: ${totalTime}ms`)
+    logger.debug(`Taste recommendations completed - AI: ${aiTime}ms, total: ${totalTime}ms`)
 
     return result
   } catch (error) {
     const totalTime = Date.now() - startTime
-    console.error(`[${requestId}] Taste recommendations error after ${totalTime}ms:`, error)
+    logger.error(`Taste recommendations error after ${totalTime}ms`, { error })
     throw createError({
       statusCode: 500,
       statusMessage: "Failed to get taste-based recommendations"
@@ -296,27 +289,17 @@ export default defineEventHandler(async (event) => {
   }
 })
 
-async function getTasteRecommendations(userTastes: string[], location: Location): Promise<DishRecommendation[]> {
+async function getTasteRecommendations(userTastes: string[], location: Location, logger: ReturnType<typeof createLogger>): Promise<DishRecommendation[]> {
   if (userTastes.length === 0) {
     return []
   }
 
-  const promptStart = Date.now()
   const prompt = getPrompt(userTastes, location)
-  const promptTime = Date.now() - promptStart
-  //console.debug(`Prompt generation took ${promptTime}ms`)
-  //console.debug("Prompt:", prompt)
-
   const aiStart = Date.now()
+  
   try {
-    const response = await generateAIResponse(prompt)
-    const aiResponseTime = Date.now() - aiStart
-    //console.debug(`AI response received in ${aiResponseTime}ms`)
-
-    const parseStart = Date.now()
+    const response = await generateAIResponse(prompt, logger)
     const parsed = JSON.parse(response)
-    const parseTime = Date.now() - parseStart
-    //console.debug(`JSON parsing took ${parseTime}ms`)
 
     const recommendations = parsed.map((rec: Record<string, unknown>, idx: number) => {
       const dish = rec.dish as { name: string }
@@ -328,34 +311,28 @@ async function getTasteRecommendations(userTastes: string[], location: Location)
       }
     })
 
-    const totalProcessingTime = Date.now() - aiStart
-    //console.debug(
-    //  `Total AI processing breakdown - prompt: ${promptTime}ms, AI response: ${aiResponseTime}ms, parsing: ${parseTime}ms, total: ${totalProcessingTime}ms`
-    //)
-
+    logger.debug(`Generated ${recommendations.length} taste recommendations`)
     return recommendations
   } catch (error) {
     const errorTime = Date.now() - aiStart
-    console.error(`Taste recommendation error after ${errorTime}ms:`, error)
+    logger.error(`Taste recommendation error after ${errorTime}ms`, { error })
     return []
   }
 }
 
-async function generateAIResponse(prompt: string): Promise<string> {
-  const aiCacheStart = Date.now()
+async function generateAIResponse(prompt: string, logger: ReturnType<typeof createLogger>): Promise<string> {
   const cacheKey = getAIResponseCacheKey(prompt)
   const now = Date.now()
 
   // Check AI response cache first
   const cached = AI_RESPONSE_CACHE.get(cacheKey)
   if (cached && now - cached.timestamp < AI_RESPONSE_CACHE_TTL) {
-    const cacheTime = Date.now() - aiCacheStart
-    //console.debug(`AI response cache hit - lookup: ${cacheTime}ms, saved AI API call`)
+    logger.debug(`AI response cache hit - saved API call`)
     return cached.response
   }
 
-  //console.debug(`AI response cache miss - making API call`)
-  const model = await getModel()
+  logger.debug(`AI response cache miss - making API call`)
+  const model = await getModel(logger)
 
   try {
     const { text } = await generateText({
@@ -368,11 +345,11 @@ async function generateAIResponse(prompt: string): Promise<string> {
 
     // Cache the successful response
     AI_RESPONSE_CACHE.set(cacheKey, { response: text, timestamp: now })
-    //console.debug(`AI response cached for future requests`)
+    logger.debug(`AI response cached for future requests`)
 
     return text
   } catch (error) {
-    console.error("AI model error:", error)
+    logger.error("AI model error", { error })
     // Fall back to a simpler response format if the AI call fails
     const fallbackResponse = JSON.stringify([
       {

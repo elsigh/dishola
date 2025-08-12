@@ -2,10 +2,12 @@ import { supabase } from "@dishola/supabase/admin"
 import { createError, defineEventHandler, getHeader, type H3Event, setHeader } from "h3"
 import { imageCache } from "../../../../lib/imageCache"
 import { searchCache } from "../../../../lib/searchCache"
+import { createLogger } from "../../../../lib/logger"
 
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 async function validateAdminAuth(event: H3Event) {
+  const logger = createLogger(event, 'admin-auth-validation')
   const authHeader = getHeader(event, "authorization")
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw createError({
@@ -35,7 +37,9 @@ async function validateAdminAuth(event: H3Event) {
 
     return user
   } catch (error) {
-    console.error("Admin auth validation error:", error)
+    logger.error('Admin auth validation failed', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     throw createError({
       statusCode: 401,
       statusMessage: "Authentication failed"
@@ -44,6 +48,7 @@ async function validateAdminAuth(event: H3Event) {
 }
 
 export default defineEventHandler(async (event) => {
+  const logger = createLogger(event, 'admin-cache-clear')
   // CORS headers
   setHeader(
     event,
@@ -80,7 +85,12 @@ export default defineEventHandler(async (event) => {
 
     const message = `Cleared ${initialSearchCacheSize} search cache entries and ${initialImageCacheSize} image cache entries`
     
-    console.log(`Admin cache clear by ${user.email}: ${message}`)
+    logger.info('Cache cleared successfully', {
+      clearedBy: user.email,
+      message,
+      searchCacheEntries: initialSearchCacheSize,
+      imageCacheEntries: initialImageCacheSize
+    })
 
     return {
       success: true,
@@ -93,7 +103,10 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error) {
-    console.error("Error clearing caches:", error)
+    logger.error('Failed to clear caches', {
+      error: error instanceof Error ? error.message : String(error),
+      clearedBy: user.email
+    })
     throw createError({
       statusCode: 500,
       statusMessage: "Failed to clear caches"
