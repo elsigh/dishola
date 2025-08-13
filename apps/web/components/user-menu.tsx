@@ -33,13 +33,13 @@ export function UserMenu() {
   }
 
   const avatarUrl = user?.user_metadata?.avatar_url
-  console.log("UserMenu debug:", {
-    hasUser: !!user,
-    avatarUrl,
-    imageError,
-    imageLoaded,
-    userMetadata: user?.user_metadata
-  })
+  // console.log("UserMenu debug:", {
+  //   hasUser: !!user,
+  //   avatarUrl,
+  //   imageError,
+  //   imageLoaded,
+  //   userMetadata: user?.user_metadata
+  // })
 
   const handleImageLoad = () => {
     console.log("Avatar image loaded successfully")
