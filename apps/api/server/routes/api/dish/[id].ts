@@ -1,6 +1,6 @@
 import { supabase } from "@dishola/supabase/admin"
 import { createError, defineEventHandler, getRouterParam, setHeader } from "h3"
-import { createLogger } from "../../lib/logger"
+import { createLogger } from "../../../lib/logger"
 
 export default defineEventHandler(async (event) => {
   const logger = createLogger(event, 'dish-detail')
@@ -121,9 +121,9 @@ export default defineEventHandler(async (event) => {
     }
 
     return dish
-  } catch (error) {
-    logger.error("Error fetching dish", { error, dishId })
-    if (error.statusCode) {
+  } catch (error: unknown) {
+    logger.error("Error fetching dish", { error: error instanceof Error ? error.message : String(error), dishId })
+    if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error
     }
     throw createError({

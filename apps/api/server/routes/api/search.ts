@@ -1,6 +1,5 @@
 import { createGatewayProvider } from "@ai-sdk/gateway"
 import { supabase } from "@dishola/supabase/admin"
-import { createClient } from "@supabase/supabase-js"
 import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
 import { generateText } from "ai"

@@ -147,9 +147,9 @@ export default defineEventHandler(async (event) => {
       available: isAvailable,
       message: isAvailable ? "Username is available!" : "Username is already taken"
     }
-  } catch (error) {
-    logger.error("Username check error", { error, username })
-    if (error.statusCode) {
+  } catch (error: unknown) {
+    logger.error("Username check error", { error: error instanceof Error ? error.message : String(error), username })
+    if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error
     }
     throw createError({ statusCode: 500, statusMessage: "Internal server error" })

@@ -199,9 +199,9 @@ export default defineEventHandler(async (event) => {
       statusCode: 405,
       statusMessage: "Method not allowed"
     })
-  } catch (error) {
-    logger.error('Taste dictionary admin API error', { error })
-    if (error.statusCode) {
+  } catch (error: unknown) {
+    logger.error('Taste dictionary admin API error', { error: error instanceof Error ? error.message : String(error) })
+    if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error // Re-throw HTTP errors as-is
     }
     throw createError({

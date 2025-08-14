@@ -162,17 +162,17 @@ export default defineEventHandler(async (event) => {
         // Rate limiting: wait a bit between requests
         await new Promise(resolve => setTimeout(resolve, 200))
 
-      } catch (error) {
+      } catch (error: unknown) {
         logger.error('Error processing taste', {
           tasteName: taste.name,
           tasteId: taste.id,
-          error: error.message || 'Unknown error'
+          error: error instanceof Error ? error.message : String(error)
         })
         results.push({
           id: taste.id,
           name: taste.name,
           success: false,
-          error: error.message || "Unknown error"
+          error: error instanceof Error ? error.message : String(error)
         })
       }
     }
@@ -184,9 +184,9 @@ export default defineEventHandler(async (event) => {
       results
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Error populating taste images', {
-      error: error.message || 'Unknown error'
+      error: error instanceof Error ? error.message : String(error)
     })
     throw createError({
       statusCode: 500,

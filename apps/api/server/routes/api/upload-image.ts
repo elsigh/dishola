@@ -105,10 +105,10 @@ export default defineEventHandler(async (event) => {
         originalUrl: body.imageUrl,
         filename: uniqueFilename
       }
-    } catch (error) {
-      logger.error('Error uploading image to blob', { error: error.message || error })
+    } catch (error: unknown) {
+      logger.error('Error uploading image to blob', { error: error instanceof Error ? error.message : String(error) })
 
-      if (error.statusCode) {
+      if (error && typeof error === 'object' && 'statusCode' in error) {
         throw error
       }
 

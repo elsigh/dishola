@@ -2,9 +2,6 @@ import { createClient } from "@supabase/supabase-js"
 import { createError, defineEventHandler, getHeader, getQuery, readBody, setHeader } from "h3"
 import { createLogger } from "../../../lib/logger"
 
-interface UserTasteRequest {
-  tasteIds: number[]
-}
 
 interface UserTasteReorderRequest {
   reorderedTastes: Array<{
@@ -187,7 +184,7 @@ export default defineEventHandler(async (event) => {
         let nextOrderPosition = (maxOrder?.[0]?.order_position || 0) + 1
 
         // Insert new tastes
-        const insertData = body.tasteIds.map((tasteId) => ({
+        const insertData = body.tasteIds.map((tasteId: number) => ({
           user_id: userId,
           taste_dictionary_id: tasteId,
           order_position: nextOrderPosition++
@@ -280,9 +277,9 @@ export default defineEventHandler(async (event) => {
       statusCode: 405,
       statusMessage: "Method not allowed"
     })
-  } catch (error) {
-    logger.error("User tastes API error", { error })
-    if (error.statusCode) {
+  } catch (error: unknown) {
+    logger.error("User tastes API error", { error: error instanceof Error ? error.message : String(error) })
+    if (error && typeof error === 'object' && 'statusCode' in error) {
       throw error // Re-throw HTTP errors as-is
     }
     throw createError({

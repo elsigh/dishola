@@ -60,9 +60,9 @@ export default defineEventHandler(async (event) => {
         avatar_url: profileData.avatar_url,
         tastes: tastesData || []
       }
-    } catch (error) {
-      logger.error("Error in getUserProfileByUsername", { error })
-      if (error.statusCode) {
+    } catch (error: unknown) {
+      logger.error("Error in getUserProfileByUsername", { error: error instanceof Error ? error.message : String(error) })
+      if (error && typeof error === 'object' && 'statusCode' in error) {
         throw error
       }
       throw createError({ statusCode: 500, statusMessage: "Internal server error" })

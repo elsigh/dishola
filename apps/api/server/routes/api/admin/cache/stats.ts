@@ -7,6 +7,7 @@ import { searchCache } from "../../../../lib/searchCache"
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 async function validateAdminAuth(event: H3Event) {
+  const logger = createLogger(event, 'admin-auth-validation')
   const authHeader = getHeader(event, "authorization")
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw createError({
