@@ -136,18 +136,20 @@ export const ProfileResponseSchema = z.object({
   display_name: z.string().nullable(),
   avatar_url: z.string().nullable(),
   username: z.string().nullable(),
-  tastes: z.array(
-    z.object({
-      id: z.number(),
-      order_position: z.number(),
-      taste_dictionary: z.object({
+  tastes: z
+    .array(
+      z.object({
         id: z.number(),
-        name: z.string(),
-        type: z.enum(TASTE_TYPES),
-        image_url: z.string().nullable()
+        order_position: z.number(),
+        taste_dictionary: z.object({
+          id: z.number(),
+          name: z.string(),
+          type: z.enum(TASTE_TYPES),
+          image_url: z.string().nullable()
+        })
       })
-    })
-  ).optional()
+    )
+    .optional()
 })
 
 export type ProfileResponse = z.infer<typeof ProfileResponseSchema>

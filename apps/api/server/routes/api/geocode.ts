@@ -3,7 +3,7 @@ import { getNeighborhoodInfo } from "../../lib/location-utils"
 import { createLogger } from "../../lib/logger"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'geocode')
+  const logger = createLogger(event, "geocode")
   setHeader(
     event,
     "Access-Control-Allow-Origin",
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
 
   if (event.method === "GET") {
     const { lat, lng } = getQuery(event)
-    
+
     if (!lat || !lng || typeof lat !== "string" || typeof lng !== "string") {
       throw createError({ statusCode: 400, statusMessage: "Missing or invalid lat/lng parameters" })
     }

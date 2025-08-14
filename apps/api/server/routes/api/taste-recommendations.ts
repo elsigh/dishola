@@ -94,8 +94,8 @@ IMPORTANT FORMATTING INSTRUCTIONS:
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'taste-recommendations')
-  
+  const logger = createLogger(event, "taste-recommendations")
+
   // CORS headers
   setHeader(
     event,
@@ -289,14 +289,18 @@ export default defineEventHandler(async (event) => {
   }
 })
 
-async function getTasteRecommendations(userTastes: string[], location: Location, logger: ReturnType<typeof createLogger>): Promise<DishRecommendation[]> {
+async function getTasteRecommendations(
+  userTastes: string[],
+  location: Location,
+  logger: ReturnType<typeof createLogger>
+): Promise<DishRecommendation[]> {
   if (userTastes.length === 0) {
     return []
   }
 
   const prompt = getPrompt(userTastes, location)
   const aiStart = Date.now()
-  
+
   try {
     const response = await generateAIResponse(prompt, logger)
     const parsed = JSON.parse(response)

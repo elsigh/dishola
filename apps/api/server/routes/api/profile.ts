@@ -4,7 +4,7 @@ import { createError, defineEventHandler, getHeader, readBody, setHeader } from 
 import { createLogger } from "../../lib/logger"
 
 export default defineEventHandler(async (event): Promise<ProfileResponse> => {
-  const logger = createLogger(event, 'profile')
+  const logger = createLogger(event, "profile")
   setHeader(
     event,
     "Access-Control-Allow-Origin",
@@ -90,14 +90,12 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
         tastes: (tastesData || []).map((taste: any) => ({
           id: taste.id,
           order_position: taste.order_position,
-          taste_dictionary: Array.isArray(taste.taste_dictionary) 
-            ? taste.taste_dictionary[0] 
-            : taste.taste_dictionary
+          taste_dictionary: Array.isArray(taste.taste_dictionary) ? taste.taste_dictionary[0] : taste.taste_dictionary
         }))
       }
     } catch (error: unknown) {
       logger.error("Profile fetch error", { error })
-      if (error && typeof error === 'object' && 'statusCode' in error) {
+      if (error && typeof error === "object" && "statusCode" in error) {
         throw error
       }
       throw createError({ statusCode: 500, statusMessage: "Internal server error" })
@@ -183,7 +181,7 @@ export default defineEventHandler(async (event): Promise<ProfileResponse> => {
       }
     } catch (error: unknown) {
       logger.error("Profile update error", { error })
-      if (error && typeof error === 'object' && 'statusCode' in error) {
+      if (error && typeof error === "object" && "statusCode" in error) {
         throw error
       }
       throw createError({ statusCode: 500, statusMessage: "Internal server error" })

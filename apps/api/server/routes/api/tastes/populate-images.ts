@@ -5,10 +5,10 @@ import { unsplashImageSearch } from "../../../lib/unsplashImageSearch"
 import { createLogger } from "../../../lib/logger"
 
 // Admin emails that can access this endpoint
-const ADMIN_EMAILS = ['elsigh@gmail.com']
+const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'tastes-populate-images')
+  const logger = createLogger(event, "tastes-populate-images")
   // CORS headers
   setHeader(
     event,
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   )
   setHeader(event, "Access-Control-Allow-Methods", "POST,OPTIONS")
   setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-  
+
   if (event.method === "OPTIONS") {
     return new Response(null, { status: 204 })
   }
@@ -39,8 +39,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const token = authHeader.split(" ")[1]
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-  
+  const {
+    data: { user },
+    error: authError
+  } = await supabase.auth.getUser(token)
+
   if (authError || !user) {
     throw createError({
       statusCode: 401,
@@ -111,7 +114,7 @@ export default defineEventHandler(async (event) => {
           // Update the database with the found image
           const { error: updateError } = await supabase
             .from("taste_dictionary")
-            .update({ 
+            .update({
               image_url: imageUrl,
               image_source: imageSource,
               updated_at: new Date().toISOString()
@@ -119,7 +122,7 @@ export default defineEventHandler(async (event) => {
             .eq("id", taste.id)
 
           if (updateError) {
-            logger.error('Failed to update image for taste', {
+            logger.error("Failed to update image for taste", {
               tasteName: taste.name,
               tasteId: taste.id,
               error: updateError
@@ -131,7 +134,7 @@ export default defineEventHandler(async (event) => {
               error: "Database update failed"
             })
           } else {
-            logger.info('Found image for taste', {
+            logger.info("Found image for taste", {
               tasteName: taste.name,
               tasteId: taste.id,
               imageSource,
@@ -147,7 +150,7 @@ export default defineEventHandler(async (event) => {
             processed++
           }
         } else {
-          logger.warn('No image found for taste', {
+          logger.warn("No image found for taste", {
             tasteName: taste.name,
             tasteId: taste.id
           })
@@ -160,10 +163,9 @@ export default defineEventHandler(async (event) => {
         }
 
         // Rate limiting: wait a bit between requests
-        await new Promise(resolve => setTimeout(resolve, 200))
-
+        await new Promise((resolve) => setTimeout(resolve, 200))
       } catch (error: unknown) {
-        logger.error('Error processing taste', {
+        logger.error("Error processing taste", {
           tasteName: taste.name,
           tasteId: taste.id,
           error: error instanceof Error ? error.message : String(error)
@@ -183,9 +185,8 @@ export default defineEventHandler(async (event) => {
       total: tastes.length,
       results
     }
-
   } catch (error: unknown) {
-    logger.error('Error populating taste images', {
+    logger.error("Error populating taste images", {
       error: error instanceof Error ? error.message : String(error)
     })
     throw createError({

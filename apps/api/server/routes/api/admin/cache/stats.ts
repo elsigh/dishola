@@ -7,7 +7,7 @@ import { searchCache } from "../../../../lib/searchCache"
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 async function validateAdminAuth(event: H3Event) {
-  const logger = createLogger(event, 'admin-auth-validation')
+  const logger = createLogger(event, "admin-auth-validation")
   const authHeader = getHeader(event, "authorization")
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw createError({
@@ -17,10 +17,13 @@ async function validateAdminAuth(event: H3Event) {
   }
 
   const token = authHeader.substring(7)
-  
+
   try {
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-    
+    const {
+      data: { user },
+      error
+    } = await supabase.auth.getUser(token)
+
     if (error || !user?.email) {
       throw createError({
         statusCode: 401,
@@ -46,7 +49,7 @@ async function validateAdminAuth(event: H3Event) {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'admin-cache-stats')
+  const logger = createLogger(event, "admin-cache-stats")
 
   // CORS headers
   setHeader(
@@ -56,7 +59,7 @@ export default defineEventHandler(async (event) => {
   )
   setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
   setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-  
+
   if (event.method === "OPTIONS") {
     return new Response(null, { status: 204 })
   }

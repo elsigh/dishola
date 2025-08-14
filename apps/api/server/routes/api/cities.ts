@@ -5,7 +5,7 @@ import { createLogger } from "../../lib/logger"
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'cities')
+  const logger = createLogger(event, "cities")
 
   // CORS headers
   setHeader(

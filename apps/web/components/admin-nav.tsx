@@ -17,7 +17,7 @@ export default function AdminNav() {
     },
     {
       href: "/admin/cache",
-      label: "Cache Management", 
+      label: "Cache Management",
       icon: Database,
       description: "Clear application caches"
     }
@@ -27,12 +27,12 @@ export default function AdminNav() {
     <div className="mb-8">
       <h1 className="text-3xl font-bold text-brand-text mb-2">Admin Dashboard</h1>
       <p className="text-brand-text-muted mb-6">Manage application settings and data</p>
-      
+
       <div className="flex gap-4 flex-wrap">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
-          
+
           return (
             <Button
               key={item.href}

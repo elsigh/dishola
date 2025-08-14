@@ -16,7 +16,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!authLoading && user && latitude === null && longitude === null && !isGettingLocation) {
       setIsGettingLocation(true)
-      
+
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -45,11 +45,11 @@ export default function HomePage() {
       searchParams.append("lat", latitude.toString())
       searchParams.append("long", longitude.toString())
       searchParams.append("sort", "distance") // Default sort by distance
-      
+
       // Get user tastes from auth context (now guaranteed to be loaded)
       const userTastes = getUserTastes()
       console.log("[HomePage] Profile loaded, tastes found:", userTastes.length, userTastes)
-      
+
       if (userTastes.length > 0) {
         // Inline the actual taste names in the URL
         searchParams.append("tastes", userTastes.join(","))
@@ -57,7 +57,7 @@ export default function HomePage() {
       } else {
         console.log("[HomePage] No tastes found, redirecting without tastes parameter")
       }
-      
+
       // Always redirect with location parameters
       router.replace(`/search?${searchParams.toString()}`)
     }
@@ -91,10 +91,7 @@ export default function HomePage() {
         </p>
 
         <div className="homepage-search-container mt-8 w-full max-w-2xl">
-          <SearchSection 
-            includeTastesOption={true} 
-            isUserLoggedIn={false}
-          />
+          <SearchSection includeTastesOption={true} isUserLoggedIn={false} />
         </div>
       </div>
     )

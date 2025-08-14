@@ -13,8 +13,8 @@ interface AddItemRequest {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'tastes-admin')
-  
+  const logger = createLogger(event, "tastes-admin")
+
   // CORS headers
   setHeader(
     event,
@@ -200,8 +200,8 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Method not allowed"
     })
   } catch (error: unknown) {
-    logger.error('Taste dictionary admin API error', { error: error instanceof Error ? error.message : String(error) })
-    if (error && typeof error === 'object' && 'statusCode' in error) {
+    logger.error("Taste dictionary admin API error", { error: error instanceof Error ? error.message : String(error) })
+    if (error && typeof error === "object" && "statusCode" in error) {
       throw error // Re-throw HTTP errors as-is
     }
     throw createError({

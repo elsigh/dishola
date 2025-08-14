@@ -2,7 +2,6 @@ import { createClient } from "@supabase/supabase-js"
 import { createError, defineEventHandler, getHeader, getQuery, readBody, setHeader } from "h3"
 import { createLogger } from "../../../lib/logger"
 
-
 interface UserTasteReorderRequest {
   reorderedTastes: Array<{
     id: number
@@ -20,8 +19,8 @@ interface CreateTasteRequest {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'tastes-user')
-  
+  const logger = createLogger(event, "tastes-user")
+
   // CORS headers
   setHeader(
     event,
@@ -279,7 +278,7 @@ export default defineEventHandler(async (event) => {
     })
   } catch (error: unknown) {
     logger.error("User tastes API error", { error: error instanceof Error ? error.message : String(error) })
-    if (error && typeof error === 'object' && 'statusCode' in error) {
+    if (error && typeof error === "object" && "statusCode" in error) {
       throw error // Re-throw HTTP errors as-is
     }
     throw createError({

@@ -3,7 +3,7 @@ import { createError, defineEventHandler, getQuery, setHeader } from "h3"
 import { createLogger } from "../../lib/logger"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'public-profile')
+  const logger = createLogger(event, "public-profile")
   setHeader(
     event,
     "Access-Control-Allow-Origin",
@@ -61,8 +61,10 @@ export default defineEventHandler(async (event) => {
         tastes: tastesData || []
       }
     } catch (error: unknown) {
-      logger.error("Error in getUserProfileByUsername", { error: error instanceof Error ? error.message : String(error) })
-      if (error && typeof error === 'object' && 'statusCode' in error) {
+      logger.error("Error in getUserProfileByUsername", {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      if (error && typeof error === "object" && "statusCode" in error) {
         throw error
       }
       throw createError({ statusCode: 500, statusMessage: "Internal server error" })

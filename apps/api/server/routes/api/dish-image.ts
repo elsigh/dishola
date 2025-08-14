@@ -7,7 +7,7 @@ import { imageCache } from "../../lib/imageCache"
 import { unsplashImageSearch } from "../../lib/unsplashImageSearch"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'dish-image')
+  const logger = createLogger(event, "dish-image")
   const { q, nocache } = getQuery(event)
   if (!q || typeof q !== "string") {
     event.res.statusCode = 400

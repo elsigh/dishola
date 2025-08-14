@@ -29,13 +29,6 @@
     "lib": ["ESNext", "DOM"],
     "baseUrl": "."
   },
-  "include": [
-    "server/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    ".nitro",
-    ".output",
-    "dist"
-  ]
+  "include": ["server/**/*"],
+  "exclude": ["node_modules", ".nitro", ".output", "dist"]
 }

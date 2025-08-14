@@ -3,8 +3,8 @@ import { createError, defineEventHandler, getRouterParam, setHeader } from "h3"
 import { createLogger } from "../../../lib/logger"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'dish-detail')
-  
+  const logger = createLogger(event, "dish-detail")
+
   // CORS headers
   setHeader(
     event,
@@ -123,7 +123,7 @@ export default defineEventHandler(async (event) => {
     return dish
   } catch (error: unknown) {
     logger.error("Error fetching dish", { error: error instanceof Error ? error.message : String(error), dishId })
-    if (error && typeof error === 'object' && 'statusCode' in error) {
+    if (error && typeof error === "object" && "statusCode" in error) {
       throw error
     }
     throw createError({

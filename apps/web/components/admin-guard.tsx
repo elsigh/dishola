@@ -13,9 +13,7 @@ interface AdminGuardProps {
 }
 
 // List of admin email addresses
-const ADMIN_EMAILS = [
-  'elsigh@gmail.com'
-]
+const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 export function AdminGuard({ children }: AdminGuardProps) {
   const { user, isLoading } = useAuth()
@@ -62,12 +60,10 @@ export function AdminGuard({ children }: AdminGuardProps) {
               <Shield className="h-5 w-5" />
               Authentication Required
             </CardTitle>
-            <CardDescription>
-              You must be signed in to access this area.
-            </CardDescription>
+            <CardDescription>You must be signed in to access this area.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => router.push('/')} className="w-full">
+            <Button onClick={() => router.push("/")} className="w-full">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Go to Home
             </Button>
@@ -87,15 +83,13 @@ export function AdminGuard({ children }: AdminGuardProps) {
               <Shield className="h-5 w-5" />
               Access Denied
             </CardTitle>
-            <CardDescription>
-              You don't have permission to access this administrative area.
-            </CardDescription>
+            <CardDescription>You don't have permission to access this administrative area.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-muted-foreground">
               Signed in as: <span className="font-medium">{user.email}</span>
             </div>
-            <Button onClick={() => router.push('/')} className="w-full">
+            <Button onClick={() => router.push("/")} className="w-full">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Go to Home
             </Button>
@@ -115,11 +109,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
               <Shield className="h-4 w-4" />
               Admin Access - Signed in as: <span className="font-medium">{user.email}</span>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => router.push('/')}
-            >
+            <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Button>

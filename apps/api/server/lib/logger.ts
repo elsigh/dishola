@@ -12,8 +12,8 @@ export function createLogger(event: H3Event, handlerName: string) {
   const context: LogContext = {
     handler: handlerName,
     requestId,
-    method: event.method || 'UNKNOWN',
-    url: event.path || 'UNKNOWN'
+    method: event.method || "UNKNOWN",
+    url: event.path || "UNKNOWN"
   }
 
   return {

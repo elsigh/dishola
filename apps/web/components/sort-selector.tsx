@@ -15,7 +15,7 @@ export default function SortSelector({ currentSort }: SortSelectorProps) {
 
     const params = new URLSearchParams(searchParams.toString())
     params.set("sort", newSort)
-    
+
     router.push(`/search?${params.toString()}`)
   }
 
@@ -26,9 +26,7 @@ export default function SortSelector({ currentSort }: SortSelectorProps) {
         <button
           onClick={() => handleSortChange("distance")}
           className={`px-3 py-1 text-sm rounded-full transition-colors ${
-            currentSort === "distance"
-              ? "bg-brand-primary text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            currentSort === "distance" ? "bg-brand-primary text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
           Distance
@@ -36,9 +34,7 @@ export default function SortSelector({ currentSort }: SortSelectorProps) {
         <button
           onClick={() => handleSortChange("rating")}
           className={`px-3 py-1 text-sm rounded-full transition-colors ${
-            currentSort === "rating"
-              ? "bg-brand-primary text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            currentSort === "rating" ? "bg-brand-primary text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
           Rating

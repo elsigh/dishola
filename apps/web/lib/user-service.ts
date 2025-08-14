@@ -10,7 +10,6 @@ export interface UserProfile {
   username?: string | null
 }
 
-
 // Create a separate admin client with service role key
 function createServiceRoleClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

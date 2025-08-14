@@ -81,7 +81,7 @@ export default function AdminCachePage() {
       <div className="container mx-auto py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <AdminNav />
-          
+
           <div className="max-w-2xl">
             <h2 className="text-2xl font-bold text-brand-text mb-2">Cache Management</h2>
             <p className="text-brand-text-muted mb-8">
@@ -89,46 +89,39 @@ export default function AdminCachePage() {
             </p>
 
             {/* Cache Stats */}
-          <div className="bg-white rounded-lg border p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-brand-text">Cache Statistics</h3>
-              <Button 
-                onClick={loadCacheStats}
-                disabled={isLoadingStats}
-                variant="outline"
-                size="sm"
-              >
-                {isLoadingStats ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : null}
-                Refresh Stats
-              </Button>
-            </div>
-
-            {stats ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 rounded p-4">
-                  <h3 className="font-medium text-gray-700 mb-1">Search Cache</h3>
-                  <p className="text-2xl font-bold text-brand-primary">{stats.searchCache.size}</p>
-                  <p className="text-sm text-gray-500">cached searches</p>
-                </div>
-                <div className="bg-gray-50 rounded p-4">
-                  <h3 className="font-medium text-gray-700 mb-1">Image Cache</h3>
-                  <p className="text-2xl font-bold text-brand-primary">{stats.imageCache.size}</p>
-                  <p className="text-sm text-gray-500">cached images</p>
-                </div>
+            <div className="bg-white rounded-lg border p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-brand-text">Cache Statistics</h3>
+                <Button onClick={loadCacheStats} disabled={isLoadingStats} variant="outline" size="sm">
+                  {isLoadingStats ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Refresh Stats
+                </Button>
               </div>
-            ) : (
-              <p className="text-gray-500 italic">Click "Refresh Stats" to load cache statistics</p>
-            )}
-          </div>
+
+              {stats ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded p-4">
+                    <h3 className="font-medium text-gray-700 mb-1">Search Cache</h3>
+                    <p className="text-2xl font-bold text-brand-primary">{stats.searchCache.size}</p>
+                    <p className="text-sm text-gray-500">cached searches</p>
+                  </div>
+                  <div className="bg-gray-50 rounded p-4">
+                    <h3 className="font-medium text-gray-700 mb-1">Image Cache</h3>
+                    <p className="text-2xl font-bold text-brand-primary">{stats.imageCache.size}</p>
+                    <p className="text-sm text-gray-500">cached images</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500 italic">Click "Refresh Stats" to load cache statistics</p>
+              )}
+            </div>
 
             {/* Clear Cache Button */}
             <div className="bg-white rounded-lg border p-6">
               <h3 className="text-xl font-semibold text-brand-text mb-4">Clear All Caches</h3>
               <p className="text-brand-text-muted mb-6">
-                This will clear all cached data including search results and image caches. 
-                Performance may be temporarily affected while caches rebuild.
+                This will clear all cached data including search results and image caches. Performance may be
+                temporarily affected while caches rebuild.
               </p>
 
               <Button
@@ -137,19 +130,11 @@ export default function AdminCachePage() {
                 className="bg-red-600 hover:bg-red-700 text-white"
                 size="lg"
               >
-                {isClearing ? (
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                ) : (
-                  <Trash2 className="w-5 h-5 mr-2" />
-                )}
+                {isClearing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Trash2 className="w-5 h-5 mr-2" />}
                 {isClearing ? "Clearing Caches..." : "Clear All Caches"}
               </Button>
 
-              {lastCleared && (
-                <p className="text-sm text-green-600 mt-4">
-                  Last cleared: {lastCleared}
-                </p>
-              )}
+              {lastCleared && <p className="text-sm text-green-600 mt-4">Last cleared: {lastCleared}</p>}
             </div>
           </div>
         </div>

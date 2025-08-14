@@ -124,8 +124,8 @@ Only use double quotes for property names and string values.`
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'search')
-  
+  const logger = createLogger(event, "search")
+
   // CORS headers
   setHeader(
     event,
@@ -332,7 +332,7 @@ async function getDishRecommendationa(
     try {
       parsed = JSON.parse(cleanedResponse)
     } catch (parseError) {
-      logger.error("JSON parse error", { 
+      logger.error("JSON parse error", {
         responseLength: cleanedResponse.length,
         preview: cleanedResponse.substring(0, 500) + "...",
         ending: "..." + cleanedResponse.substring(cleanedResponse.length - 200),

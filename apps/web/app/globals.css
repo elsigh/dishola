@@ -3,66 +3,67 @@
 @tailwind utilities;
 
 @layer base {
-	body {
-		@apply bg-brand-bg text-brand-text;
-		@apply font-sans;
-		min-height: 100vh;
-		display: flex;
-		flex-direction: column;
-	}
+  body {
+    @apply bg-brand-bg text-brand-text;
+    @apply font-sans;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 
-	h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6 {
-		@apply text-brand-text;
-	}
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply text-brand-text;
+  }
 
-	main {
-		flex-grow: 1;
-	}
+  main {
+    flex-grow: 1;
+  }
 }
 
 @layer components {
-	.input-custom {
-		@apply bg-white border-brand-border placeholder:text-brand-text-muted focus:border-brand-primary focus:ring-brand-primary;
-	}
-	.btn-custom-primary {
-		@apply bg-brand-primary text-white hover:bg-brand-primary-hover;
-	}
-	.btn-custom-secondary {
-		@apply bg-transparent border border-brand-primary text-brand-primary hover:bg-brand-primary/10;
-	}
+  .input-custom {
+    @apply bg-white border-brand-border placeholder:text-brand-text-muted focus:border-brand-primary focus:ring-brand-primary;
+  }
+  .btn-custom-primary {
+    @apply bg-brand-primary text-white hover:bg-brand-primary-hover;
+  }
+  .btn-custom-secondary {
+    @apply bg-transparent border border-brand-primary text-brand-primary hover:bg-brand-primary/10;
+  }
 
-	/* Search bar transition styles */
-	.homepage-search-container,
-	.header-search-container {
-		view-transition-name: search-bar;
-	}
-	
-	.homepage-search-container {
-		@apply px-4 sm:px-8;
-	}
-	
-	.header-search-container {
-		@apply w-full;
-	}
+  /* Search bar transition styles */
+  .homepage-search-container,
+  .header-search-container {
+    view-transition-name: search-bar;
+  }
 
-	/* Blue dot pulse animation */
-	@keyframes blue-dot-pulse {
-		0%, 100% {
-			transform: scale(1);
-			opacity: 0.6;
-		}
-		50% {
-			transform: scale(1.5);
-			opacity: 0.3;
-		}
-	}
-	
-	.animate-blue-dot-pulse {
-		animation: blue-dot-pulse 2s ease-in-out infinite;
-	}
+  .homepage-search-container {
+    @apply px-4 sm:px-8;
+  }
+
+  .header-search-container {
+    @apply w-full;
+  }
+
+  /* Blue dot pulse animation */
+  @keyframes blue-dot-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0.3;
+    }
+  }
+
+  .animate-blue-dot-pulse {
+    animation: blue-dot-pulse 2s ease-in-out infinite;
+  }
 }

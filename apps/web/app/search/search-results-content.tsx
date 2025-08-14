@@ -201,9 +201,7 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
           </div>
 
           {/* Sort Selector - only show if we have results */}
-          {(aiDishes.length > 0 || dbDishes.length > 0) && (
-            <SortSelector currentSort={sortParam} />
-          )}
+          {(aiDishes.length > 0 || dbDishes.length > 0) && <SortSelector currentSort={sortParam} />}
 
           {aiDishes.length === 0 && dbDishes.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-12">

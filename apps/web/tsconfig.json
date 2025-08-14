@@ -1,10 +1,6 @@
 {
   "compilerOptions": {
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "target": "ES6",
     "skipLibCheck": true,
@@ -23,15 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@dishola/types": [
-        "../../packages/types/index.ts"
-      ],
-      "@dishola/types/constants": [
-        "../../packages/types/constants.ts"
-      ]
+      "@/*": ["./*"],
+      "@dishola/types": ["../../packages/types/index.ts"],
+      "@dishola/types/constants": ["../../packages/types/constants.ts"]
     }
   },
   "include": [
@@ -42,7 +32,5 @@
     "next-env.d.ts",
     "/Users/elsigh/src/elsigh/dishola/apps/web/.next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

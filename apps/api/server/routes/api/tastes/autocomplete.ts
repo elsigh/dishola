@@ -4,8 +4,8 @@ import { createError, defineEventHandler, getQuery, setHeader } from "h3"
 import { createLogger } from "../../../lib/logger"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'tastes-autocomplete')
-  
+  const logger = createLogger(event, "tastes-autocomplete")
+
   // CORS headers
   setHeader(
     event,
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     const { data, error } = await dbQuery
 
     if (error) {
-      logger.error('Database query failed', { error, searchTerm, type })
+      logger.error("Database query failed", { error, searchTerm, type })
       throw createError({
         statusCode: 500,
         statusMessage: "Failed to fetch autocomplete suggestions"
@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
       results: data || []
     }
   } catch (error) {
-    logger.error('Autocomplete request failed', { error, searchTerm, type })
+    logger.error("Autocomplete request failed", { error, searchTerm, type })
     throw createError({
       statusCode: 500,
       statusMessage: "Failed to fetch autocomplete suggestions"

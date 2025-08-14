@@ -77,7 +77,7 @@ function validateUsername(username: string): { valid: boolean; message?: string 
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'username-check')
+  const logger = createLogger(event, "username-check")
   setHeader(
     event,
     "Access-Control-Allow-Origin",
@@ -149,7 +149,7 @@ export default defineEventHandler(async (event) => {
     }
   } catch (error: unknown) {
     logger.error("Username check error", { error: error instanceof Error ? error.message : String(error), username })
-    if (error && typeof error === 'object' && 'statusCode' in error) {
+    if (error && typeof error === "object" && "statusCode" in error) {
       throw error
     }
     throw createError({ statusCode: 500, statusMessage: "Internal server error" })

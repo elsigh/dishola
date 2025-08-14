@@ -1,5 +1,5 @@
 {
-	"buildCommand": "cd ../.. && pnpm turbo build --filter=@dishola/api",
-	"installCommand": "cd ../.. && pnpm install",
-	"outputDirectory": ".output"
+  "buildCommand": "cd ../.. && pnpm turbo build --filter=@dishola/api",
+  "installCommand": "cd ../.. && pnpm install",
+  "outputDirectory": ".output"
 }

@@ -12,7 +12,7 @@ interface ImageResult {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'image-search')
+  const logger = createLogger(event, "image-search")
   // CORS headers
   setHeader(
     event,

@@ -11,16 +11,16 @@ export default function SiteHeader() {
   const isHome = pathname === "/"
   const isSearchPage = pathname === "/search"
   const { user } = useAuth()
-  
+
   // Get current URL parameters to pass to SearchSection
   const currentQuery = searchParams.get("q") || ""
   const currentLat = searchParams.get("lat")
   const currentLng = searchParams.get("long")
-  
+
   return (
     <header className="py-4">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex gap-8">
-        <nav className={`hidden md:block py-2 transition-opacity duration-300 ${isHome ? 'opacity-0' : 'opacity-100'}`}>
+        <nav className={`hidden md:block py-2 transition-opacity duration-300 ${isHome ? "opacity-0" : "opacity-100"}`}>
           <Link href="/" className="text-3xl font-serif font-bold text-brand-primary">
             dishola
           </Link>
@@ -32,8 +32,8 @@ export default function SiteHeader() {
           */}
           {(isSearchPage || (isHome && user)) && (
             <div className="header-search-container">
-              <SearchSection 
-                includeTastesOption={true} 
+              <SearchSection
+                includeTastesOption={true}
                 isUserLoggedIn={!!user}
                 initialQuery={currentQuery}
                 initialLat={currentLat ? parseFloat(currentLat) : undefined}

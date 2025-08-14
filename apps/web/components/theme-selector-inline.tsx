@@ -1,41 +1,41 @@
-"use client";
-import { useAuth } from "@/lib/auth-context";
-import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+"use client"
+import { useAuth } from "@/lib/auth-context"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 const THEMES = [
   { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
+  { value: "dark", label: "Dark" }
   //{ value: "wacky", label: "Wacky" },
-];
+]
 
 export function ThemeSelectorInline() {
-  const { theme, setTheme } = useTheme();
-  const { user } = useAuth();
-  const [selected, setSelected] = useState(theme || "light");
-  const [loading, setLoading] = useState(false);
+  const { theme, setTheme } = useTheme()
+  const { user } = useAuth()
+  const [selected, setSelected] = useState(theme || "light")
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    setSelected(theme || "light");
-  }, [theme]);
+    setSelected(theme || "light")
+  }, [theme])
 
   const handleChange = async (value: string) => {
-    setTheme(value);
-    setSelected(value);
+    setTheme(value)
+    setSelected(value)
     if (typeof window !== "undefined") {
-      localStorage.setItem("theme", value);
-      localStorage.setItem("themeJustChanged", "true");
+      localStorage.setItem("theme", value)
+      localStorage.setItem("themeJustChanged", "true")
     }
     if (user?.id) {
-      setLoading(true);
+      setLoading(true)
       await fetch("/api/set-theme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: value }),
-      });
-      setLoading(false);
+        body: JSON.stringify({ theme: value })
+      })
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="flex gap-1">
@@ -54,5 +54,5 @@ export function ThemeSelectorInline() {
         </button>
       ))}
     </div>
-  );
+  )
 }

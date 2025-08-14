@@ -12,7 +12,7 @@ interface UploadImageRequest {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, 'upload-image')
+  const logger = createLogger(event, "upload-image")
   // CORS headers
   setHeader(
     event,
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
 
     try {
       // Download the image from the URL
-      logger.info('Downloading image from URL', { imageUrl: body.imageUrl })
+      logger.info("Downloading image from URL", { imageUrl: body.imageUrl })
       const imageResponse = await fetch(body.imageUrl)
 
       if (!imageResponse.ok) {
@@ -88,7 +88,7 @@ export default defineEventHandler(async (event) => {
       const extension = contentType.split("/")[1] || "jpg"
       const uniqueFilename = `taste-${body.filename}-${timestamp}.${extension}`
 
-      logger.info('Uploading to Vercel Blob', { filename: uniqueFilename, contentType })
+      logger.info("Uploading to Vercel Blob", { filename: uniqueFilename, contentType })
 
       // Upload to Vercel Blob
       const blob = await put(uniqueFilename, imageBuffer, {
@@ -97,7 +97,7 @@ export default defineEventHandler(async (event) => {
         addRandomSuffix: true
       })
 
-      logger.info('Successfully uploaded to Blob', { blobUrl: blob.url, filename: uniqueFilename })
+      logger.info("Successfully uploaded to Blob", { blobUrl: blob.url, filename: uniqueFilename })
 
       return {
         success: true,
@@ -106,9 +106,9 @@ export default defineEventHandler(async (event) => {
         filename: uniqueFilename
       }
     } catch (error: unknown) {
-      logger.error('Error uploading image to blob', { error: error instanceof Error ? error.message : String(error) })
+      logger.error("Error uploading image to blob", { error: error instanceof Error ? error.message : String(error) })
 
-      if (error && typeof error === 'object' && 'statusCode' in error) {
+      if (error && typeof error === "object" && "statusCode" in error) {
         throw error
       }
 
