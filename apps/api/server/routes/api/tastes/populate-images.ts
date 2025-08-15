@@ -1,26 +1,18 @@
 import { supabase } from "@dishola/supabase/admin"
-import { createError, defineEventHandler, getHeader, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader } from "h3"
 import { googleImageSearch } from "../../../lib/googleImageSearch"
 import { unsplashImageSearch } from "../../../lib/unsplashImageSearch"
 import { createLogger } from "../../../lib/logger"
+import { setCorsHeaders } from "../../../lib/cors"
 
 // Admin emails that can access this endpoint
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "tastes-populate-images")
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "POST,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  const logger = createLogger({ event, handlerName: "tastes-populate-images" })
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["POST", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   if (event.method !== "POST") {
     throw createError({
@@ -96,7 +88,7 @@ export default defineEventHandler(async (event) => {
 
         // Try Google Custom Search first
         if (googleApiKey && googleCx) {
-          imageUrl = await googleImageSearch(taste.name, googleApiKey, googleCx)
+          imageUrl = await googleImageSearch(taste.name, googleApiKey, googleCx, false, logger)
           if (imageUrl) {
             imageSource = "google"
           }
@@ -104,7 +96,7 @@ export default defineEventHandler(async (event) => {
 
         // Fallback to Unsplash if Google fails
         if (!imageUrl && unsplashKey) {
-          imageUrl = await unsplashImageSearch(taste.name, unsplashKey)
+          imageUrl = await unsplashImageSearch(taste.name, unsplashKey, false, logger)
           if (imageUrl) {
             imageSource = "unsplash"
           }

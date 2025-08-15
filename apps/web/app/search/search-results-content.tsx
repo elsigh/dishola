@@ -46,10 +46,132 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
     return !!(hasQuery || hasTastes) && !!(lat && long)
   })
   const [hasSearched, setHasSearched] = useState(false)
+  
+  // Streaming state
+  const [streamingStatus, setStreamingStatus] = useState<string | null>(null)
+  const [aiProgress, setAiProgress] = useState<{ message: string; timing?: any } | null>(null)
+  const [dbResultsReceived, setDbResultsReceived] = useState(false)
+  const [aiResultsReceived, setAiResultsReceived] = useState(false)
+  
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const abortController = useRef<AbortController | null>(null)
 
   const { user, getUserTastes } = useAuth()
+
+  // Streaming search handler
+  const handleStreamingSearch = async (searchUrl: string, abortController: AbortController | null) => {
+    console.log('🚀 handleStreamingSearch started with URL:', searchUrl)
+    
+    // Reset streaming state
+    setStreamingStatus("Starting search...")
+    setAiProgress(null)
+    setDbResultsReceived(false)
+    setAiResultsReceived(false)
+    setAiDishes([])
+    setDbDishes([])
+
+    const response = await fetch(searchUrl, {
+      signal: abortController?.signal
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch search results (${response.status}). Please try again.`)
+    }
+
+    if (!response.body) {
+      throw new Error("No response body received")
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        console.log('Raw chunk received:', chunk)
+        
+        const lines = chunk.split('\n').filter(line => line.trim())
+        console.log('Parsed lines:', lines)
+
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              // H3's createEventStream sends direct JSON, not SSE format
+              const data = JSON.parse(line)
+              await handleStreamEvent(data)
+            } catch (parseError) {
+              // Try SSE format as fallback
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6))
+                  await handleStreamEvent(data)
+                } catch (sseParseError) {
+                  console.warn('Failed to parse stream data:', line, parseError, sseParseError)
+                }
+              } else {
+                console.warn('Failed to parse stream data:', line, parseError)
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock()
+      setIsSearching(false)
+      setHasSearched(true)
+      setStreamingStatus(null)
+    }
+  }
+
+  // Handle individual stream events
+  const handleStreamEvent = async (event: any) => {
+    console.log('Stream event:', event.type, event.data)
+
+    switch (event.type) {
+      case 'metadata':
+        setStreamingStatus('Search initialized')
+        break
+
+      case 'dbResults':
+        setDbDishes(event.data)
+        setDbResultsReceived(true)
+        setStreamingStatus('Database results loaded')
+        break
+
+      case 'aiProgress':
+        setAiProgress({
+          message: event.data.message,
+          timing: event.data.timeToFirstToken ? { timeToFirstToken: event.data.timeToFirstToken } : undefined
+        })
+        setStreamingStatus(event.data.message)
+        break
+
+      case 'aiResults':
+        setAiDishes(event.data.results)
+        setAiResultsReceived(true)
+        setAiProgress({
+          message: `AI recommendations completed`,
+          timing: event.data.timing
+        })
+        setStreamingStatus('AI recommendations completed')
+        break
+
+      case 'complete':
+        setStreamingStatus('Search complete')
+        break
+
+      case 'aiError':
+        console.error('AI recommendation error:', event.data)
+        setAiProgress({ message: `AI error: ${event.data.message}` })
+        break
+
+      case 'error':
+        throw new Error(event.data.message || 'Streaming search failed')
+    }
+  }
 
   // Use server-provided location data when available, fallback to client-side hook
   const {
@@ -79,6 +201,16 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
       abortController.current = new AbortController()
 
       const performSearch = async () => {
+        console.log('🔍 performSearch called with:', { hasQuery, hasTastes, lat, long, q, tastesParam })
+        
+        if (abortController.current) {
+          abortController.current.abort()
+        }
+
+        abortController.current = new AbortController()
+        setError(null)
+        setIsSearching(true)
+
         try {
           // Build search URL
           const searchUrl = new URL(`${API_BASE_URL}/api/search`)
@@ -95,22 +227,10 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
           // Add sort parameter
           searchUrl.searchParams.append("sort", sortParam)
 
-          const response = await fetch(searchUrl.toString(), {
-            signal: abortController.current?.signal
-          })
-
-          if (!response.ok) {
-            throw new Error(`Failed to fetch search results (${response.status}). Please try again.`)
-          }
-
-          const data = await response.json()
-          if (data.error) {
-            throw new Error(data.error)
-          }
-
-          setAiDishes(data.aiResults || [])
-          setDbDishes(data.dbResults || [])
-          setHasSearched(true)
+          console.log('🌐 Calling streaming search with URL:', searchUrl.toString())
+          
+          // Enable streaming for progressive results
+          await handleStreamingSearch(searchUrl.toString(), abortController.current)
         } catch (err) {
           if (err instanceof Error && err.name === "AbortError") return
           console.error("Search API error:", err)
@@ -168,25 +288,59 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
     )
   }
 
-  // Show loading state if we're searching OR if we have search params but no results yet
-  const shouldShowLoading = isSearching || ((hasQuery || hasTastes) && lat && long && !hasSearched && !error)
+  // Show loading state only if we're searching and haven't received any results yet
+  const shouldShowLoading = isSearching && !dbResultsReceived && !aiResultsReceived && !error
 
   return (
     <div>
-      {/* Loading State */}
+      {/* Loading State with Streaming Progress */}
       {shouldShowLoading && (
         <div className="flex flex-col items-center justify-center text-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-brand-primary mb-4" />
-          <p className="text-brand-text-muted">
-            {hasQuery
-              ? `Searching for ${sortParam === "rating" ? "top-rated" : "nearby"} ${q} deliciousness ${locationDisplayName}...`
-              : `Finding ${sortParam === "rating" ? "top-rated" : "nearby"} deliciousness ${locationDisplayName}...`}
-          </p>
+          <div className="space-y-2">
+            <p className="text-brand-text-muted">
+              {hasQuery
+                ? `Searching for ${sortParam === "rating" ? "top-rated" : "nearby"} ${q} deliciousness ${locationDisplayName}...`
+                : `Finding ${sortParam === "rating" ? "top-rated" : "nearby"} deliciousness ${locationDisplayName}...`}
+            </p>
+            
+            {streamingStatus && (
+              <p className="text-sm text-brand-text-muted/75">
+                {streamingStatus}
+              </p>
+            )}
+
+            {aiProgress?.timing?.timeToFirstToken && (
+              <p className="text-xs text-brand-text-muted/60">
+                First response in {aiProgress.timing.timeToFirstToken}ms
+              </p>
+            )}
+          </div>
+
+          {/* Progressive loading indicators */}
+          <div className="mt-6 flex items-center space-x-4 text-xs text-brand-text-muted">
+            <div className="flex items-center space-x-2">
+              {dbResultsReceived ? (
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              ) : (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              )}
+              <span>Database</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              {aiResultsReceived ? (
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              ) : (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              )}
+              <span>AI Recommendations</span>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Results */}
-      {!shouldShowLoading && hasSearched && (hasQuery || hasTastes) && (
+      {/* Results - Show immediately when available, even while streaming */}
+      {(dbResultsReceived || aiResultsReceived || hasSearched) && (hasQuery || hasTastes) && (
         <>
           <div className="mb-6">
             <ResultsFor neighborhood={finalNeighborhood} city={finalCity} />
@@ -213,24 +367,65 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
             </div>
           ) : (
             <>
-              {aiDishes.length > 0 && (
+              {/* AI Results Section */}
+              {(aiDishes.length > 0 || (isSearching && !aiResultsReceived)) && (
                 <section className="mb-10">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-                    {aiDishes.map((rec) => (
-                      <DishCard key={`ai-${rec.id}`} recommendation={rec} />
-                    ))}
+                  <div className="flex items-center mb-4">
+                    <h2 className="text-2xl font-semibold text-brand-primary">AI Recommendations</h2>
+                    {!aiResultsReceived && isSearching && (
+                      <Loader2 className="h-4 w-4 animate-spin text-brand-primary ml-3" />
+                    )}
                   </div>
+                  
+                  {aiProgress && !aiResultsReceived && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-700">{aiProgress.message}</p>
+                      {aiProgress.timing && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          {aiProgress.timing.totalTime ? 
+                            `Completed in ${aiProgress.timing.totalTime}ms (${aiProgress.timing.avgTokensPerSecond} tokens/sec)` :
+                            aiProgress.timing.timeToFirstToken ? `First response: ${aiProgress.timing.timeToFirstToken}ms` : ''
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {aiDishes.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+                      {aiDishes.map((rec) => (
+                        <DishCard key={`ai-${rec.id}`} recommendation={rec} />
+                      ))}
+                    </div>
+                  ) : (isSearching && !aiResultsReceived) ? (
+                    <div className="text-center py-8 text-brand-text-muted">
+                      <p>Generating personalized recommendations...</p>
+                    </div>
+                  ) : null}
                 </section>
               )}
 
-              {dbDishes.length > 0 && (
+              {/* Database Results Section */}
+              {(dbDishes.length > 0 || (isSearching && !dbResultsReceived)) && (
                 <section className="mb-10">
-                  <h2 className="text-2xl font-semibold text-brand-primary mb-4">Community Favorites</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-                    {dbDishes.map((rec) => (
-                      <DishCard key={`db-${rec.id}`} recommendation={rec} />
-                    ))}
+                  <div className="flex items-center mb-4">
+                    <h2 className="text-2xl font-semibold text-brand-primary">Community Favorites</h2>
+                    {!dbResultsReceived && isSearching && (
+                      <Loader2 className="h-4 w-4 animate-spin text-brand-primary ml-3" />
+                    )}
                   </div>
+
+                  {dbDishes.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+                      {dbDishes.map((rec) => (
+                        <DishCard key={`db-${rec.id}`} recommendation={rec} />
+                      ))}
+                    </div>
+                  ) : (isSearching && !dbResultsReceived) ? (
+                    <div className="text-center py-8 text-brand-text-muted">
+                      <p>Loading community favorites...</p>
+                    </div>
+                  ) : null}
                 </section>
               )}
             </>

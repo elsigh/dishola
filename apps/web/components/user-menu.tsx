@@ -42,7 +42,7 @@ export function UserMenu() {
   // })
 
   const handleImageLoad = () => {
-    console.log("Avatar image loaded successfully")
+    //console.log("Avatar image loaded successfully")
     setImageLoaded(true)
     setImageError(false)
   }

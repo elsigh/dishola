@@ -1,13 +1,19 @@
 // This route proxies an image search for a given query string.
 // It tries Google Custom Search API first, then falls back to Unsplash if needed.
 import { defineEventHandler, getQuery, setHeader } from "h3"
-import { createLogger } from "../../lib/logger"
 import { googleImageSearch } from "../../lib/googleImageSearch"
 import { imageCache } from "../../lib/imageCache"
+import { createLogger } from "../../lib/logger"
 import { unsplashImageSearch } from "../../lib/unsplashImageSearch"
+import { setCorsHeaders } from "../../lib/cors"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "dish-image")
+  const logger = createLogger({ event, handlerName: "dish-image", disable: true })
+  
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
+  if (corsResponse) return corsResponse
+  
   const { q, nocache } = getQuery(event)
   if (!q || typeof q !== "string") {
     event.res.statusCode = 400
@@ -27,7 +33,7 @@ export default defineEventHandler(async (event) => {
 
   if (googleApiKey && googleCx) {
     logger.debug("Using Google image search", { query: q })
-    imageUrl = await googleImageSearch(q, googleApiKey, googleCx, bypassCache)
+    imageUrl = await googleImageSearch(q, googleApiKey, googleCx, bypassCache, logger)
   }
 
   // Fallback to Unsplash if Google fails or is not configured
@@ -35,7 +41,7 @@ export default defineEventHandler(async (event) => {
     const unsplashKey = process.env.UNSPLASH_ACCESS_KEY
     if (unsplashKey) {
       logger.debug("Falling back to Unsplash", { query: q })
-      imageUrl = await unsplashImageSearch(q, unsplashKey, bypassCache)
+      imageUrl = await unsplashImageSearch(q, unsplashKey, bypassCache, logger)
     }
   }
 

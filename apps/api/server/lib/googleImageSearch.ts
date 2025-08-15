@@ -1,4 +1,5 @@
 import { imageCache } from "./imageCache"
+import type { createLogger } from "./logger"
 
 /**
  * Searches for images using Google Custom Search API
@@ -7,13 +8,15 @@ import { imageCache } from "./imageCache"
  * @param apiKey Google API key
  * @param cx Custom Search Engine ID
  * @param bypassCache Optional flag to bypass cache
+ * @param logger Logger instance for structured logging
  * @returns URL of the first image found, or null if none found
  */
 export async function googleImageSearch(
   query: string,
   apiKey: string,
   cx: string,
-  bypassCache = false
+  bypassCache = false,
+  logger?: ReturnType<typeof createLogger>
 ): Promise<string | null> {
   // Create a cache key from the query
   const cacheKey = `google:${query}`
@@ -22,17 +25,17 @@ export async function googleImageSearch(
   if (!bypassCache) {
     const cachedUrl = imageCache.get(cacheKey)
     if (cachedUrl) {
-      console.debug(`Cache hit for Google image search: ${query}`)
+      logger?.debug(`Cache hit for Google image search: ${query}`)
       return cachedUrl
     }
   }
 
   try {
-    console.debug(`Cache miss for Google image search: ${query}`)
+    logger?.debug(`Cache miss for Google image search: ${query}`)
     const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(query)}&searchType=image&num=1`
     const res = await fetch(url)
     if (!res.ok) {
-      console.error(`Google API error: ${res.status} ${res.statusText}`)
+      logger?.error(`Google API error: ${res.status} ${res.statusText}`)
       return null
     }
 
@@ -43,12 +46,12 @@ export async function googleImageSearch(
       imageCache.set(cacheKey, imageUrl)
       return imageUrl
     } else {
-      console.debug(`No images found for Google image search: ${query}`)
+      logger?.debug(`No images found for Google image search: ${query}`)
     }
 
     return null
   } catch (error) {
-    console.error("Error in Google image search:", error)
+    logger?.error("Error in Google image search:", { error })
     return null
   }
 }

@@ -1,13 +1,14 @@
 import { supabase } from "@dishola/supabase/admin"
-import { createError, defineEventHandler, getHeader, type H3Event, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, type H3Event } from "h3"
 import { createLogger } from "../../../../lib/logger"
+import { setCorsHeaders } from "../../../../lib/cors"
 import { imageCache } from "../../../../lib/imageCache"
 import { searchCache } from "../../../../lib/searchCache"
 
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
 
 async function validateAdminAuth(event: H3Event) {
-  const logger = createLogger(event, "admin-auth-validation")
+  const logger = createLogger({ event, handlerName: "admin-auth-validation" })
   const authHeader = getHeader(event, "authorization")
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw createError({
@@ -49,20 +50,11 @@ async function validateAdminAuth(event: H3Event) {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "admin-cache-stats")
+  const logger = createLogger({ event, handlerName: "admin-cache-stats" })
 
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   // Validate admin authentication
   await validateAdminAuth(event)

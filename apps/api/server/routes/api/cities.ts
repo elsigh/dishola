@@ -1,24 +1,16 @@
 import { createClient } from "@supabase/supabase-js"
-import { createError, defineEventHandler, setHeader } from "h3"
+import { createError, defineEventHandler } from "h3"
 import { createLogger } from "../../lib/logger"
+import { setCorsHeaders } from "../../lib/cors"
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "cities")
+  const logger = createLogger({ event, handlerName: "cities" })
 
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   try {
     // Query to get cities with dish counts

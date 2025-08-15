@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     getUser()
-  }, [pendingCallback])
+  }, []) // Remove pendingCallback dependency to prevent re-running auth setup
 
   const signOut = async () => {
     const supabase = createClient()

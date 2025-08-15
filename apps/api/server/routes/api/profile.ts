@@ -1,21 +1,15 @@
 import { type ProfileResponse, ProfileUpdateRequestSchema } from "@dishola/types"
 import { createClient } from "@supabase/supabase-js"
-import { createError, defineEventHandler, getHeader, readBody, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, readBody } from "h3"
 import { createLogger } from "../../lib/logger"
+import { setCorsHeaders } from "../../lib/cors"
 
 export default defineEventHandler(async (event): Promise<ProfileResponse> => {
-  const logger = createLogger(event, "profile")
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization, Cache-Control")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 }) as any
-  }
+  const logger = createLogger({ event, handlerName: "profile" })
+  
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "POST", "OPTIONS"], headers: ["Content-Type", "Authorization", "Cache-Control"] })
+  if (corsResponse) return corsResponse as any
 
   // Get user from Authorization header
   const authHeader = getHeader(event, "authorization")

@@ -1,6 +1,7 @@
 import { supabase } from "@dishola/supabase/admin"
-import { createError, defineEventHandler, getHeader, getQuery, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, getQuery } from "h3"
 import { createLogger } from "../../lib/logger"
+import { setCorsHeaders } from "../../lib/cors"
 
 // Basic bad words list - in production you'd want a more comprehensive list
 const BAD_WORDS = [
@@ -77,18 +78,10 @@ function validateUsername(username: string): { valid: boolean; message?: string 
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "username-check")
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 }) as any
-  }
+  const logger = createLogger({ event, handlerName: "username-check" })
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
+  if (corsResponse) return corsResponse as any
 
   if (event.method !== "GET") {
     throw createError({ statusCode: 405, statusMessage: "Method not allowed" })

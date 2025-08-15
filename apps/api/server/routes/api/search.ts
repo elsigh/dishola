@@ -2,12 +2,20 @@ import { createGatewayProvider } from "@ai-sdk/gateway"
 import { supabase } from "@dishola/supabase/admin"
 import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
-import { generateText } from "ai"
+import { streamText } from "ai"
 import { createError, defineEventHandler, getQuery, type H3Event, setHeader } from "h3"
 import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/types"
+import { setCorsHeaders } from "../../lib/cors"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
-import { searchCache } from "../../lib/searchCache"
 import { createLogger } from "../../lib/logger"
+import { searchCache } from "../../lib/searchCache"
+
+/*
+ok I need some help with my prompt. I just ran a search for burrito which ran from this  │
+│   URL: http://localhost:3000/search?lat=37.78386989327213&long=-122.49223435289763&q=bur   │
+│   rito&sort=distance - the first result is completely across town and I know there are     │
+│   some great burritos much closer. I don't know why those didn't show up - can you         │
+│   inspect my */
 
 const gateway = createGatewayProvider({
   apiKey: process.env.GATEWAY_API_KEY
@@ -78,21 +86,27 @@ function getPrompt(dishName: string, location: Location, userTastes: string[] = 
     promptBase = `Return the top 15 best ${dishName} recommendations that would appeal to someone who likes ${userTastes.join(", ")}`
   }
 
-  // Adjust sorting based on user preference
+  // Adjust sorting based on user preference with stronger distance constraints
   let sortInstruction = ""
   if (sortBy === "rating") {
     sortInstruction =
       "PRIORITIZE the highest rated restaurants (4.5+ stars preferred) even if they are further away. Sort by rating first (highest to lowest), then consider distance as a secondary factor"
   } else {
     sortInstruction =
-      "PRIORITIZE the closest restaurants to the user's exact coordinates. Sort by distance first (closest to furthest), aiming for results within 1-2 miles when possible. Only consider rating as a secondary factor after distance"
+      "PRIORITIZE the closest restaurants to the user's exact coordinates. FOCUS HEAVILY ON PROXIMITY: At least 8-10 results should be within 0.5 miles, and ALL results should be within 3 miles maximum. Sort by distance first (closest to furthest). Only consider rating as a secondary factor after distance"
   }
 
   const prompt = `${promptBase} near the coordinates (${location.lat}, ${location.long}).
 
 SORTING REQUIREMENTS: ${sortInstruction}
 
-LOCATION CONSTRAINT: All recommendations must be actual restaurants that exist near the provided coordinates. Calculate actual distances from the coordinates.
+DISTANCE CONSTRAINTS:
+- MANDATORY: At least 8 results MUST be within 0.5 miles of the coordinates
+- MANDATORY: NO results should be more than 3 miles away
+- Focus on walkable distance first, then nearby driving distance
+- If you can't find enough results within 0.5 miles, expand gradually to 1 mile, then 2 miles maximum
+
+LOCATION CONSTRAINT: All recommendations must be actual restaurants that exist near the provided coordinates. Calculate actual distances from the coordinates using precise latitude/longitude.
 
 Return results as a JSON array with this structure:
 [
@@ -123,20 +137,125 @@ Only use double quotes for property names and string values.`
   return prompt
 }
 
-export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "search")
-
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
+async function handleStreamingSearch(
+  event: H3Event,
+  logger: ReturnType<typeof createLogger>,
+  useQuery: boolean,
+  useTastes: boolean,
+  searchPrompt: string,
+  locationInfo: Location,
+  sortBy: string,
+  query: any
+) {
+  logger.info("Starting streaming search")
+  
+  // Set Server-Sent Events headers  
+  setHeader(event, "Content-Type", "text/event-stream")
+  setHeader(event, "Cache-Control", "no-cache, no-store, must-revalidate")
+  setHeader(event, "Connection", "keep-alive")
+  
+  // Create a manual stream writer instead of using send()
+  let responseEnded = false
+  const sendSSE = async (data: any) => {
+    if (responseEnded) return
+    
+    try {
+      const sseData = `data: ${JSON.stringify(data)}\n\n`
+      event.node.res.write(sseData)
+      logger.debug("Sent SSE data", { type: data.type })
+    } catch (error) {
+      logger.error("Failed to send SSE data", { error })
+      responseEnded = true
+    }
   }
+  
+  const endResponse = () => {
+    if (!responseEnded) {
+      responseEnded = true
+      event.node.res.end()
+    }
+  }
+  
+  try {
+    // Get user tastes if needed
+    let userTastes: string[] = []
+    if (useTastes && typeof query.tastes === "string") {
+      userTastes = query.tastes
+        .split(",")
+        .map((taste: string) => taste.trim())
+        .filter(Boolean)
+    }
+
+    // Parse the user query
+    const parsedQuery = useQuery
+      ? await parseUserQuery(searchPrompt, logger)
+      : { dishName: userTastes.join(", "), cuisine: "Any" }
+
+    // Send initial response with metadata
+    await sendSSE({
+      type: "metadata",
+      data: {
+        query: searchPrompt,
+        location: locationInfo.address || `${locationInfo.lat},${locationInfo.long}`,
+        lat: locationInfo.lat,
+        long: locationInfo.long,
+        parsedQuery,
+        sortBy
+      }
+    })
+
+    // Get DB results first (fast)
+    logger.debug("Fetching database results")
+    const dbResults = await getDbDishRecommendations(parsedQuery.dishName, locationInfo, sortBy, logger)
+    const deduplicatedDbResults = deduplicateResults(dbResults)
+    
+    await sendSSE({
+      type: "dbResults",
+      data: deduplicatedDbResults
+    })
+
+    // Get AI results with streaming
+    logger.debug("Fetching AI recommendations")
+    await getDishRecommendationaStreaming(
+      parsedQuery,
+      locationInfo,
+      useTastes ? userTastes : [],
+      sortBy,
+      logger,
+      { push: sendSSE } // Pass sendSSE as the stream object
+    )
+    
+    // Get location data
+    const locationData = await getNeighborhoodInfo(locationInfo.lat, locationInfo.long, event.headers)
+    const { neighborhood, city } = locationData
+
+    // Send final metadata
+    await sendSSE({
+      type: "complete",
+      data: {
+        neighborhood,
+        city,
+        includedTastes: userTastes.length > 0 ? userTastes : null
+      }
+    })
+
+    endResponse()
+  } catch (error) {
+    logger.error("Streaming search error", { error })
+    await sendSSE({
+      type: "error",
+      data: { message: "Search failed", error: error instanceof Error ? error.message : 'Unknown error' }
+    })
+    endResponse()
+  }
+}
+
+export default defineEventHandler(async (event) => {
+  const logger = createLogger({ event, handlerName: "search" })
+
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "POST", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   // Location fallback logic
   function getLocationFromRequest(event: H3Event) {
@@ -181,8 +300,11 @@ export default defineEventHandler(async (event) => {
 
   // Get sort parameter (default to distance)
   const sortBy = typeof query.sort === "string" ? query.sort : "distance"
+  
+  // Check if client wants to disable streaming (streaming is default)
+  const isStreaming = query.stream !== "false" && query.stream !== "0"
 
-  // ---- CACHE CHECK ----
+  // ---- CACHE SETUP ----
   const cacheKey = searchCache.createKey(
     query.q as string,
     locationInfo.lat,
@@ -190,9 +312,13 @@ export default defineEventHandler(async (event) => {
     Array.isArray(query.tastes) ? query.tastes.join(",") : (query.tastes as string) || "",
     sortBy
   )
-  const cached = searchCache.get(cacheKey)
-  if (cached) {
-    return cached
+  
+  // Check cache for non-streaming requests
+  if (!isStreaming) {
+    const cached = searchCache.get(cacheKey)
+    if (cached) {
+      return cached
+    }
   }
 
   // Validate that we have either a query or tastes parameter (but not both)
@@ -210,6 +336,20 @@ export default defineEventHandler(async (event) => {
 
   const searchPrompt = query.q as string
   const location = locationInfo.address || `${locationInfo.lat},${locationInfo.long}`
+
+  // ---- STREAMING MODE ----
+  if (isStreaming) {
+    return handleStreamingSearch(
+      event,
+      logger,
+      useQuery,
+      useTastes,
+      searchPrompt,
+      locationInfo,
+      sortBy,
+      query
+    )
+  }
 
   const headers = event.node.req.headers
   const city = headers["x-vercel-ip-city"]
@@ -240,7 +380,14 @@ export default defineEventHandler(async (event) => {
       ? await parseUserQuery(searchPrompt, logger)
       : { dishName: userTastes.join(", "), cuisine: "Any" }
     // Get AI-powered recommendations with sort preference
-    const aiResults = await getDishRecommendationa(parsedQuery, locationInfo, userTastes, sortBy, logger)
+    // Only pass userTastes when we're doing taste-based search, not query-based search
+    const aiResults = await getDishRecommendationa(
+      parsedQuery,
+      locationInfo,
+      useTastes ? userTastes : [],
+      sortBy,
+      logger
+    )
     // Get community (database) recommendations
     const dbResults = await getDbDishRecommendations(parsedQuery.dishName, locationInfo, sortBy, logger)
 
@@ -298,6 +445,108 @@ Respond with valid, strict JSON only. Do not include comments, trailing commas, 
       dishName: query,
       cuisine: "Any"
     }
+  }
+}
+
+async function getDishRecommendationaStreaming(
+  q: ParsedQuery,
+  location: Location,
+  userTastes: string[] = [],
+  sortBy: string = "distance",
+  logger: ReturnType<typeof createLogger>,
+  stream: { push: (data: any) => Promise<void> }
+): Promise<DishRecommendation[]> {
+  const prompt = getPrompt(q.dishName, location, userTastes, sortBy)
+  
+  try {
+    await stream.push({
+      type: "aiProgress",
+      data: { status: "starting", message: "Generating AI recommendations..." }
+    })
+
+    const model = await getModel(logger)
+    const startTime = Date.now()
+    let firstTokenTime: number | null = null
+    let tokenCount = 0
+
+    const result = await streamText({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      maxOutputTokens: 4000
+    })
+
+    // Collect the streamed response
+    let fullText = ""
+    let lastUpdateTime = startTime
+    
+    for await (const chunk of result.textStream) {
+      // Capture timing for first token
+      if (firstTokenTime === null) {
+        firstTokenTime = Date.now()
+        logger.debug("First token received", { 
+          timeToFirstToken: firstTokenTime - startTime 
+        })
+        
+        await stream.push({
+          type: "aiProgress", 
+          data: { status: "streaming", message: "Receiving response...", timeToFirstToken: firstTokenTime - startTime }
+        })
+      }
+      
+      fullText += chunk
+      tokenCount++
+
+      // Send periodic progress updates (every 500ms)
+      const now = Date.now()
+      if (now - lastUpdateTime > 500) {
+        await stream.push({
+          type: "aiProgress",
+          data: { 
+            status: "streaming", 
+            message: `Processing response... (${Math.round(fullText.length / 10)} chars)`,
+            partialLength: fullText.length
+          }
+        })
+        lastUpdateTime = now
+      }
+    }
+
+    const endTime = Date.now()
+    const totalTime = endTime - startTime
+    const timeToFirstToken = firstTokenTime ? firstTokenTime - startTime : totalTime
+
+    logger.info("AI streaming response completed", {
+      totalTime,
+      timeToFirstToken,
+      estimatedTokens: tokenCount,
+      avgTokensPerSecond: Math.round((tokenCount / (totalTime / 1000)) * 100) / 100
+    })
+
+    // Process the complete response
+    const results = await processAIResponse(fullText, location, sortBy, logger)
+    
+    await stream.push({
+      type: "aiResults",
+      data: {
+        results,
+        timing: {
+          totalTime,
+          timeToFirstToken,
+          estimatedTokens: tokenCount,
+          avgTokensPerSecond: Math.round((tokenCount / (totalTime / 1000)) * 100) / 100
+        }
+      }
+    })
+
+    return results
+  } catch (error) {
+    logger.error("Streaming AI recommendation error", { error })
+    await stream.push({
+      type: "aiError",
+      data: { message: "AI recommendation failed", error: error instanceof Error ? error.message : 'Unknown error' }
+    })
+    return []
   }
 }
 
@@ -410,6 +659,107 @@ async function getDishRecommendationa(
   }
 }
 
+// Extract the AI response processing logic into a separate function
+async function processAIResponse(
+  response: string,
+  location: Location,
+  sortBy: string,
+  logger: ReturnType<typeof createLogger>
+): Promise<DishRecommendation[]> {
+  // Clean and validate JSON response
+  let cleanedResponse = response.trim()
+
+  // Remove any markdown code blocks if present
+  if (cleanedResponse.startsWith("```json")) {
+    cleanedResponse = cleanedResponse.replace(/^```json\s*/, "").replace(/\s*```$/, "")
+  } else if (cleanedResponse.startsWith("```")) {
+    cleanedResponse = cleanedResponse.replace(/^```\s*/, "").replace(/\s*```$/, "")
+  }
+
+  // Log the raw response for debugging if it's problematic
+  if (!cleanedResponse.startsWith("[") && !cleanedResponse.startsWith("{")) {
+    logger.error("AI response doesn't look like JSON", { preview: cleanedResponse.substring(0, 200) + "..." })
+    return []
+  }
+
+  let parsed: any
+  try {
+    parsed = JSON.parse(cleanedResponse)
+  } catch (parseError) {
+    logger.error("JSON parse error", {
+      responseLength: cleanedResponse.length,
+      preview: cleanedResponse.substring(0, 500) + "...",
+      ending: "..." + cleanedResponse.substring(cleanedResponse.length - 200),
+      parseError
+    })
+
+    // Try to fix incomplete JSON by finding the last complete object
+    const lastCompleteArrayMatch = cleanedResponse.match(/^(.*})\s*,?\s*\{[^}]*$/s)
+    if (lastCompleteArrayMatch) {
+      const truncatedJson = lastCompleteArrayMatch[1] + "]"
+      logger.debug("Attempting to parse truncated JSON", { length: `${truncatedJson.length} characters` })
+      try {
+        parsed = JSON.parse(truncatedJson)
+        logger.debug("Successfully parsed truncated JSON", { results: parsed.length })
+      } catch (truncatedError) {
+        logger.error("Truncated JSON parsing also failed", { truncatedError })
+        return []
+      }
+    } else {
+      return []
+    }
+  }
+
+  // Ensure we have an array
+  if (!Array.isArray(parsed)) {
+    logger.error("AI response is not an array", { type: typeof parsed })
+    return []
+  }
+
+  // Validate each result has required structure
+  const validResults = parsed.filter((rec: any) => {
+    return rec?.dish?.name && rec?.restaurant?.name && rec?.dish?.rating
+  })
+
+  if (validResults.length === 0) {
+    logger.error("No valid results from AI response")
+    return []
+  }
+
+  // Map results and calculate distances for server-side verification/sorting
+  const resultsWithDistance = validResults.map((rec: any, idx: number) => {
+    const hasCoordinates = rec.restaurant?.lat && rec.restaurant?.lng
+    const distance = hasCoordinates
+      ? calculateDistance(location.lat, location.long, rec.restaurant.lat, rec.restaurant.lng)
+      : 999 // Set high distance for restaurants without coordinates
+
+    return {
+      ...rec,
+      id: `${rec.dish.name.replace(/\s+/g, "_")}-${rec.restaurant.name.replace(/\s+/g, "_")}-${idx}`,
+      distance,
+      numericRating: parseFloat(rec.dish.rating) || 0
+    }
+  })
+
+  // Sort results server-side to ensure proper ordering regardless of AI response
+  const sortedResults = resultsWithDistance.sort((a, b) => {
+    if (sortBy === "rating") {
+      // Sort by rating first, then by distance
+      const ratingDiff = b.numericRating - a.numericRating
+      if (Math.abs(ratingDiff) > 0.1) return ratingDiff
+      return a.distance - b.distance
+    } else {
+      // Sort by distance first, then by rating
+      const distanceDiff = a.distance - b.distance
+      if (Math.abs(distanceDiff) > 0.1) return distanceDiff
+      return b.numericRating - a.numericRating
+    }
+  })
+
+  // Return results without temporary sorting fields
+  return sortedResults.map(({ distance, numericRating, ...result }) => result)
+}
+
 async function getDbDishRecommendations(
   dishName: string,
   userLocation: Location,
@@ -489,18 +839,51 @@ async function getDbDishRecommendations(
 
 async function generateAIResponse(prompt: string, logger: ReturnType<typeof createLogger>): Promise<string> {
   const model = await getModel(logger)
+  
+  const startTime = Date.now()
+  let firstTokenTime: number | null = null
+  let tokenCount = 0
 
   try {
-    const { text } = await generateText({
+    const result = await streamText({
       model,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
-      // Increase max tokens to ensure complete JSON responses for 15 results
       maxOutputTokens: 4000
     })
-    return text
+
+    // Collect the streamed response
+    let fullText = ""
+    
+    for await (const chunk of result.textStream) {
+      // Capture timing for first token
+      if (firstTokenTime === null) {
+        firstTokenTime = Date.now()
+        logger.debug("First token received", { 
+          timeToFirstToken: firstTokenTime - startTime 
+        })
+      }
+      
+      fullText += chunk
+      tokenCount++
+    }
+
+    const endTime = Date.now()
+    const totalTime = endTime - startTime
+    const timeToFirstToken = firstTokenTime ? firstTokenTime - startTime : totalTime
+
+    logger.info("AI response completed", {
+      totalTime,
+      timeToFirstToken,
+      estimatedTokens: tokenCount,
+      avgTokensPerSecond: Math.round((tokenCount / (totalTime / 1000)) * 100) / 100
+    })
+
+    return fullText
   } catch (error) {
-    logger.error("AI model error", { error })
+    const errorTime = Date.now() - startTime
+    logger.error("AI model error", { error, timeTaken: errorTime })
+    
     // Fall back to a simpler response format if the AI call fails
     return JSON.stringify([
       {

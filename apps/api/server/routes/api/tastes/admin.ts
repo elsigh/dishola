@@ -1,7 +1,8 @@
 import { supabase } from "@dishola/supabase/admin"
 import type { TasteType } from "@dishola/types/constants"
-import { createError, defineEventHandler, getHeader, getQuery, readBody, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, getQuery, readBody } from "h3"
 import { createLogger } from "../../../lib/logger"
+import { setCorsHeaders } from "../../../lib/cors"
 
 // Admin emails that can access this endpoint
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
@@ -13,20 +14,11 @@ interface AddItemRequest {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "tastes-admin")
+  const logger = createLogger({ event, handlerName: "tastes-admin" })
 
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "POST", "DELETE", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   // Check for admin authorization
   const authHeader = getHeader(event, "authorization")

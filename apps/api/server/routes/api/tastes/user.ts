@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
-import { createError, defineEventHandler, getHeader, getQuery, readBody, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, getQuery, readBody } from "h3"
 import { createLogger } from "../../../lib/logger"
+import { setCorsHeaders } from "../../../lib/cors"
 
 interface UserTasteReorderRequest {
   reorderedTastes: Array<{
@@ -19,20 +20,11 @@ interface CreateTasteRequest {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "tastes-user")
+  const logger = createLogger({ event, handlerName: "tastes-user" })
 
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   // Get user from Authorization header
   const authHeader = getHeader(event, "authorization")

@@ -1,22 +1,14 @@
 import { supabase } from "@dishola/supabase/admin"
-import { createError, defineEventHandler, getRouterParam, setHeader } from "h3"
+import { createError, defineEventHandler, getRouterParam } from "h3"
 import { createLogger } from "../../../lib/logger"
+import { setCorsHeaders } from "../../../lib/cors"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "dish-detail")
+  const logger = createLogger({ event, handlerName: "dish-detail" })
 
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   const dishId = getRouterParam(event, "id")
 

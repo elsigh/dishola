@@ -1,7 +1,8 @@
 import { supabase } from "@dishola/supabase/admin"
 import { put } from "@vercel/blob"
-import { createError, defineEventHandler, getHeader, readBody, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, readBody } from "h3"
 import { createLogger } from "../../lib/logger"
+import { setCorsHeaders } from "../../lib/cors"
 
 // Admin emails that can access this endpoint
 const ADMIN_EMAILS = ["elsigh@gmail.com"]
@@ -12,19 +13,10 @@ interface UploadImageRequest {
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "upload-image")
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "POST,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  const logger = createLogger({ event, handlerName: "upload-image" })
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["POST", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   // Check for admin authorization
   const authHeader = getHeader(event, "authorization")

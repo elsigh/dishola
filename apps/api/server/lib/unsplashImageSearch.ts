@@ -1,4 +1,5 @@
 import { imageCache } from "./imageCache"
+import type { createLogger } from "./logger"
 
 /**
  * Searches for images using Unsplash API
@@ -6,12 +7,14 @@ import { imageCache } from "./imageCache"
  * @param query The search query
  * @param accessKey Unsplash API access key
  * @param bypassCache Optional flag to bypass cache
+ * @param logger Logger instance for structured logging
  * @returns URL of the first image found, or null if none found
  */
 export async function unsplashImageSearch(
   query: string,
   accessKey: string,
-  bypassCache = false
+  bypassCache = false,
+  logger?: ReturnType<typeof createLogger>
 ): Promise<string | null> {
   // Create a cache key from the query
   const cacheKey = `unsplash:${query}`
@@ -20,18 +23,18 @@ export async function unsplashImageSearch(
   if (!bypassCache) {
     const cachedUrl = imageCache.get(cacheKey)
     if (cachedUrl) {
-      console.debug(`Cache hit for Unsplash image search: ${query}`)
+      logger?.debug(`Cache hit for Unsplash image search: ${query}`)
       return cachedUrl
     }
   }
 
   try {
-    console.debug(`Cache miss for Unsplash image search: ${query}`)
+    logger?.debug(`Cache miss for Unsplash image search: ${query}`)
     const searchUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&client_id=${accessKey}&per_page=1`
     const searchRes = await fetch(searchUrl)
 
     if (!searchRes.ok) {
-      console.error(`Unsplash API error: ${searchRes.status} ${searchRes.statusText}`)
+      logger?.error(`Unsplash API error: ${searchRes.status} ${searchRes.statusText}`)
       return null
     }
 
@@ -45,7 +48,7 @@ export async function unsplashImageSearch(
 
     return null
   } catch (error) {
-    console.error("Error in Unsplash image search:", error)
+    logger?.error("Error in Unsplash image search:", { error })
     return null
   }
 }

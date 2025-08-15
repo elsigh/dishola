@@ -3,10 +3,11 @@ import { createClient } from "@supabase/supabase-js"
 import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
 import { generateText } from "ai"
-import { createError, defineEventHandler, getHeader, getQuery, type H3Event, setHeader } from "h3"
+import { createError, defineEventHandler, getHeader, getQuery, type H3Event } from "h3"
 import type { DishRecommendation, Location } from "../../../lib/types"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
 import { createLogger } from "../../lib/logger"
+import { setCorsHeaders } from "../../lib/cors"
 
 // Add cache for taste recommendations
 const TASTE_CACHE = new Map<string, { data: Record<string, unknown>; timestamp: number }>()
@@ -94,19 +95,11 @@ IMPORTANT FORMATTING INSTRUCTIONS:
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "taste-recommendations")
+  const logger = createLogger({ event, handlerName: "taste-recommendations" })
 
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "POST", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   // Start timing for the entire request (only for non-preflight requests)
   const startTime = Date.now()

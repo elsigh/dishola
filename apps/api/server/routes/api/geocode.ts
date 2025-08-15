@@ -1,20 +1,14 @@
-import { createError, defineEventHandler, getQuery, setHeader } from "h3"
+import { createError, defineEventHandler, getQuery } from "h3"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
 import { createLogger } from "../../lib/logger"
+import { setCorsHeaders } from "../../lib/cors"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "geocode")
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  const logger = createLogger({ event, handlerName: "geocode" })
+  
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   if (event.method === "GET") {
     const { lat, lng } = getQuery(event)

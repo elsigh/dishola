@@ -66,7 +66,7 @@ export function useLocationData(props?: UseLocationDataProps) {
           return
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/taste-recommendations?lat=${latitude}&long=${longitude}`, {
+        const response = await fetch(`${API_BASE_URL}/api/geocode?lat=${latitude}&lng=${longitude}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }

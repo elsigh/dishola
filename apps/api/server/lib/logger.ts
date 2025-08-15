@@ -7,7 +7,26 @@ interface LogContext {
   url: string
 }
 
-export function createLogger(event: H3Event, handlerName: string) {
+interface CreateLoggerOptions {
+  event: H3Event
+  handlerName: string
+  disable?: boolean
+}
+
+export function createLogger(options: CreateLoggerOptions) {
+  const { event, handlerName, disable = false } = options
+
+  // Return no-op logger when disabled
+  if (disable) {
+    return {
+      debug: () => {},
+      log: () => {},
+      warn: () => {},
+      error: () => {},
+      info: () => {}
+    }
+  }
+
   const requestId = Math.random().toString(36).substring(2, 15)
   const context: LogContext = {
     handler: handlerName,

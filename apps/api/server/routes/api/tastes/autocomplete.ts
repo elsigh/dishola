@@ -1,23 +1,15 @@
 import { supabase } from "@dishola/supabase/admin"
 import type { TasteType } from "@dishola/types/constants"
-import { createError, defineEventHandler, getQuery, setHeader } from "h3"
+import { createError, defineEventHandler, getQuery } from "h3"
 import { createLogger } from "../../../lib/logger"
+import { setCorsHeaders } from "../../../lib/cors"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "tastes-autocomplete")
+  const logger = createLogger({ event, handlerName: "tastes-autocomplete" })
 
-  // CORS headers
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
+  if (corsResponse) return corsResponse
 
   const query = getQuery(event)
   const searchTerm = query.q as string

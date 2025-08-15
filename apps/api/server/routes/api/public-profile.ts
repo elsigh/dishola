@@ -1,20 +1,13 @@
 import { supabase } from "@dishola/supabase/admin"
-import { createError, defineEventHandler, getQuery, setHeader } from "h3"
+import { createError, defineEventHandler, getQuery } from "h3"
 import { createLogger } from "../../lib/logger"
+import { setCorsHeaders } from "../../lib/cors"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger(event, "public-profile")
-  setHeader(
-    event,
-    "Access-Control-Allow-Origin",
-    process.env.NODE_ENV === "production" ? "https://dishola.com" : "http://localhost:3000"
-  )
-  setHeader(event, "Access-Control-Allow-Methods", "GET,OPTIONS")
-  setHeader(event, "Access-Control-Allow-Headers", "Content-Type")
-
-  if (event.method === "OPTIONS") {
-    return new Response(null, { status: 204 })
-  }
+  const logger = createLogger({ event, handlerName: "public-profile" })
+  // Handle CORS
+  const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"], headers: ["Content-Type"] })
+  if (corsResponse) return corsResponse
 
   if (event.method === "GET") {
     const { username } = getQuery(event)
