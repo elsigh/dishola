@@ -160,49 +160,29 @@ export default function AiResultsStreaming({
                     }))
                     break
 
-
-                  case 'aiResults':
-                    // Got all AI results - now stream them in one by one for visual effect
-                    const results = eventData.data.results || []
-                    const timing = eventData.data.timing
-
-                    console.log('🍽️ Client received AI results:', {
-                      resultCount: results.length,
-                      results: results.map((dish: any, index: number) => ({
-                        index: index + 1,
-                        dishName: dish.dish?.name,
-                        restaurantName: dish.restaurant?.name,
-                        rating: dish.dish?.rating,
-                        id: dish.id
-                      })),
-                      timing
-                    })
-
+                  case 'aiDish':
+                    // Individual dish streamed from server as it's parsed
+                    const dish = eventData.data.dish
+                    console.log('🍽️ Client received streaming dish:', dish.dish?.name, 'from', dish.restaurant?.name)
+                    
                     setState(prev => ({
                       ...prev,
-                      streamingStatus: "Rendering search results...",
-                      timing
+                      dishes: [...prev.dishes, dish],
+                      streamingStatus: `Found ${prev.dishes.length + 1} recommendations...`
                     }))
+                    break
 
-                    // Stream dishes in one by one with 300ms delay for visual effect
-                    for (let i = 0; i < results.length; i++) {
-                      console.log(`🎨 Rendering dish ${i + 1}/${results.length}:`, results[i].dish?.name)
-                      await new Promise(resolve => setTimeout(resolve, 300))
-                      setState(prev => ({
-                        ...prev,
-                        dishes: [...prev.dishes, results[i]],
-                        streamingStatus: `Rendered ${prev.dishes.length + 1} of ${results.length} recommendations...`
-                      }))
-                    }
+                  case 'aiResults':
+                    // Final results event with timing data - dishes already streamed individually
+                    const timing = eventData.data.timing
+                    console.log('✅ AI streaming completed with timing:', timing)
 
-                    console.log('✅ All AI results rendered')
-
-                    // Mark as completed
                     setState(prev => ({
                       ...prev,
                       isStreaming: false,
                       isCompleted: true,
-                      streamingStatus: null
+                      streamingStatus: null,
+                      timing
                     }))
                     break
 

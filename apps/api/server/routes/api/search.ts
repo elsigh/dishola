@@ -479,6 +479,8 @@ async function getDishRecommendationaStreaming(
     // Collect the streamed response
     let fullText = ""
     let lastUpdateTime = startTime
+    let lastProcessedLength = 0
+    let streamedDishes = new Set<string>() // Track already streamed dishes
     
     for await (const chunk of result.textStream) {
       // Capture timing for first token
@@ -498,20 +500,24 @@ async function getDishRecommendationaStreaming(
       tokenCount++
 
       // Try to parse and stream individual dishes as they become complete
-      // Disabled temporarily to avoid performance issues - keeping for future enhancement
-      // if (fullText.length > lastProcessedLength + 500) { // Only check every 500 chars for performance
-      //   const partialDishes = await tryParsePartialDishes(fullText, location, sortBy, logger)
-      //   if (partialDishes.length > 0) {
-      //     // Stream individual dishes
-      //     for (const dish of partialDishes) {
-      //       await stream.push({
-      //         type: "aiDish",
-      //         data: { dish }
-      //       })
-      //     }
-      //   }
-      //   lastProcessedLength = fullText.length
-      // }
+      if (fullText.length > lastProcessedLength + 300) { // Check every 300 chars for balance of performance vs responsiveness
+        const partialDishes = await tryParsePartialDishes(fullText, location, sortBy, logger)
+        if (partialDishes.length > 0) {
+          // Stream individual dishes that haven't been sent yet
+          for (const dish of partialDishes) {
+            const dishKey = `${dish.dish.name}-${dish.restaurant.name}`
+            if (!streamedDishes.has(dishKey)) {
+              streamedDishes.add(dishKey)
+              await stream.push({
+                type: "aiDish",
+                data: { dish }
+              })
+              logger.debug("Streamed individual dish", { dishName: dish.dish.name, restaurant: dish.restaurant.name })
+            }
+          }
+        }
+        lastProcessedLength = fullText.length
+      }
 
       // Send periodic progress updates (every 500ms)
       const now = Date.now()
@@ -607,66 +613,66 @@ async function getDishRecommendationaStreaming(
 }
 
 // Helper function to try parsing partial JSON and extract complete dish objects
-// Currently disabled but kept for future partial streaming enhancement
-// async function tryParsePartialDishes(
-//   partialText: string,
-//   location: Location,
-//   sortBy: string,
-//   logger: ReturnType<typeof createLogger>
-// ): Promise<DishRecommendation[]> {
-//   try {
-//     // Clean the partial text
-//     let cleaned = partialText.trim()
-//     if (cleaned.startsWith("```json")) {
-//       cleaned = cleaned.replace(/^```json\s*/, "")
-//     } else if (cleaned.startsWith("```")) {
-//       cleaned = cleaned.replace(/^```\s*/, "")
-//     }
+async function tryParsePartialDishes(
+  partialText: string,
+  location: Location,
+  sortBy: string,
+  logger: ReturnType<typeof createLogger>
+): Promise<DishRecommendation[]> {
+  try {
+    // Clean the partial text
+    let cleaned = partialText.trim()
+    if (cleaned.startsWith("```json")) {
+      cleaned = cleaned.replace(/^```json\s*/, "")
+    } else if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/^```\s*/, "")
+    }
 
-//     // Look for complete dish objects in the partial JSON
-//     // Try to find complete objects by looking for patterns like {...}
-//     const dishPattern = /\{[^{}]*"dish"[^{}]*"restaurant"[^{}]*\}/g
-//     const matches = cleaned.match(dishPattern)
+    // Look for complete dish objects in the partial JSON
+    // More robust pattern that handles nested objects properly
+    const dishPattern = /\{[^{}]*?"dish"\s*:[^{}]*?"name"\s*:[^{}]*?"restaurant"\s*:[^{}]*?"name"\s*:[^{}]*?\}/g
+    const matches = cleaned.match(dishPattern)
     
-//     if (!matches || matches.length === 0) {
-//       return []
-//     }
+    if (!matches || matches.length === 0) {
+      return []
+    }
 
-//     const dishes: DishRecommendation[] = []
+    const dishes: DishRecommendation[] = []
     
-//     for (const match of matches) {
-//       try {
-//         const dishObj = JSON.parse(match)
+    for (const match of matches) {
+      try {
+        // Try to parse the individual dish object
+        const dishObj = JSON.parse(match)
         
-//         // Validate the dish object has required fields
-//         if (dishObj?.dish?.name && dishObj?.restaurant?.name && dishObj?.dish?.rating) {
-//           // Calculate distance and add ID
-//           const hasCoordinates = dishObj.restaurant?.lat && dishObj.restaurant?.lng
-//           const distance = hasCoordinates
-//             ? calculateDistance(location.lat, location.long, dishObj.restaurant.lat, dishObj.restaurant.lng)
-//             : 999
+        // Validate the dish object has required fields
+        if (dishObj?.dish?.name && dishObj?.restaurant?.name && dishObj?.dish?.rating) {
+          // Calculate distance and add ID
+          const hasCoordinates = dishObj.restaurant?.lat && dishObj.restaurant?.lng
+          const distance = hasCoordinates
+            ? calculateDistance(location.lat, location.long, dishObj.restaurant.lat, dishObj.restaurant.lng)
+            : 999
 
-//           const processedDish = {
-//             ...dishObj,
-//             id: `${dishObj.dish.name.replace(/\s+/g, "_")}-${dishObj.restaurant.name.replace(/\s+/g, "_")}-streaming`,
-//             distance,
-//             numericRating: parseFloat(dishObj.dish.rating) || 0
-//           }
+          const processedDish = {
+            ...dishObj,
+            id: `${dishObj.dish.name.replace(/\s+/g, "_")}-${dishObj.restaurant.name.replace(/\s+/g, "_")}-${Math.floor(Math.random() * 1000)}`,
+            distance,
+            numericRating: parseFloat(dishObj.dish.rating) || 0
+          }
 
-//           dishes.push(processedDish)
-//         }
-//       } catch (parseError) {
-//         // Skip invalid JSON objects
-//         continue
-//       }
-//     }
+          dishes.push(processedDish)
+        }
+      } catch (parseError) {
+        // Skip invalid JSON objects - this is expected during partial streaming
+        continue
+      }
+    }
 
-//     return dishes
-//   } catch (error) {
-//     // If parsing fails, return empty array
-//     return []
-//   }
-// }
+    return dishes
+  } catch (error) {
+    // If parsing fails, return empty array - this is expected during partial streaming
+    return []
+  }
+}
 
 async function getDishRecommendationa(
   q: ParsedQuery,
