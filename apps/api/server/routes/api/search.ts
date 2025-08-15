@@ -534,6 +534,21 @@ async function getDishRecommendationaStreaming(
     // Process the complete response and get final results
     const results = await processAIResponse(fullText, location, sortBy, logger)
     
+    // Check if we got valid results
+    if (results.length === 0) {
+      logger.error("AI response processing failed - no valid results", { 
+        responseLength: fullText.length, 
+        tokensGenerated: tokenCount,
+        responsePreview: fullText.substring(0, 200) 
+      })
+      
+      await stream.push({
+        type: "aiError",
+        data: { message: "AI failed to generate valid recommendations. The response was too short or malformed." }
+      })
+      return []
+    }
+    
     // Send completion with final timing
     await stream.push({
       type: "aiResults",
@@ -749,7 +764,11 @@ async function processAIResponse(
 
   // Log the raw response for debugging if it's problematic
   if (!cleanedResponse.startsWith("[") && !cleanedResponse.startsWith("{")) {
-    logger.error("AI response doesn't look like JSON", { preview: cleanedResponse.substring(0, 200) + "..." })
+    logger.error("AI response doesn't look like JSON", { 
+      fullResponse: cleanedResponse,
+      responseLength: cleanedResponse.length,
+      preview: cleanedResponse.substring(0, 200) + "..." 
+    })
     return []
   }
 
