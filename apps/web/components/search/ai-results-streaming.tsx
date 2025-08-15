@@ -48,6 +48,7 @@ export default function AiResultsStreaming({
 
   useEffect(() => {
     let abortController: AbortController | null = null
+    let timeoutId: NodeJS.Timeout | null = null
 
     const startStreaming = async () => {
       // Reset state
@@ -60,6 +61,17 @@ export default function AiResultsStreaming({
       })
 
       abortController = new AbortController()
+
+      // Set a 60-second timeout for the entire streaming process
+      timeoutId = setTimeout(() => {
+        setState(prev => ({
+          ...prev,
+          error: "AI search timed out after 60 seconds",
+          isStreaming: false,
+          streamingStatus: null
+        }))
+        if (abortController) abortController.abort()
+      }, 60000)
 
       try {
         // Build streaming search URL (use the existing streaming endpoint)
@@ -110,15 +122,13 @@ export default function AiResultsStreaming({
 
                 console.log('🎯 AI Stream event:', eventData.type, eventData.data)
 
+                // Skip non-AI events for cleaner AI results section
+                if (['metadata', 'dbResults', 'complete'].includes(eventData.type)) {
+                  continue
+                }
+
                 // Handle different event types
                 switch (eventData.type) {
-                  case 'metadata':
-                    setState(prev => ({
-                      ...prev,
-                      streamingStatus: "AI search initialized"
-                    }))
-                    break
-
                   case 'aiProgress':
                     setState(prev => ({
                       ...prev,
@@ -162,18 +172,20 @@ export default function AiResultsStreaming({
                     }))
                     break
 
-                  case 'complete':
+                  case 'error':
+                  case 'aiError':
+                    console.error('AI Error received:', eventData.data)
                     setState(prev => ({
                       ...prev,
+                      error: eventData.data.message || 'AI recommendation failed',
                       isStreaming: false,
-                      isCompleted: true,
                       streamingStatus: null
                     }))
                     break
-
-                  case 'error':
-                  case 'aiError':
-                    throw new Error(eventData.data.message || 'AI streaming failed')
+                  
+                  default:
+                    console.log('Unhandled event type:', eventData.type, eventData.data)
+                    break
                 }
               } catch (parseError) {
                 console.warn('Failed to parse stream data:', line, parseError)
@@ -189,6 +201,8 @@ export default function AiResultsStreaming({
           error: error instanceof Error ? error.message : 'Unknown error',
           streamingStatus: null
         }))
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId)
       }
     }
 
@@ -197,6 +211,9 @@ export default function AiResultsStreaming({
     return () => {
       if (abortController) {
         abortController.abort()
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId)
       }
     }
   }, [query, tastes, lat, lng, sort])

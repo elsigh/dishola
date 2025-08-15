@@ -76,19 +76,7 @@ export default function StreamingResults({
       {/* Sort Selector */}
       <SortSelector currentSort={sort} />
 
-      {/* Database Results - Fast loading */}
-      <Suspense fallback={<DbResultsSkeleton />}>
-        <DbResults 
-          dish={dishQuery}
-          lat={lat}
-          lng={long}
-          sort={sort}
-          userLat={userLat}
-          userLng={userLng}
-        />
-      </Suspense>
-
-      {/* AI Results - Client-side streaming for individual dish rendering */}
+      {/* AI Results - Primary results, shown first */}
       <AiResultsStreaming 
         query={q}
         tastes={tastes}
@@ -98,6 +86,18 @@ export default function StreamingResults({
         userLat={userLat}
         userLng={userLng}
       />
+
+      {/* Database Results - Secondary results, only show if there are results */}
+      <Suspense fallback={null}>
+        <DbResults 
+          dish={dishQuery}
+          lat={lat}
+          lng={long}
+          sort={sort}
+          userLat={userLat}
+          userLng={userLng}
+        />
+      </Suspense>
     </>
   )
 }

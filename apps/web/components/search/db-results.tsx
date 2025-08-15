@@ -37,16 +37,8 @@ export default async function DbResults({ dish, lat, lng, sort, userLat, userLng
     const results: DishRecommendation[] = data.results || []
 
     if (results.length === 0) {
-      return (
-        <section className="mb-10">
-          <div className="flex items-center mb-4">
-            <h2 className="text-2xl font-semibold text-brand-primary">Community Favorites</h2>
-          </div>
-          <div className="text-center py-8 text-brand-text-muted">
-            <p>No community favorites found for "{dish}"</p>
-          </div>
-        </section>
-      )
+      // Don't render anything if no community results
+      return null
     }
 
     return (
