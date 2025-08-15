@@ -131,34 +131,34 @@ export default function AiResultsStreaming({
                     }))
                     break
 
-                  case 'aiDish':
-                    // Individual dish streaming - add immediately as they come in
-                    const dish = eventData.data.dish
-                    console.log('🍽️ Streaming individual dish:', dish.dish.name)
-                    
-                    setState(prev => {
-                      // Avoid duplicates by checking if dish already exists
-                      const isDuplicate = prev.dishes.some(existing => existing.id === dish.id)
-                      if (isDuplicate) return prev
-                      
-                      return {
-                        ...prev,
-                        dishes: [...prev.dishes, dish],
-                        streamingStatus: `Found ${prev.dishes.length + 1} recommendations...`
-                      }
-                    })
-                    break
 
                   case 'aiResults':
-                    // Final results - update timing and mark as completed
+                    // Got all AI results - now stream them in one by one for visual effect
+                    const results = eventData.data.results || []
                     const timing = eventData.data.timing
 
                     setState(prev => ({
                       ...prev,
-                      streamingStatus: "AI recommendations completed",
-                      timing,
+                      streamingStatus: "Rendering AI recommendations...",
+                      timing
+                    }))
+
+                    // Stream dishes in one by one with 300ms delay for visual effect
+                    for (let i = 0; i < results.length; i++) {
+                      await new Promise(resolve => setTimeout(resolve, 300))
+                      setState(prev => ({
+                        ...prev,
+                        dishes: [...prev.dishes, results[i]],
+                        streamingStatus: `Rendered ${prev.dishes.length + 1} of ${results.length} recommendations...`
+                      }))
+                    }
+
+                    // Mark as completed
+                    setState(prev => ({
+                      ...prev,
                       isStreaming: false,
-                      isCompleted: true
+                      isCompleted: true,
+                      streamingStatus: null
                     }))
                     break
 
