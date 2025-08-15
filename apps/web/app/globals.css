@@ -36,12 +36,7 @@
     @apply bg-transparent border border-brand-primary text-brand-primary hover:bg-brand-primary/10;
   }
 
-  /* Search bar transition styles */
-  .homepage-search-container,
-  .header-search-container {
-    view-transition-name: search-bar;
-  }
-
+  /* Search bar layout styles */
   .homepage-search-container {
     @apply px-4 sm:px-8;
   }
@@ -49,6 +44,16 @@
   .header-search-container {
     @apply w-full;
   }
+  
+  /* View transition styles - disabled temporarily due to SSR hydration mismatch
+  .homepage-search-container {
+    view-transition-name: homepage-search-bar;
+  }
+  
+  .header-search-container {
+    view-transition-name: header-search-bar;
+  }
+  */
 
   /* Blue dot pulse animation */
   @keyframes blue-dot-pulse {

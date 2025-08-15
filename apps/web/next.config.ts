@@ -2,7 +2,7 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   experimental: {
-    viewTransition: true,
+    // viewTransition: true, // Temporarily disabled due to SSR hydration mismatch with server components
     cacheComponents: true,
     clientSegmentCache: true
   },
