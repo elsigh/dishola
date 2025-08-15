@@ -3,7 +3,7 @@ import { supabase } from "@dishola/supabase/admin"
 import { get } from "@vercel/edge-config"
 import type { LanguageModel } from "ai"
 import { streamText } from "ai"
-import { createError, defineEventHandler, getQuery, type H3Event, setHeader } from "h3"
+import { createError, createEventStream, defineEventHandler, getQuery, type H3Event } from "h3"
 import type { DishRecommendation, Location, ParsedQuery } from "../../../lib/types"
 import { setCorsHeaders } from "../../lib/cors"
 import { getNeighborhoodInfo } from "../../lib/location-utils"
@@ -149,32 +149,8 @@ async function handleStreamingSearch(
 ) {
   logger.info("Starting streaming search")
   
-  // Set Server-Sent Events headers  
-  setHeader(event, "Content-Type", "text/event-stream")
-  setHeader(event, "Cache-Control", "no-cache, no-store, must-revalidate")
-  setHeader(event, "Connection", "keep-alive")
-  
-  // Create a manual stream writer instead of using send()
-  let responseEnded = false
-  const sendSSE = async (data: any) => {
-    if (responseEnded) return
-    
-    try {
-      const sseData = `data: ${JSON.stringify(data)}\n\n`
-      event.node.res.write(sseData)
-      logger.debug("Sent SSE data", { type: data.type })
-    } catch (error) {
-      logger.error("Failed to send SSE data", { error })
-      responseEnded = true
-    }
-  }
-  
-  const endResponse = () => {
-    if (!responseEnded) {
-      responseEnded = true
-      event.node.res.end()
-    }
-  }
+  // Create H3 event stream (handles headers and connection management automatically)
+  const eventStream = createEventStream(event)
   
   try {
     // Get user tastes if needed
@@ -192,16 +168,16 @@ async function handleStreamingSearch(
       : { dishName: userTastes.join(", "), cuisine: "Any" }
 
     // Send initial response with metadata
-    await sendSSE({
-      type: "metadata",
-      data: {
+    await eventStream.push({
+      event: "metadata",
+      data: JSON.stringify({
         query: searchPrompt,
         location: locationInfo.address || `${locationInfo.lat},${locationInfo.long}`,
         lat: locationInfo.lat,
         long: locationInfo.long,
         parsedQuery,
         sortBy
-      }
+      })
     })
 
     // Get DB results first (fast)
@@ -209,9 +185,9 @@ async function handleStreamingSearch(
     const dbResults = await getDbDishRecommendations(parsedQuery.dishName, locationInfo, sortBy, logger)
     const deduplicatedDbResults = deduplicateResults(dbResults)
     
-    await sendSSE({
-      type: "dbResults",
-      data: deduplicatedDbResults
+    await eventStream.push({
+      event: "dbResults",
+      data: JSON.stringify(deduplicatedDbResults)
     })
 
     // Get AI results with streaming
@@ -222,7 +198,12 @@ async function handleStreamingSearch(
       useTastes ? userTastes : [],
       sortBy,
       logger,
-      { push: sendSSE } // Pass sendSSE as the stream object
+      { push: async (data: any) => {
+        await eventStream.push({
+          event: data.type,
+          data: JSON.stringify(data.data)
+        })
+      }}
     )
     
     // Get location data
@@ -230,23 +211,34 @@ async function handleStreamingSearch(
     const { neighborhood, city } = locationData
 
     // Send final metadata
-    await sendSSE({
-      type: "complete",
-      data: {
+    await eventStream.push({
+      event: "complete",
+      data: JSON.stringify({
         neighborhood,
         city,
         includedTastes: userTastes.length > 0 ? userTastes : null
-      }
+      })
     })
 
-    endResponse()
+    // Handle client disconnect cleanup
+    eventStream.onClosed(async () => {
+      logger.debug("Search stream closed by client")
+      await eventStream.close()
+    })
+
+    return eventStream.send()
   } catch (error) {
     logger.error("Streaming search error", { error })
-    await sendSSE({
-      type: "error",
-      data: { message: "Search failed", error: error instanceof Error ? error.message : 'Unknown error' }
+    await eventStream.push({
+      event: "error",
+      data: JSON.stringify({ message: "Search failed", error: error instanceof Error ? error.message : 'Unknown error' })
     })
-    endResponse()
+    
+    eventStream.onClosed(async () => {
+      await eventStream.close()
+    })
+    
+    return eventStream.send()
   }
 }
 

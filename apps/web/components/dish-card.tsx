@@ -1,7 +1,6 @@
 import type { DishRecommendation } from "@dishola/types"
 import { Star } from "lucide-react"
 import Image from "next/image"
-import { useSearchParams } from "next/navigation"
 import { API_BASE_URL } from "@/lib/constants"
 
 function GoogleMapsIcon() {
@@ -46,12 +45,11 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 interface DishCardProps {
   recommendation: DishRecommendation
+  userLat?: number
+  userLng?: number
 }
 
-export default function DishCard({ recommendation }: DishCardProps) {
-  const searchParams = useSearchParams()
-  const userLat = parseFloat(searchParams.get("lat") || "")
-  const userLng = parseFloat(searchParams.get("long") || "")
+export default function DishCard({ recommendation, userLat, userLng }: DishCardProps) {
 
   const restaurant = recommendation.restaurant
 
