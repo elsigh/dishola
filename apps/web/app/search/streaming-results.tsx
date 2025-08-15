@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { SearchSlash } from "lucide-react"
 import AiResults, { AiResultsSkeleton } from "@/components/search/ai-results"
 import DbResults, { DbResultsSkeleton } from "@/components/search/db-results"
-import ResultsFor from "@/components/results-for"
+import ResultsForClient from "@/components/results-for-client"
 import SortSelector from "@/components/sort-selector"
 
 interface StreamingResultsProps {
@@ -62,7 +62,7 @@ export default function StreamingResults({
   return (
     <>
       <div className="mb-6">
-        <ResultsFor neighborhood={neighborhood} city={city} />
+        <ResultsForClient neighborhood={neighborhood} city={city} />
         {/* Show taste info if we have tastes */}
         {tastes && (
           <div className="mt-2">
