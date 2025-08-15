@@ -57,7 +57,7 @@ export default function AiResultsStreaming({
         isStreaming: true,
         isCompleted: false,
         error: null,
-        streamingStatus: "Starting AI search..."
+        streamingStatus: "Starting search..."
       })
 
       abortController = new AbortController()
@@ -66,7 +66,7 @@ export default function AiResultsStreaming({
       timeoutId = setTimeout(() => {
         setState(prev => ({
           ...prev,
-          error: "AI search timed out after 60 seconds",
+          error: "Search timed out after 60 seconds",
           isStreaming: false,
           streamingStatus: null
         }))
@@ -99,7 +99,7 @@ export default function AiResultsStreaming({
         })
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch AI results: ${response.status}`)
+          throw new Error(`Failed to fetch search results: ${response.status}`)
         }
 
         if (!response.body) {
@@ -176,7 +176,7 @@ export default function AiResultsStreaming({
 
                     setState(prev => ({
                       ...prev,
-                      streamingStatus: "Rendering AI recommendations...",
+                      streamingStatus: "Rendering search results...",
                       timing
                     }))
 
@@ -207,7 +207,7 @@ export default function AiResultsStreaming({
                     console.error('AI Error received:', eventData.data)
                     setState(prev => ({
                       ...prev,
-                      error: eventData.data.message || 'AI recommendation failed',
+                      error: eventData.data.message || 'Search failed',
                       isStreaming: false,
                       streamingStatus: null
                     }))
@@ -252,10 +252,10 @@ export default function AiResultsStreaming({
     return (
       <section className="mb-10">
         <div className="flex items-center mb-4">
-          <h2 className="text-2xl font-semibold text-brand-primary">AI Recommendations</h2>
+          <h2 className="text-2xl font-semibold text-brand-primary">Search Results</h2>
         </div>
         <div className="text-center py-8 text-red-600">
-          <p>Error generating AI recommendations: {state.error}</p>
+          <p>Error loading search results: {state.error}</p>
         </div>
       </section>
     )
@@ -264,7 +264,7 @@ export default function AiResultsStreaming({
   return (
     <section className="mb-10">
       <div className="flex items-center mb-4">
-        <h2 className="text-2xl font-semibold text-brand-primary">AI Recommendations</h2>
+        <h2 className="text-2xl font-semibold text-brand-primary">Search Results</h2>
         {state.isStreaming && (
           <Loader2 className="h-4 w-4 animate-spin text-brand-primary ml-3" />
         )}
@@ -316,7 +316,7 @@ export default function AiResultsStreaming({
       {/* Show completion message */}
       {state.isCompleted && state.dishes.length === 0 && (
         <div className="text-center py-8 text-brand-text-muted">
-          <p>No AI recommendations available at the moment</p>
+          <p>No search results available at the moment</p>
         </div>
       )}
     </section>
