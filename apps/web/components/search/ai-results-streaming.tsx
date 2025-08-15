@@ -47,7 +47,7 @@ export default function AiResultsStreaming({
   })
 
   useEffect(() => {
-    let abortController: AbortController | null = null
+    const abortController = new AbortController()
     let timeoutId: NodeJS.Timeout | null = null
 
     const startStreaming = async () => {
@@ -60,8 +60,6 @@ export default function AiResultsStreaming({
         streamingStatus: "Starting search..."
       })
 
-      abortController = new AbortController()
-
       // Set a 60-second timeout for the entire streaming process
       timeoutId = setTimeout(() => {
         setState(prev => ({
@@ -70,10 +68,16 @@ export default function AiResultsStreaming({
           isStreaming: false,
           streamingStatus: null
         }))
-        if (abortController) abortController.abort()
+        abortController.abort()
       }, 60000)
 
       try {
+        // Check if already aborted before starting
+        if (abortController.signal.aborted) {
+          console.log('Request aborted before starting')
+          return
+        }
+
         // Build streaming search URL (use the existing streaming endpoint)
         const searchUrl = new URL(`${API_BASE_URL}/api/search`)
         if (query) {
@@ -225,6 +229,13 @@ export default function AiResultsStreaming({
         }
       } catch (error) {
         console.error('AI streaming error:', error)
+        
+        // Don't show error state for aborted requests (component unmounting)
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('Request was aborted (likely due to component unmount)')
+          return
+        }
+        
         setState(prev => ({
           ...prev,
           isStreaming: false,
@@ -239,9 +250,7 @@ export default function AiResultsStreaming({
     startStreaming()
 
     return () => {
-      if (abortController) {
-        abortController.abort()
-      }
+      abortController.abort()
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
