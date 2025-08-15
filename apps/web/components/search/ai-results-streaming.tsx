@@ -147,6 +147,18 @@ export default function AiResultsStreaming({
                     const results = eventData.data.results || []
                     const timing = eventData.data.timing
 
+                    console.log('🍽️ Client received AI results:', {
+                      resultCount: results.length,
+                      results: results.map((dish: any, index: number) => ({
+                        index: index + 1,
+                        dishName: dish.dish?.name,
+                        restaurantName: dish.restaurant?.name,
+                        rating: dish.dish?.rating,
+                        id: dish.id
+                      })),
+                      timing
+                    })
+
                     setState(prev => ({
                       ...prev,
                       streamingStatus: "Rendering AI recommendations...",
@@ -155,6 +167,7 @@ export default function AiResultsStreaming({
 
                     // Stream dishes in one by one with 300ms delay for visual effect
                     for (let i = 0; i < results.length; i++) {
+                      console.log(`🎨 Rendering dish ${i + 1}/${results.length}:`, results[i].dish?.name)
                       await new Promise(resolve => setTimeout(resolve, 300))
                       setState(prev => ({
                         ...prev,
@@ -162,6 +175,8 @@ export default function AiResultsStreaming({
                         streamingStatus: `Rendered ${prev.dishes.length + 1} of ${results.length} recommendations...`
                       }))
                     }
+
+                    console.log('✅ All AI results rendered')
 
                     // Mark as completed
                     setState(prev => ({

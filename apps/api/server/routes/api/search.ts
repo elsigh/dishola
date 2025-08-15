@@ -528,7 +528,10 @@ async function getDishRecommendationaStreaming(
       totalTime,
       timeToFirstToken,
       estimatedTokens: tokenCount,
-      avgTokensPerSecond: Math.round((tokenCount / (totalTime / 1000)) * 100) / 100
+      avgTokensPerSecond: Math.round((tokenCount / (totalTime / 1000)) * 100) / 100,
+      responseLength: fullText.length,
+      responsePreview: fullText.substring(0, 500) + (fullText.length > 500 ? "..." : ""),
+      fullResponse: fullText // Log the complete AI response for debugging
     })
 
     // Process the complete response and get final results
@@ -549,6 +552,18 @@ async function getDishRecommendationaStreaming(
       return []
     }
     
+    // Log each final result being sent to client
+    logger.info("Sending AI results to client:", {
+      resultCount: results.length,
+      results: results.map((dish, index) => ({
+        index: index + 1,
+        dishName: dish.dish.name,
+        restaurantName: dish.restaurant.name,
+        rating: dish.dish.rating,
+        id: dish.id
+      }))
+    })
+
     // Send completion with final timing
     await stream.push({
       type: "aiResults",
@@ -807,12 +822,29 @@ async function processAIResponse(
   }
 
   // Validate each result has required structure
-  const validResults = parsed.filter((rec: any) => {
-    return rec?.dish?.name && rec?.restaurant?.name && rec?.dish?.rating
+  const validResults = parsed.filter((rec: any, index: number) => {
+    const isValid = rec?.dish?.name && rec?.restaurant?.name && rec?.dish?.rating
+    logger.info(`Dish ${index + 1} validation:`, {
+      dishName: rec?.dish?.name || 'missing',
+      restaurantName: rec?.restaurant?.name || 'missing', 
+      rating: rec?.dish?.rating || 'missing',
+      isValid,
+      fullRecord: rec
+    })
+    return isValid
+  })
+
+  logger.info(`AI response validation complete:`, {
+    totalParsed: parsed.length,
+    validResults: validResults.length,
+    invalidResults: parsed.length - validResults.length
   })
 
   if (validResults.length === 0) {
-    logger.error("No valid results from AI response")
+    logger.error("No valid results from AI response", {
+      parsedLength: parsed.length,
+      sampleRecord: parsed[0] || 'no records'
+    })
     return []
   }
 
