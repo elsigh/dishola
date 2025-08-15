@@ -534,6 +534,15 @@ async function getDishRecommendationaStreaming(
       fullResponse: fullText // Log the complete AI response for debugging
     })
 
+    // IMMEDIATE DEBUG: Log what we're about to process
+    logger.error("DEBUGGING AI RESPONSE", {
+      rawResponse: fullText,
+      responseType: typeof fullText,
+      responseLength: fullText.length,
+      firstChars: fullText.substring(0, 100),
+      lastChars: fullText.substring(Math.max(0, fullText.length - 100))
+    })
+
     // Process the complete response and get final results
     const results = await processAIResponse(fullText, location, sortBy, logger)
     

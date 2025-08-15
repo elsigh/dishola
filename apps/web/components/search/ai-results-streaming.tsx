@@ -91,6 +91,13 @@ export default function AiResultsStreaming({
           signal: abortController.signal
         })
 
+        console.log('📡 Fetch response received:', {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        })
+
         if (!response.ok) {
           throw new Error(`Failed to fetch AI results: ${response.status}`)
         }
@@ -102,12 +109,20 @@ export default function AiResultsStreaming({
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
 
+        console.log('🔄 Starting to read stream...')
+        
         while (true) {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done) {
+            console.log('✅ Stream reading completed')
+            break
+          }
 
           const chunk = decoder.decode(value, { stream: true })
+          console.log('📦 Raw stream chunk received:', chunk)
+          
           const lines = chunk.split('\n').filter(line => line.trim())
+          console.log('📝 Parsed lines:', lines)
 
           for (const line of lines) {
             if (line.trim()) {
