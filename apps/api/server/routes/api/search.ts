@@ -500,8 +500,20 @@ async function getDishRecommendationaStreaming(
       tokenCount++
 
       // Try to parse and stream individual dishes as they become complete
-      if (fullText.length > lastProcessedLength + 300) { // Check every 300 chars for balance of performance vs responsiveness
+      if (fullText.length > lastProcessedLength + 100) { // Check every 100 chars for better responsiveness
+        logger.debug("Trying to parse partial dishes", { 
+          fullTextLength: fullText.length, 
+          lastProcessedLength, 
+          streamedCount: streamedDishes.size,
+          textSample: fullText.substring(Math.max(0, fullText.length - 200)) // Show last 200 chars
+        })
+        
         const partialDishes = await tryParsePartialDishes(fullText, location, sortBy, logger)
+        logger.debug("Partial parsing result", { 
+          foundDishes: partialDishes.length,
+          dishes: partialDishes.map(d => ({ name: d.dish.name, restaurant: d.restaurant.name }))
+        })
+        
         if (partialDishes.length > 0) {
           // Stream individual dishes that haven't been sent yet
           for (const dish of partialDishes) {
@@ -512,7 +524,9 @@ async function getDishRecommendationaStreaming(
                 type: "aiDish",
                 data: { dish }
               })
-              logger.debug("Streamed individual dish", { dishName: dish.dish.name, restaurant: dish.restaurant.name })
+              logger.info("🍽️ Streamed individual dish", { dishName: dish.dish.name, restaurant: dish.restaurant.name })
+            } else {
+              logger.debug("Skipping already streamed dish", { dishKey })
             }
           }
         }
@@ -628,20 +642,35 @@ async function tryParsePartialDishes(
       cleaned = cleaned.replace(/^```\s*/, "")
     }
 
-    // Look for complete dish objects in the partial JSON
-    // More robust pattern that handles nested objects properly
-    const dishPattern = /\{[^{}]*?"dish"\s*:[^{}]*?"name"\s*:[^{}]*?"restaurant"\s*:[^{}]*?"name"\s*:[^{}]*?\}/g
-    const matches = cleaned.match(dishPattern)
+    logger.debug("Attempting to parse partial text", { 
+      textLength: cleaned.length,
+      textStart: cleaned.substring(0, 100),
+      textEnd: cleaned.substring(cleaned.length - 100)
+    })
+
+    // Try multiple parsing strategies
+    const dishes: DishRecommendation[] = []
+    
+    // Strategy 1: Look for complete dish objects with proper nesting
+    const dishPattern1 = /\{\s*"dish"\s*:\s*\{[^{}]*"name"[^{}]*\}[^{}]*"restaurant"\s*:\s*\{[^{}]*"name"[^{}]*\}[^{}]*\}/g
+    let matches = cleaned.match(dishPattern1)
+    logger.debug("Strategy 1 results", { pattern: "full nested objects", matches: matches?.length || 0 })
+    
+    // Strategy 2: If no matches, try simpler pattern
+    if (!matches || matches.length === 0) {
+      const dishPattern2 = /\{[^{}]*"dish"[^{}]*"restaurant"[^{}]*\}/g
+      matches = cleaned.match(dishPattern2)
+      logger.debug("Strategy 2 results", { pattern: "simple objects", matches: matches?.length || 0 })
+    }
     
     if (!matches || matches.length === 0) {
+      logger.debug("No dish patterns found in partial text")
       return []
     }
 
-    const dishes: DishRecommendation[] = []
-    
     for (const match of matches) {
       try {
-        // Try to parse the individual dish object
+        logger.debug("Attempting to parse match", { match: match.substring(0, 100) + "..." })
         const dishObj = JSON.parse(match)
         
         // Validate the dish object has required fields
@@ -660,16 +689,24 @@ async function tryParsePartialDishes(
           }
 
           dishes.push(processedDish)
+          logger.debug("Successfully parsed dish", { dishName: dishObj.dish.name, restaurant: dishObj.restaurant.name })
+        } else {
+          logger.debug("Invalid dish object - missing required fields", { 
+            hasDishName: !!dishObj?.dish?.name,
+            hasRestaurantName: !!dishObj?.restaurant?.name,
+            hasRating: !!dishObj?.dish?.rating
+          })
         }
       } catch (parseError) {
-        // Skip invalid JSON objects - this is expected during partial streaming
+        logger.debug("Failed to parse individual dish object", { error: parseError, match: match.substring(0, 50) })
         continue
       }
     }
 
+    logger.debug("Partial parsing completed", { totalDishes: dishes.length })
     return dishes
   } catch (error) {
-    // If parsing fails, return empty array - this is expected during partial streaming
+    logger.debug("Overall parsing failed", { error })
     return []
   }
 }
