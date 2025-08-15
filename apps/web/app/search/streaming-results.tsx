@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { SearchSlash } from "lucide-react"
-import AiResults, { AiResultsSkeleton } from "@/components/search/ai-results"
+import AiResultsStreaming from "@/components/search/ai-results-streaming"
 import DbResults, { DbResultsSkeleton } from "@/components/search/db-results"
 import ResultsForClient from "@/components/results-for-client"
 import SortSelector from "@/components/sort-selector"
@@ -88,18 +88,16 @@ export default function StreamingResults({
         />
       </Suspense>
 
-      {/* AI Results - Slower loading */}
-      <Suspense fallback={<AiResultsSkeleton />}>
-        <AiResults 
-          query={q}
-          tastes={tastes}
-          lat={lat}
-          lng={long}
-          sort={sort}
-          userLat={userLat}
-          userLng={userLng}
-        />
-      </Suspense>
+      {/* AI Results - Client-side streaming for individual dish rendering */}
+      <AiResultsStreaming 
+        query={q}
+        tastes={tastes}
+        lat={lat!}
+        lng={long!}
+        sort={sort}
+        userLat={userLat}
+        userLng={userLng}
+      />
     </>
   )
 }
