@@ -327,7 +327,7 @@ async function getDishRecommendations(
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger({ event, handlerName: "search/ai" })
+  const logger = createLogger({ event, handlerName: "search/ai", disable: true })
 
   // Handle CORS
   const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })

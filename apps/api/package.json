@@ -1,6 +1,8 @@
 {
   "name": "@dishola/api",
+  "version": "0.2.1",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "build": "nitro build",
     "dev": "PORT=3001 nitro dev",

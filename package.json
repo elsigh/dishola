@@ -1,6 +1,30 @@
 {
   "name": "dishola",
-  "private": true,
+  "version": "0.2.1",
+  "description": "A modern food-discovery platform that focuses on dishes rather than restaurants",
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/dishola.git"
+  },
+  "homepage": "https://dishola.com",
+  "bugs": {
+    "url": "https://github.com/yourusername/dishola/issues"
+  },
+  "keywords": [
+    "food",
+    "dishes",
+    "restaurants",
+    "discovery",
+    "ai",
+    "nextjs",
+    "nitro",
+    "supabase",
+    "maps",
+    "location"
+  ],
+  "author": "Dishola Team",
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",

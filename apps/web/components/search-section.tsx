@@ -1,14 +1,12 @@
 "use client"
 
 import { Loader as GoogleMapsLoader } from "@googlemaps/js-api-loader"
-import { Edit3, Loader2, Map as MapIcon, SearchIcon, X } from "lucide-react"
+import { Edit3, Loader2, Map as MapIcon, SearchIcon, Target, X } from "lucide-react"
 import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { API_BASE_URL } from "@/lib/constants"
 import { getLocationInfo } from "@/lib/location-utils"
 
 function BluePulseDot() {
@@ -58,11 +56,16 @@ export default function SearchSection({
   } | null>(null)
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [isEditingAddress, setIsEditingAddress] = useState(false)
-  const [addressInput, setAddressInput] = useState("")
+  const [autocompleteReady, setAutocompleteReady] = useState(false)
+  const [showLocationTooltip, setShowLocationTooltip] = useState(false)
+  const [isTrackingLocation, setIsTrackingLocation] = useState(false)
+  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
-  const addressInputRef = useRef<HTMLInputElement>(null)
+  const mapInstanceRef = useRef<google.maps.Map | null>(null)
+  const accuracyCircleRef = useRef<google.maps.Circle | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
+  const autocompleteRef = useRef<any>(null)
+  const searchFormRef = useRef<HTMLFormElement>(null)
 
   // Update dishQuery when initialQuery changes (e.g., when navigating to search page)
   useEffect(() => {
@@ -97,60 +100,247 @@ export default function SearchSection({
     }
   }, [])
 
-  // Function to setup Google Places Autocomplete
+  // Create a div container for the autocomplete element
+  const autocompleteContainerRef = useRef<HTMLDivElement>(null)
+
+  // Function to setup Google Places Autocomplete (using new PlaceAutocompleteElement)
   const setupAutocomplete = useCallback(async () => {
-    if (!addressInputRef.current) return
+    if (!autocompleteContainerRef.current || autocompleteRef.current) return
 
     try {
       const loader = new GoogleMapsLoader({
-        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
         version: "weekly",
         libraries: ["places"]
       })
 
       await loader.load()
 
-      autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
+      // Create the new PlaceAutocompleteElement
+      const autocompleteElement = new google.maps.places.PlaceAutocompleteElement({
         types: ["address"],
         componentRestrictions: { country: "us" }
       })
 
-      autocompleteRef.current.addListener("place_changed", () => {
-        const place = autocompleteRef.current?.getPlace()
-        if (place?.geometry?.location) {
-          const lat = place.geometry.location.lat()
-          const lng = place.geometry.location.lng()
+      // Store reference to autocomplete element
+      autocompleteRef.current = autocompleteElement
 
-          // Update map location
-          setTempLat(lat)
-          setTempLng(lng)
-          fetchLocationInfo(lat, lng)
+      // Add the element to our container div instead of replacing
+      autocompleteContainerRef.current.appendChild(autocompleteElement)
 
-          // Exit edit mode
-          setIsEditingAddress(false)
-          setAddressInput("")
+      // Add styles to match our Input component
+      autocompleteElement.style.width = "100%"
+      autocompleteElement.style.padding = "6px 8px"
+      autocompleteElement.style.border = "1px solid #d1d5db"
+      autocompleteElement.style.borderRadius = "6px"
+      autocompleteElement.style.fontSize = "14px"
+      autocompleteElement.style.textAlign = "left"
+      autocompleteElement.setAttribute("placeholder", "Enter an address...")
+
+      // Auto-focus the input
+      setTimeout(() => {
+        autocompleteElement.focus()
+      }, 100)
+
+      // Add CSS to left-align dropdown results (only add once)
+      if (!document.querySelector('#places-autocomplete-styles')) {
+        const style = document.createElement("style")
+        style.id = 'places-autocomplete-styles'
+        style.textContent = `
+          .gm-style .pac-container {
+            text-align: left !important;
+          }
+          .gm-style .pac-item {
+            text-align: left !important;
+            padding: 8px 16px !important;
+          }
+          .gm-style .pac-item-query {
+            text-align: left !important;
+          }
+          .gm-style .pac-matched {
+            font-weight: 600 !important;
+          }
+        `
+        document.head.appendChild(style)
+      }
+
+      // Use the correct event for PlaceAutocompleteElement
+      autocompleteElement.addEventListener('gmp-select', async ({ placePrediction }: any) => {
+        console.debug('[Places] gmp-select event fired with placePrediction:', placePrediction)
+        
+        try {
+          const place = placePrediction.toPlace()
+          console.debug('[Places] Place from placePrediction:', place)
+          
+          // Fetch the required fields
+          await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] })
+          console.debug('[Places] Place after fetchFields:', place.toJSON())
+          
+          const placeData = place.toJSON()
+          
+          if (placeData.location) {
+            // The location object has lat and lng properties, not methods
+            const lat = placeData.location.lat
+            const lng = placeData.location.lng
+            console.debug(`[Places] Extracted coordinates: ${lat}, ${lng}`)
+
+            // Update map location
+            setTempLat(lat)
+            setTempLng(lng)
+            
+            // Update main location state
+            setLatitude(lat)
+            setLongitude(lng)
+
+            // Update URL parameters with chosen location
+            const currentParams = new URLSearchParams(searchParams.toString())
+            currentParams.set("lat", lat.toString())
+            currentParams.set("long", lng.toString())
+            router.replace(`${pathname}?${currentParams.toString()}`)
+
+            // Update map center and accuracy circle if map is loaded
+            if (mapInstanceRef.current) {
+              const newCenter = { lat, lng }
+              console.debug(`[Places] Centering map on:`, newCenter)
+              mapInstanceRef.current.setCenter(newCenter)
+              
+              if (accuracyCircleRef.current) {
+                accuracyCircleRef.current.setCenter(newCenter)
+                accuracyCircleRef.current.setRadius(50)
+                console.debug("[Places] Updated accuracy circle")
+              }
+              console.debug(`[Places] Map centered successfully`)
+            } else {
+              console.debug(`[Places] Map not loaded, coordinates set for when map opens: ${lat}, ${lng}`)
+            }
+
+            fetchLocationInfo(lat, lng)
+
+            // Exit edit mode
+            setIsEditingAddress(false)
+          } else {
+            console.debug("[Places] No location found in place data:", placeData)
+          }
+        } catch (error) {
+          console.error("[Places] Error processing place selection:", error)
         }
       })
+
+      setAutocompleteReady(true)
     } catch (error) {
       console.error("Error setting up Google Places Autocomplete:", error)
     }
+  }, [fetchLocationInfo, pathname, router, searchParams])
+
+  // Function to start location tracking interval
+  const startLocationTracking = useCallback(() => {
+    if (locationIntervalRef.current) {
+      clearInterval(locationIntervalRef.current)
+    }
+
+    setIsTrackingLocation(true)
+    setIsLocating(true)
+
+    const trackLocation = () => {
+      if (!navigator.geolocation) return
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude: lat, longitude: lng, accuracy } = position.coords
+          console.debug(`[Location Tracking] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}m`)
+
+          setLatitude(lat)
+          setLongitude(lng)
+          setTempLat(lat)
+          setTempLng(lng)
+
+          // Update map if open
+          if (mapInstanceRef.current) {
+            const newCenter = { lat, lng }
+            mapInstanceRef.current.setCenter(newCenter)
+            if (accuracyCircleRef.current) {
+              accuracyCircleRef.current.setCenter(newCenter)
+              accuracyCircleRef.current.setRadius(accuracy || 50)
+            }
+          }
+
+          fetchLocationInfo(lat, lng)
+
+          // Show tooltip if we have good accuracy and location info
+          if (accuracy < 100) {
+            setShowLocationTooltip(true)
+            setIsLocating(false)
+          }
+        },
+        (error) => {
+          console.error("Location tracking error:", error)
+          setIsLocating(false)
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 10000, // 10 seconds
+          timeout: 15000
+        }
+      )
+    }
+
+    // Get initial location
+    trackLocation()
+
+    // Set up interval for continuous tracking (every 30 seconds)
+    locationIntervalRef.current = setInterval(trackLocation, 30000)
   }, [fetchLocationInfo])
+
+  // Function to stop location tracking
+  const stopLocationTracking = useCallback(() => {
+    if (locationIntervalRef.current) {
+      clearInterval(locationIntervalRef.current)
+      locationIntervalRef.current = null
+    }
+    setIsTrackingLocation(false)
+    setIsLocating(false)
+  }, [])
 
   // Function to handle edit address click
   const handleEditAddress = useCallback(() => {
     setIsEditingAddress(true)
-    setAddressInput("")
-    // Focus the input after state update
-    setTimeout(() => {
-      addressInputRef.current?.focus()
-    }, 0)
-  }, [])
+
+    // Stop location tracking - user is manually setting location
+    stopLocationTracking()
+    setShowLocationTooltip(false)
+
+    // Setup autocomplete will be triggered by useEffect
+  }, [stopLocationTracking])
 
   // Function to cancel address editing
   const handleCancelEdit = useCallback(() => {
     setIsEditingAddress(false)
-    setAddressInput("")
+    setAutocompleteReady(false)
+    
+    // Clean up autocomplete element
+    if (autocompleteRef.current && autocompleteContainerRef.current) {
+      autocompleteContainerRef.current.removeChild(autocompleteRef.current)
+      autocompleteRef.current = null
+    }
   }, [])
+
+  // Function to get current GPS location (crosshairs button)
+  const getCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by this browser.")
+      return
+    }
+
+    // Reset URL parameters to remove any manual location setting
+    const currentParams = new URLSearchParams(searchParams.toString())
+    currentParams.delete("lat")
+    currentParams.delete("long")
+    router.replace(`${pathname}?${currentParams.toString()}`)
+
+    // Stop any existing tracking and start fresh
+    stopLocationTracking()
+    startLocationTracking()
+  }, [pathname, router, searchParams, stopLocationTracking, startLocationTracking])
 
   // Function to handle location changes and trigger new search
   const handleLocationChange = useCallback(
@@ -160,32 +350,41 @@ export default function SearchSection({
       setTempLat(newLat)
       setTempLng(newLng)
 
-      // Always trigger a search with the new location (from any page)
       const params = new URLSearchParams()
       params.append("lat", newLat.toString())
       params.append("long", newLng.toString())
 
-      // Preserve the current search query if it exists
-      if (dishQuery.trim()) {
-        params.append("q", dishQuery)
-        // Don't add tastes parameter when we have a query
-      } else if (isUserLoggedIn) {
-        params.append("tastes", "true")
-      }
+      // If there's a search query or user wants taste-based search, go to search page
+      if (dishQuery.trim() || (isUserLoggedIn && pathname !== "/search")) {
+        // Preserve the current search query if it exists
+        if (dishQuery.trim()) {
+          params.append("q", dishQuery)
+        } else if (isUserLoggedIn) {
+          params.append("tastes", "true")
+        }
 
-      // Preserve sort parameter from current URL
-      const currentSort = searchParams.get("sort")
-      if (currentSort) {
-        params.append("sort", currentSort)
+        // Preserve sort parameter from current URL
+        const currentSort = searchParams.get("sort")
+        if (currentSort) {
+          params.append("sort", currentSort)
+        } else {
+          // Default to distance if no sort parameter exists
+          params.append("sort", "distance")
+        }
+
+        // Navigate to search page with new location parameters
+        router.push(`/search?${params.toString()}`)
       } else {
-        // Default to distance if no sort parameter exists
-        params.append("sort", "distance")
-      }
+        // Just update current page URL with location parameters
+        const currentParams = new URLSearchParams(searchParams.toString())
+        currentParams.set("lat", newLat.toString())
+        currentParams.set("long", newLng.toString())
 
-      // Navigate to search page with new location parameters
-      router.push(`/search?${params.toString()}`)
+        // Update URL without triggering navigation
+        router.replace(`${pathname}?${currentParams.toString()}`)
+      }
     },
-    [dishQuery, isUserLoggedIn, router, searchParams]
+    [dishQuery, isUserLoggedIn, router, searchParams, pathname]
   )
 
   // Google Maps modal logic
@@ -193,88 +392,110 @@ export default function SearchSection({
     if (mapOpen && mapRef.current && tempLat !== null && tempLng !== null) {
       const loader = new GoogleMapsLoader({
         apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-        version: "weekly"
+        version: "weekly",
+        libraries: ["places"]
       })
 
-      let map: google.maps.Map
-      let accuracyCircle: google.maps.Circle
-
       loader.load().then(() => {
-        map = new google.maps.Map(mapRef.current!, {
-          center: { lat: tempLat, lng: tempLng },
-          zoom: 13,
-          streetViewControl: false,
-          mapTypeControl: false,
-          fullscreenControl: false
-        })
+        if (mapRef.current) {
+          mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+            center: { lat: tempLat, lng: tempLng },
+            zoom: 13,
+            disableDefaultUI: true,
+            scrollwheel: false,
+            disableDoubleClickZoom: true,
+            draggable: true,
+            keyboardShortcuts: false
+          })
 
-        accuracyCircle = new google.maps.Circle({
-          strokeColor: "#4285F4",
-          strokeOpacity: 0.4,
-          strokeWeight: 1,
-          fillColor: "#4285F4",
-          fillOpacity: 0.25,
-          map,
-          center: { lat: tempLat, lng: tempLng },
-          radius: 50
-        })
+          accuracyCircleRef.current = new google.maps.Circle({
+            strokeColor: "#4285F4",
+            strokeOpacity: 0.4,
+            strokeWeight: 1,
+            fillColor: "#4285F4",
+            fillOpacity: 0.25,
+            map: mapInstanceRef.current,
+            center: { lat: tempLat, lng: tempLng },
+            radius: 50
+          })
 
-        // Update latitude and longitude based on map center when drag ends
-        map.addListener("dragend", () => {
-          const center = map.getCenter()
-          if (center) {
-            const lat = center.lat()
-            const lng = center.lng()
-            setTempLat(lat)
-            setTempLng(lng)
-            accuracyCircle.setCenter(center)
-            // Fetch location info for the new coordinates
-            fetchLocationInfo(lat, lng)
+          // Update location when map is dragged (manual interaction)
+          mapInstanceRef.current.addListener("dragend", () => {
+            const center = mapInstanceRef.current?.getCenter()
+            if (center) {
+              const lat = center.lat()
+              const lng = center.lng()
+              setTempLat(lat)
+              setTempLng(lng)
+              if (accuracyCircleRef.current) {
+                accuracyCircleRef.current.setCenter(center)
+              }
+              // Fetch location info for the new coordinates
+              fetchLocationInfo(lat, lng)
+
+              // Stop location tracking - user is manually setting location
+              stopLocationTracking()
+              setShowLocationTooltip(false)
+            }
+          })
+
+          // Fetch initial location info when map loads
+          if (tempLat && tempLng) {
+            fetchLocationInfo(tempLat, tempLng)
           }
-        })
-
-        // Fetch initial location info when map loads
-        if (tempLat && tempLng) {
-          fetchLocationInfo(tempLat, tempLng)
         }
       })
 
       return () => {
         // Cleanup
-        if (accuracyCircle) {
-          accuracyCircle.setMap(null)
+        if (accuracyCircleRef.current) {
+          accuracyCircleRef.current.setMap(null)
+          accuracyCircleRef.current = null
         }
+        mapInstanceRef.current = null
       }
     }
-  }, [mapOpen, tempLat, tempLng, pathname, fetchLocationInfo])
+  }, [mapOpen, tempLat, tempLng, fetchLocationInfo])
 
-  // Only request geolocation on mount if we don't have initial coordinates
+  // Auto-start location tracking if no URL parameters are present
   useEffect(() => {
-    // Only request geolocation if we don't have initial coordinates and we don't already have coordinates
-    if ((!initialLat || !initialLng) && (latitude === null || longitude === null)) {
-      if (navigator.geolocation) {
-        setIsLocating(true)
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude: lat, longitude: lng, accuracy } = position.coords
-            console.debug(`[Geolocation:onLoad] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}`)
-            setLatitude(lat)
-            setLongitude(lng)
-            setIsLocating(false)
-          },
-          (error) => {
-            console.error("Geolocation error (onLoad):", error)
-            setIsLocating(false)
-          },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-        )
+    const hasUrlLocation = searchParams.get("lat") && searchParams.get("long")
+
+    // Only start location tracking if:
+    // 1. No URL location parameters
+    // 2. No initial coordinates from props
+    // 3. No current coordinates
+    // 4. Not already tracking
+    if (!hasUrlLocation && !initialLat && !initialLng && !latitude && !longitude && !isTrackingLocation) {
+      startLocationTracking()
+    }
+
+    // If we have URL params, use those and don't track
+    if (hasUrlLocation && !isTrackingLocation) {
+      const lat = parseFloat(searchParams.get("lat")!)
+      const lng = parseFloat(searchParams.get("long")!)
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setLatitude(lat)
+        setLongitude(lng)
+        setTempLat(lat)
+        setTempLng(lng)
+        fetchLocationInfo(lat, lng)
       }
     }
-  }, []) // Only run on mount, not on pathname changes
+  }, [
+    searchParams,
+    initialLat,
+    initialLng,
+    latitude,
+    longitude,
+    isTrackingLocation,
+    startLocationTracking,
+    fetchLocationInfo
+  ])
 
   // Setup autocomplete when entering edit mode
   useEffect(() => {
-    if (isEditingAddress && addressInputRef.current) {
+    if (isEditingAddress && autocompleteContainerRef.current) {
       setupAutocomplete()
     }
   }, [isEditingAddress, setupAutocomplete])
@@ -283,9 +504,22 @@ export default function SearchSection({
   useEffect(() => {
     if (!mapOpen) {
       setIsEditingAddress(false)
-      setAddressInput("")
+      setAutocompleteReady(false)
+      
+      // Clean up autocomplete element
+      if (autocompleteRef.current && autocompleteContainerRef.current) {
+        autocompleteContainerRef.current.removeChild(autocompleteRef.current)
+        autocompleteRef.current = null
+      }
     }
   }, [mapOpen])
+
+  // Cleanup location tracking on unmount
+  useEffect(() => {
+    return () => {
+      stopLocationTracking()
+    }
+  }, [stopLocationTracking])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -374,7 +608,7 @@ export default function SearchSection({
   }, [dishQuery, latitude, longitude, isUserLoggedIn, pathname, router, searchParams])
 
   return (
-    <form onSubmit={handleSearch} className="w-full max-w-[850px]">
+    <form ref={searchFormRef} onSubmit={handleSearch} className="w-full max-w-[850px]">
       <div className="relative w-full">
         <div className="relative flex items-center w-full px-4 bg-white rounded-full shadow-md border focus-within:shadow-lg transition-all duration-200">
           <div className="flex-shrink-0 mr-3 bg-brand-bg rounded-full p-1">
@@ -408,23 +642,65 @@ export default function SearchSection({
           {(dishQuery || true) && <div className="flex-shrink-0 w-px h-10 bg-gray-300 mx-1" />}
 
           {/* Map button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (mapOpen) {
-                setMapOpen(false)
-              } else {
-                setTempLat(latitude || 37.7749)
-                setTempLng(longitude || -122.4194)
-                setMapOpen(true)
-              }
-            }}
-            className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-            disabled={isLocating}
-            aria-label="Set location"
-          >
-            {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapIcon className="w-5 h-5" />}
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                if (mapOpen) {
+                  setMapOpen(false)
+                } else {
+                  // Close tooltip and start location tracking if no URL params
+                  setShowLocationTooltip(false)
+                  const hasUrlLocation = searchParams.get("lat") && searchParams.get("long")
+                  if (!hasUrlLocation) {
+                    startLocationTracking()
+                  }
+
+                  setTempLat(latitude || 37.7749)
+                  setTempLng(longitude || -122.4194)
+                  setMapOpen(true)
+                  
+                  // Scroll to position the search input at the top of the viewport with small margin
+                  setTimeout(() => {
+                    if (searchFormRef.current) {
+                      const elementTop = searchFormRef.current.getBoundingClientRect().top + window.pageYOffset
+                      const offset = 8 // 8px margin (equivalent to Tailwind's "2")
+                      window.scrollTo({
+                        top: elementTop - offset,
+                        behavior: "smooth"
+                      })
+                    }
+                  }, 100) // Small delay to ensure map is rendered
+                }
+              }}
+              className={`flex-shrink-0 p-2 transition-colors duration-200 ${
+                mapOpen ? "text-blue-600 hover:text-blue-700" : "text-gray-400 hover:text-gray-600"
+              }`}
+              disabled={isLocating}
+              aria-label={mapOpen ? "Close map" : "Open map"}
+            >
+              {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapIcon className="w-5 h-5" />}
+            </button>
+
+            {/* Location Tooltip */}
+            {showLocationTooltip && locationInfo && !mapOpen && (
+              <div className="absolute bottom-full mb-4 left-1/2 transform -translate-x-1/2 bg-white border border-gray-200 rounded-xl shadow-md px-3 py-2 min-w-48 z-50">
+                <div className="flex items-center gap-2 text-left">
+                  <BluePulseDot />
+                  <div className="text-sm text-left">
+                    <div className="font-medium text-gray-900 text-left">
+                      {locationInfo.neighborhood || locationInfo.city}
+                    </div>
+                    {locationInfo.neighborhood && locationInfo.city && (
+                      <div className="text-gray-500 text-left">{locationInfo.city}</div>
+                    )}
+                  </div>
+                </div>
+                {/* Tooltip arrow */}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white drop-shadow-sm"></div>
+              </div>
+            )}
+          </div>
 
           {/* Search icon */}
           <button
@@ -440,31 +716,56 @@ export default function SearchSection({
 
       {/* Map and location controls */}
       {mapOpen && (
-        <div className="mt-4">
-          <div className="relative">
+        <div className="mt-2">
+          <div className="relative overflow-hidden rounded-t-xl rounded-bl-xl rounded-br-xl">
             <div ref={mapRef} style={{ width: "100%", height: "400px" }} />
             {/* Absolutely positioned blue dot in the center */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
               <BluePulseDot />
             </div>
+            {/* Get My Location button - positioned like Google Maps */}
+            <button
+              type="button"
+              onClick={getCurrentLocation}
+              disabled={isTrackingLocation || isLocating}
+              className="absolute bottom-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center border border-gray-200 disabled:opacity-50"
+              aria-label="Get my location"
+            >
+              {isTrackingLocation || isLocating ? (
+                <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
+              ) : (
+                <Target className="w-5 h-5 text-gray-600" />
+              )}
+            </button>
           </div>
           {/* Location info and confirm button */}
-          <div className="mt-3 bg-gray-50 rounded-lg p-3">
+          <div className="mt-0 bg-gray-50 rounded-bl-xl rounded-br-xl p-3">
             {isEditingAddress ? (
-              <div className="flex items-center gap-2 mb-3">
-                <Input
-                  ref={addressInputRef}
-                  value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
-                  placeholder="Enter an address..."
-                  className="flex-1"
-                />
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  {/* Container div for the PlaceAutocompleteElement */}
+                  <div ref={autocompleteContainerRef} className="w-full" />
+                </div>
                 <Button type="button" onClick={handleCancelEdit} size="sm" variant="outline">
                   Cancel
                 </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (tempLat !== null && tempLng !== null) {
+                      handleLocationChange(tempLat, tempLng)
+                    }
+                    setIsEditingAddress(false)
+                    setMapOpen(false)
+                  }}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Save
+                </Button>
               </div>
             ) : (
-              <div className="text-sm text-gray-600 mb-3">
+              <div className="text-sm text-gray-600">
                 {isLoadingLocation ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -508,21 +809,6 @@ export default function SearchSection({
                 ) : null}
               </div>
             )}
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                onClick={() => {
-                  if (tempLat !== null && tempLng !== null) {
-                    handleLocationChange(tempLat, tempLng)
-                    setMapOpen(false)
-                  }
-                }}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Confirm Location
-              </Button>
-            </div>
           </div>
         </div>
       )}

@@ -251,7 +251,7 @@ async function handleStreamingSearch(
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger({ event, handlerName: "search" })
+  const logger = createLogger({ event, handlerName: "search", disable: true })
 
   // Handle CORS
   const corsResponse = setCorsHeaders(event, { methods: ["GET", "POST", "OPTIONS"] })

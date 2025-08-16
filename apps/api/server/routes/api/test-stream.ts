@@ -3,7 +3,7 @@ import { setCorsHeaders } from "../../lib/cors"
 import { createLogger } from "../../lib/logger"
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger({ event, handlerName: "test-stream" })
+  const logger = createLogger({ event, handlerName: "test-stream", disable: true })
 
   // Handle CORS
   const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
