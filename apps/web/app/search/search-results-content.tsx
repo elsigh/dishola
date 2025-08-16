@@ -41,6 +41,37 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
   const [aiDishes, setAiDishes] = useState<DishRecommendation[]>([])
   const [dbDishes, setDbDishes] = useState<DishRecommendation[]>([])
   const [error, setError] = useState<string | null>(null)
+  
+  // Helper function to extract distance number from string like "1.2 mi"
+  const getDistanceNumber = (distanceStr: string | undefined): number => {
+    if (!distanceStr) return Infinity
+    const match = distanceStr.match(/(\d+\.?\d*)\s*mi/)
+    return match ? parseFloat(match[1]) : Infinity
+  }
+  
+  // Merge and sort results based on sort parameter
+  const allDishes = (() => {
+    const combined = [
+      ...aiDishes.map(dish => ({ ...dish, source: 'ai' as const })),
+      ...dbDishes.map(dish => ({ ...dish, source: 'db' as const }))
+    ]
+    
+    if (sortParam === 'distance') {
+      return combined.sort((a, b) => {
+        const distA = getDistanceNumber(a.distance)
+        const distB = getDistanceNumber(b.distance)
+        return distA - distB
+      })
+    } else if (sortParam === 'rating') {
+      return combined.sort((a, b) => {
+        const ratingA = parseFloat(a.dish.rating || '0')
+        const ratingB = parseFloat(b.dish.rating || '0')
+        return ratingB - ratingA // Higher rating first
+      })
+    }
+    
+    return combined
+  })()
   // Initialize isSearching to true if we have search parameters
   const [isSearching, setIsSearching] = useState(() => {
     return !!(hasQuery || hasTastes) && !!(lat && long)
@@ -357,7 +388,7 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
           {/* Sort Selector - only show if we have results */}
           {(aiDishes.length > 0 || dbDishes.length > 0) && <SortSelector currentSort={sortParam} />}
 
-          {aiDishes.length === 0 && dbDishes.length === 0 ? (
+          {allDishes.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center py-12">
               <SearchSlash className="h-12 w-12 text-brand-text-muted mb-4" />
               <h2 className="text-xl font-semibold text-brand-text mb-2">
@@ -367,67 +398,48 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
             </div>
           ) : (
             <>
-              {/* AI Results Section */}
-              {(aiDishes.length > 0 || (isSearching && !aiResultsReceived)) && (
-                <section className="mb-10">
-                  <div className="flex items-center mb-4">
-                    <h2 className="text-2xl font-semibold text-brand-primary">AI Recommendations</h2>
-                    {!aiResultsReceived && isSearching && (
-                      <Loader2 className="h-4 w-4 animate-spin text-brand-primary ml-3" />
-                    )}
+              {/* Loading States */}
+              {isSearching && !aiResultsReceived && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600 mr-2" />
+                    <p className="text-sm text-blue-700">
+                      {aiProgress?.message || "Generating personalized recommendations..."}
+                    </p>
                   </div>
-                  
-                  {aiProgress && !aiResultsReceived && (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-700">{aiProgress.message}</p>
-                      {aiProgress.timing && (
-                        <p className="text-xs text-blue-600 mt-1">
-                          {aiProgress.timing.totalTime ? 
-                            `Completed in ${aiProgress.timing.totalTime}ms (${aiProgress.timing.avgTokensPerSecond} tokens/sec)` :
-                            aiProgress.timing.timeToFirstToken ? `First response: ${aiProgress.timing.timeToFirstToken}ms` : ''
-                          }
-                        </p>
-                      )}
-                    </div>
+                  {aiProgress?.timing && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      {aiProgress.timing.totalTime ? 
+                        `Completed in ${aiProgress.timing.totalTime}ms (${aiProgress.timing.avgTokensPerSecond} tokens/sec)` :
+                        aiProgress.timing.timeToFirstToken ? `First response: ${aiProgress.timing.timeToFirstToken}ms` : ''
+                      }
+                    </p>
                   )}
-
-                  {aiDishes.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-                      {aiDishes.map((rec) => (
-                        <DishCard key={`ai-${rec.id}`} recommendation={rec} />
-                      ))}
-                    </div>
-                  ) : (isSearching && !aiResultsReceived) ? (
-                    <div className="text-center py-8 text-brand-text-muted">
-                      <p>Generating personalized recommendations...</p>
-                    </div>
-                  ) : null}
-                </section>
+                </div>
               )}
 
-              {/* Database Results Section */}
-              {(dbDishes.length > 0 || (isSearching && !dbResultsReceived)) && (
-                <section className="mb-10">
-                  <div className="flex items-center mb-4">
-                    <h2 className="text-2xl font-semibold text-brand-primary">Community Favorites</h2>
-                    {!dbResultsReceived && isSearching && (
-                      <Loader2 className="h-4 w-4 animate-spin text-brand-primary ml-3" />
-                    )}
+              {/* Unified Results Section */}
+              <section className="mb-10">
+                <div className="flex items-center mb-6">
+                  <h2 className="text-2xl font-semibold text-brand-primary">
+                    Search Results
+                  </h2>
+                  {isSearching && (!aiResultsReceived || !dbResultsReceived) && (
+                    <Loader2 className="h-4 w-4 animate-spin text-brand-primary ml-3" />
+                  )}
+                </div>
+
+                {allDishes.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
+                    {allDishes.map((dish) => (
+                      <DishCard 
+                        key={`${dish.source}-${dish.id}`} 
+                        recommendation={dish} 
+                      />
+                    ))}
                   </div>
-
-                  {dbDishes.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-                      {dbDishes.map((rec) => (
-                        <DishCard key={`db-${rec.id}`} recommendation={rec} />
-                      ))}
-                    </div>
-                  ) : (isSearching && !dbResultsReceived) ? (
-                    <div className="text-center py-8 text-brand-text-muted">
-                      <p>Loading community favorites...</p>
-                    </div>
-                  ) : null}
-                </section>
-              )}
+                )}
+              </section>
             </>
           )}
         </>
