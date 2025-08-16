@@ -1,7 +1,7 @@
 "use client"
 
 import { Loader as GoogleMapsLoader } from "@googlemaps/js-api-loader"
-import { Edit3, Loader2, Map as MapIcon, SearchIcon, Target, X } from "lucide-react"
+import { Crosshair, Edit3, Loader2, Map as MapIcon, SearchIcon, X } from "lucide-react"
 import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type React from "react"
@@ -58,8 +58,17 @@ export default function SearchSection({
   const [isEditingAddress, setIsEditingAddress] = useState(false)
   const [autocompleteReady, setAutocompleteReady] = useState(false)
   const [showLocationTooltip, setShowLocationTooltip] = useState(false)
+  const [tooltipDismissed, setTooltipDismissed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('locationTooltipDismissed') === 'true'
+    }
+    return false
+  })
   const [isTrackingLocation, setIsTrackingLocation] = useState(false)
+  const [isGpsPulsing, setIsGpsPulsing] = useState(false)
+  const [useFullScreenHeight, setUseFullScreenHeight] = useState(false)
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const gpsPulseTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<google.maps.Map | null>(null)
   const accuracyCircleRef = useRef<google.maps.Circle | null>(null)
@@ -104,6 +113,7 @@ export default function SearchSection({
   // Create a div container for the autocomplete element
   const autocompleteContainerRef = useRef<HTMLDivElement>(null)
 
+
   // Function to setup Google Places Autocomplete (using new PlaceAutocompleteElement)
   const setupAutocomplete = useCallback(async () => {
     if (!autocompleteContainerRef.current || autocompleteRef.current) return
@@ -144,9 +154,9 @@ export default function SearchSection({
       }, 100)
 
       // Add CSS to left-align dropdown results (only add once)
-      if (!document.querySelector('#places-autocomplete-styles')) {
+      if (!document.querySelector("#places-autocomplete-styles")) {
         const style = document.createElement("style")
-        style.id = 'places-autocomplete-styles'
+        style.id = "places-autocomplete-styles"
         style.textContent = `
           .gm-style .pac-container {
             text-align: left !important;
@@ -166,19 +176,19 @@ export default function SearchSection({
       }
 
       // Use the correct event for PlaceAutocompleteElement
-      autocompleteElement.addEventListener('gmp-select', async ({ placePrediction }: any) => {
-        console.debug('[Places] gmp-select event fired with placePrediction:', placePrediction)
-        
+      autocompleteElement.addEventListener("gmp-select", async ({ placePrediction }: any) => {
+        console.debug("[Places] gmp-select event fired with placePrediction:", placePrediction)
+
         try {
           const place = placePrediction.toPlace()
-          console.debug('[Places] Place from placePrediction:', place)
-          
+          console.debug("[Places] Place from placePrediction:", place)
+
           // Fetch the required fields
-          await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] })
-          console.debug('[Places] Place after fetchFields:', place.toJSON())
-          
+          await place.fetchFields({ fields: ["displayName", "formattedAddress", "location"] })
+          console.debug("[Places] Place after fetchFields:", place.toJSON())
+
           const placeData = place.toJSON()
-          
+
           if (placeData.location) {
             // The location object has lat and lng properties, not methods
             const lat = placeData.location.lat
@@ -188,7 +198,7 @@ export default function SearchSection({
             // Update map location
             setTempLat(lat)
             setTempLng(lng)
-            
+
             // Update main location state
             setLatitude(lat)
             setLongitude(lng)
@@ -197,14 +207,14 @@ export default function SearchSection({
             const currentParams = new URLSearchParams(searchParams.toString())
             currentParams.set("lat", lat.toString())
             currentParams.set("long", lng.toString())
-            router.replace(`${pathname}?${currentParams.toString()}`)
+            router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false })
 
             // Update map center and accuracy circle if map is loaded
             if (mapInstanceRef.current) {
               const newCenter = { lat, lng }
               console.debug(`[Places] Centering map on:`, newCenter)
               mapInstanceRef.current.setCenter(newCenter)
-              
+
               if (accuracyCircleRef.current) {
                 accuracyCircleRef.current.setCenter(newCenter)
                 accuracyCircleRef.current.setRadius(50)
@@ -234,82 +244,98 @@ export default function SearchSection({
   }, [fetchLocationInfo, pathname, router, searchParams])
 
   // Function to start location tracking interval
-  const startLocationTracking = useCallback((fromButtonClick = false) => {
-    if (locationIntervalRef.current) {
-      clearInterval(locationIntervalRef.current)
-    }
+  const startLocationTracking = useCallback(
+    (fromButtonClick = false) => {
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current)
+      }
 
-    setIsTrackingLocation(true)
-    // Only show loading state if explicitly requested from button click
-    if (fromButtonClick) {
-      setIsLocating(true)
-    }
+      setIsTrackingLocation(true)
+      // Only show loading state if explicitly requested from button click
+      if (fromButtonClick) {
+        setIsLocating(true)
+      }
 
-    const trackLocation = () => {
-      if (!navigator.geolocation) return
+      const trackLocation = () => {
+        if (!navigator.geolocation) return
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude: lat, longitude: lng, accuracy } = position.coords
-          console.debug(`[Location Tracking] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}m`)
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude: lat, longitude: lng, accuracy } = position.coords
+            console.debug(`[Location Tracking] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}m`)
 
-          setLatitude(lat)
-          setLongitude(lng)
-          setTempLat(lat)
-          setTempLng(lng)
+            setLatitude(lat)
+            setLongitude(lng)
+            setTempLat(lat)
+            setTempLng(lng)
 
-          // Update URL parameters with GPS location
-          const currentParams = new URLSearchParams(searchParams.toString())
-          currentParams.set("lat", lat.toString())
-          currentParams.set("long", lng.toString())
-          router.replace(`${pathname}?${currentParams.toString()}`)
+            // Update URL parameters with GPS location
+            const currentParams = new URLSearchParams(searchParams.toString())
+            currentParams.set("lat", lat.toString())
+            currentParams.set("long", lng.toString())
+            router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false })
 
-          // Update map if open
-          if (mapInstanceRef.current) {
-            const newCenter = { lat, lng }
-            mapInstanceRef.current.setCenter(newCenter)
-            if (accuracyCircleRef.current) {
-              accuracyCircleRef.current.setCenter(newCenter)
-              accuracyCircleRef.current.setRadius(accuracy || 50)
+            // Update map if open
+            if (mapInstanceRef.current) {
+              const newCenter = { lat, lng }
+              mapInstanceRef.current.setCenter(newCenter)
+              if (accuracyCircleRef.current) {
+                accuracyCircleRef.current.setCenter(newCenter)
+                accuracyCircleRef.current.setRadius(accuracy || 50)
+              }
             }
-          }
 
-          fetchLocationInfo(lat, lng)
+            fetchLocationInfo(lat, lng)
 
-          // Stop loading state if it was from button click
-          if (fromButtonClick) {
-            setIsLocating(false)
-          }
-          
-          // Show tooltip if we have good accuracy and location info
-          if (accuracy < 100) {
-            setShowLocationTooltip(true)
-            // Close map after successfully getting precise location (only if from button click)
-            if (mapOpen && fromButtonClick) {
-              setTimeout(() => setMapOpen(false), 500) // Small delay to show the updated location
+            // Stop loading state if it was from button click
+            if (fromButtonClick) {
+              setIsLocating(false)
             }
-          }
-        },
-        (error) => {
-          console.error("Location tracking error:", error)
-          if (fromButtonClick) {
-            setIsLocating(false)
-          }
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 10000, // 10 seconds
-          timeout: 15000
-        }
-      )
-    }
 
-    // Get initial location
-    trackLocation()
+            // Show tooltip if we have good accuracy and location info
+            if (accuracy < 100 && !tooltipDismissed) {
+              setShowLocationTooltip(true)
 
-    // Set up interval for continuous tracking (every 30 seconds)
-    locationIntervalRef.current = setInterval(trackLocation, 30000)
-  }, [fetchLocationInfo, pathname, router, searchParams, mapOpen])
+              // Stop GPS pulsing when we get good accuracy
+              setIsGpsPulsing(false)
+              if (gpsPulseTimeoutRef.current) {
+                clearTimeout(gpsPulseTimeoutRef.current)
+              }
+            } else if (fromButtonClick) {
+              // Set timeout to stop pulsing after 2 seconds if we don't get good accuracy
+              gpsPulseTimeoutRef.current = setTimeout(() => {
+                setIsGpsPulsing(false)
+              }, 2000)
+            }
+          },
+          (error) => {
+            console.error("Location tracking error:", error)
+            if (fromButtonClick) {
+              setIsLocating(false)
+
+              // Stop GPS pulsing on error
+              setIsGpsPulsing(false)
+              if (gpsPulseTimeoutRef.current) {
+                clearTimeout(gpsPulseTimeoutRef.current)
+              }
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 10000, // 10 seconds
+            timeout: 15000
+          }
+        )
+      }
+
+      // Get initial location
+      trackLocation()
+
+      // Set up interval for continuous tracking (every 30 seconds)
+      locationIntervalRef.current = setInterval(trackLocation, 30000)
+    },
+    [fetchLocationInfo, pathname, router, searchParams, mapOpen, tooltipDismissed]
+  )
 
   // Function to stop location tracking
   const stopLocationTracking = useCallback(() => {
@@ -336,7 +362,7 @@ export default function SearchSection({
   const handleCancelEdit = useCallback(() => {
     setIsEditingAddress(false)
     setAutocompleteReady(false)
-    
+
     // Clean up autocomplete element
     if (autocompleteRef.current && autocompleteContainerRef.current) {
       autocompleteContainerRef.current.removeChild(autocompleteRef.current)
@@ -351,11 +377,19 @@ export default function SearchSection({
       return
     }
 
+    // Start pulsing animation
+    setIsGpsPulsing(true)
+
+    // Clear any existing pulse timeout
+    if (gpsPulseTimeoutRef.current) {
+      clearTimeout(gpsPulseTimeoutRef.current)
+    }
+
     // Reset URL parameters to remove any manual location setting
     const currentParams = new URLSearchParams(searchParams.toString())
     currentParams.delete("lat")
     currentParams.delete("long")
-    router.replace(`${pathname}?${currentParams.toString()}`)
+    router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false })
 
     // Stop any existing tracking and start fresh
     stopLocationTracking()
@@ -374,8 +408,8 @@ export default function SearchSection({
       params.append("lat", newLat.toString())
       params.append("long", newLng.toString())
 
-      // If there's a search query or user wants taste-based search, go to search page
-      if (dishQuery.trim() || (isUserLoggedIn && pathname !== "/search")) {
+      // If there's a search query or user wants taste-based search, search on homepage
+      if (dishQuery.trim() || isUserLoggedIn) {
         // Preserve the current search query if it exists
         if (dishQuery.trim()) {
           params.append("q", dishQuery)
@@ -392,8 +426,8 @@ export default function SearchSection({
           params.append("sort", "distance")
         }
 
-        // Navigate to search page with new location parameters
-        router.push(`/search?${params.toString()}`)
+        // Navigate to homepage with new location parameters
+        router.push(`/?${params.toString()}`)
       } else {
         // Just update current page URL with location parameters
         const currentParams = new URLSearchParams(searchParams.toString())
@@ -401,7 +435,7 @@ export default function SearchSection({
         currentParams.set("long", newLng.toString())
 
         // Update URL without triggering navigation
-        router.replace(`${pathname}?${currentParams.toString()}`)
+        router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false })
       }
     },
     [dishQuery, isUserLoggedIn, router, searchParams, pathname]
@@ -447,7 +481,7 @@ export default function SearchSection({
               const lng = center.lng()
               setTempLat(lat)
               setTempLng(lng)
-              
+
               // Update main location state
               setLatitude(lat)
               setLongitude(lng)
@@ -456,7 +490,7 @@ export default function SearchSection({
               const currentParams = new URLSearchParams(searchParams.toString())
               currentParams.set("lat", lat.toString())
               currentParams.set("long", lng.toString())
-              router.replace(`${pathname}?${currentParams.toString()}`)
+              router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false })
 
               if (accuracyCircleRef.current) {
                 accuracyCircleRef.current.setCenter(center)
@@ -467,18 +501,6 @@ export default function SearchSection({
               // Stop location tracking - user is manually setting location
               stopLocationTracking()
               setShowLocationTooltip(false)
-
-              // Scroll to position the search input at the top with small margin
-              setTimeout(() => {
-                if (searchFormRef.current) {
-                  const elementTop = searchFormRef.current.getBoundingClientRect().top + window.pageYOffset
-                  const offset = 8 // 8px margin (equivalent to Tailwind's "2")
-                  window.scrollTo({
-                    top: elementTop - offset,
-                    behavior: "smooth"
-                  })
-                }
-              }, 100) // Small delay to ensure UI updates
             }
           })
 
@@ -515,14 +537,23 @@ export default function SearchSection({
 
     // If we have URL params, use those and don't track
     if (hasUrlLocation && !isTrackingLocation) {
-      const lat = parseFloat(searchParams.get("lat")!)
-      const lng = parseFloat(searchParams.get("long")!)
-      if (!isNaN(lat) && !isNaN(lng)) {
-        setLatitude(lat)
-        setLongitude(lng)
-        setTempLat(lat)
-        setTempLng(lng)
-        fetchLocationInfo(lat, lng)
+      const latParam = searchParams.get("lat")
+      const lngParam = searchParams.get("long")
+      if (latParam && lngParam) {
+        const lat = parseFloat(latParam)
+        const lng = parseFloat(lngParam)
+        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+          setLatitude(lat)
+          setLongitude(lng)
+          setTempLat(lat)
+          setTempLng(lng)
+          fetchLocationInfo(lat, lng)
+
+          // Show location tooltip on page load when URL has location parameters
+          if (!tooltipDismissed) {
+            setShowLocationTooltip(true)
+          }
+        }
       }
     }
   }, [
@@ -533,7 +564,8 @@ export default function SearchSection({
     longitude,
     isTrackingLocation,
     startLocationTracking,
-    fetchLocationInfo
+    fetchLocationInfo,
+    tooltipDismissed
   ])
 
   // Setup autocomplete when entering edit mode
@@ -548,7 +580,7 @@ export default function SearchSection({
     if (!mapOpen) {
       setIsEditingAddress(false)
       setAutocompleteReady(false)
-      
+
       // Clean up autocomplete element
       if (autocompleteRef.current && autocompleteContainerRef.current) {
         autocompleteContainerRef.current.removeChild(autocompleteRef.current)
@@ -561,6 +593,9 @@ export default function SearchSection({
   useEffect(() => {
     return () => {
       stopLocationTracking()
+      if (gpsPulseTimeoutRef.current) {
+        clearTimeout(gpsPulseTimeoutRef.current)
+      }
     }
   }, [stopLocationTracking])
 
@@ -571,19 +606,23 @@ export default function SearchSection({
     const handleClickOutside = (event: MouseEvent) => {
       if (mapContainerRef.current && !mapContainerRef.current.contains(event.target as Node)) {
         setMapOpen(false)
+        // Only remove full-screen height if input is empty AND not focused
+        if (dishQuery.trim() === "" && document.activeElement !== searchInputRef.current) {
+          setUseFullScreenHeight(false)
+        }
       }
     }
 
     // Add event listener with a small delay to avoid immediate closing
     const timeoutId = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener("mousedown", handleClickOutside)
     }, 100)
 
     return () => {
       clearTimeout(timeoutId)
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [mapOpen])
+  }, [mapOpen, dishQuery])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -592,21 +631,35 @@ export default function SearchSection({
       return
     }
 
+    // Check if the search query has actually changed
+    const currentQuery = searchParams.get("q") || ""
+    const currentTastes = searchParams.get("tastes") || ""
+    const newQuery = dishQuery.trim()
+    
+    // If logged-in user with empty query wants taste search
+    const wantsTasteSearch = isUserLoggedIn && newQuery === ""
+    const hasTasteSearch = !!currentTastes
+    
+    // If query hasn't changed and search type hasn't changed, don't re-search
+    if (currentQuery === newQuery && wantsTasteSearch === hasTasteSearch) {
+      return // No change, keep current results
+    }
+
     const params = new URLSearchParams()
     params.append("lat", latitude.toString())
     params.append("long", longitude.toString())
 
     // If user is logged in and search box is empty, use taste-based search
-    if (isUserLoggedIn && dishQuery.trim() === "") {
+    if (wantsTasteSearch) {
       params.append("tastes", "true")
     }
     // Otherwise, require a query term
-    else if (!dishQuery.trim()) {
+    else if (!newQuery) {
       alert("Please enter a dish to search.")
       return
     } else {
       // Add query param when search box has content
-      params.append("q", dishQuery)
+      params.append("q", newQuery)
       // Don't add tastes parameter when we have a query
     }
 
@@ -619,13 +672,8 @@ export default function SearchSection({
       params.append("sort", "distance")
     }
 
-    // If we're already on the search page, update the current URL
-    if (pathname === "/search") {
-      router.push(`/search?${params.toString()}`)
-    } else {
-      // Navigate to search page from other pages
-      router.push(`/search?${params.toString()}`)
-    }
+    // Stay on homepage with search parameters
+    router.push(`/?${params.toString()}`)
   }
 
   const canSearch = (isUserLoggedIn || dishQuery.trim() !== "") && latitude !== null && longitude !== null
@@ -636,46 +684,26 @@ export default function SearchSection({
     searchInputRef.current?.focus()
   }, [])
 
-  // Handle search input blur - re-execute search if empty
+  // Handle search input blur - just cleanup UI state
   const handleSearchBlur = useCallback(() => {
-    if (dishQuery.trim() === "" && latitude !== null && longitude !== null) {
-      const params = new URLSearchParams()
-      params.append("lat", latitude.toString())
-      params.append("long", longitude.toString())
-
-      // If user is logged in and search is empty, use taste-based search
-      if (isUserLoggedIn) {
-        params.append("tastes", "true")
-      } else {
-        // For non-logged-in users with empty search, clear results by going to search page without params
-        // This will show empty state or default behavior
-      }
-
-      // Preserve sort parameter from current URL
-      const currentSort = searchParams.get("sort")
-      if (currentSort) {
-        params.append("sort", currentSort)
-      } else {
-        params.append("sort", "distance")
-      }
-
-      // Only navigate if we're on the search page and have something to search
-      if (pathname === "/search") {
-        if (isUserLoggedIn) {
-          router.push(`/search?${params.toString()}`)
-        } else {
-          // Clear search results for non-logged-in users
-          router.push(`/search?lat=${latitude}&long=${longitude}&sort=${currentSort || "distance"}`)
-        }
-      }
+    // Only remove full-screen height if input is empty after blur
+    if (dishQuery.trim() === "") {
+      setUseFullScreenHeight(false)
     }
-  }, [dishQuery, latitude, longitude, isUserLoggedIn, pathname, router, searchParams])
+    // Don't automatically clear search results on blur - let the user keep their results
+  }, [dishQuery])
 
   return (
-    <form ref={searchFormRef} onSubmit={handleSearch} className="w-full max-w-[850px]">
+    <form
+      ref={searchFormRef}
+      onSubmit={handleSearch}
+      className={`w-full max-w-[850px] ${
+        useFullScreenHeight ? "min-h-screen" : ""
+      }`}
+    >
       <div className="relative w-full">
-        <div className="relative flex items-center w-full px-4 bg-white rounded-full shadow-md border focus-within:shadow-lg transition-all duration-200">
-          <div className="flex-shrink-0 mr-3 bg-brand-bg rounded-full p-1">
+        <div className="relative flex items-center w-full px-2 sm:px-4 bg-white rounded-full shadow-md border focus-within:shadow-lg transition-all duration-200">
+          <div className="flex-shrink-0 mr-2 sm:mr-3 bg-brand-bg rounded-full p-1">
             <Image src="/img/dishola_logo_32x32.png" alt="Dishola" width={24} height={24} className="w-6 h-6" />
           </div>
 
@@ -685,9 +713,33 @@ export default function SearchSection({
             type="text"
             value={dishQuery}
             onChange={(e) => setDishQuery(e.target.value)}
+            onFocus={() => {
+              setShowLocationTooltip(false)
+              setTooltipDismissed(true) // Permanently dismiss tooltip for this session
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('locationTooltipDismissed', 'true')
+              }
+              setUseFullScreenHeight(true)
+
+              // Only scroll if input is not already near the top
+              setTimeout(() => {
+                if (searchFormRef.current) {
+                  const elementTop = searchFormRef.current.getBoundingClientRect().top
+                  const offset = 8 // 8px margin (equivalent to Tailwind's "2")
+                  
+                  // Only scroll if element is more than 20px from the desired position
+                  if (elementTop > offset + 20) {
+                    window.scrollTo({
+                      top: searchFormRef.current.getBoundingClientRect().top + window.pageYOffset - offset,
+                      behavior: "smooth"
+                    })
+                  }
+                }
+              }, 100) // Small delay to ensure full-screen height is applied
+            }}
             onBlur={handleSearchBlur}
             placeholder="What are you craving?"
-            className="flex-1 bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 text-lg py-3"
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 text-lg py-3"
           />
 
           {/* Clear button */}
@@ -712,6 +764,10 @@ export default function SearchSection({
               onClick={() => {
                 if (mapOpen) {
                   setMapOpen(false)
+                  // Only remove full-screen height if input is empty AND not focused
+                  if (dishQuery.trim() === "" && document.activeElement !== searchInputRef.current) {
+                    setUseFullScreenHeight(false)
+                  }
                 } else {
                   // Close tooltip and start location tracking if no URL params
                   setShowLocationTooltip(false)
@@ -723,7 +779,8 @@ export default function SearchSection({
                   setTempLat(latitude || 37.7749)
                   setTempLng(longitude || -122.4194)
                   setMapOpen(true)
-                  
+                  setUseFullScreenHeight(true)
+
                   // Scroll to position the search input at the top of the viewport with small margin
                   setTimeout(() => {
                     if (searchFormRef.current) {
@@ -748,20 +805,20 @@ export default function SearchSection({
 
             {/* Location Tooltip */}
             {showLocationTooltip && locationInfo && !mapOpen && (
-              <div className="absolute bottom-full mb-4 left-1/2 transform -translate-x-1/2 bg-white border border-gray-200 rounded-xl shadow-md px-3 py-2 min-w-48 z-50">
+              <div className="absolute bottom-full mb-4 right-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 bg-white border border-gray-200 rounded-xl shadow-md px-3 py-2 min-w-36 sm:min-w-48 max-w-64 sm:mr-0 z-50">
                 <div className="flex items-center gap-2 text-left">
                   <BluePulseDot />
                   <div className="text-sm text-left">
-                    <div className="font-medium text-gray-900 text-left">
+                    <div className="font-medium text-gray-900 text-left truncate">
                       {locationInfo.neighborhood || locationInfo.city}
                     </div>
                     {locationInfo.neighborhood && locationInfo.city && (
-                      <div className="text-gray-500 text-left">{locationInfo.city}</div>
+                      <div className="text-gray-500 text-left truncate">{locationInfo.city}</div>
                     )}
                   </div>
                 </div>
-                {/* Tooltip arrow */}
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white drop-shadow-sm"></div>
+                {/* Tooltip arrow - positioned to point at the map icon */}
+                <div className="absolute top-full right-4 sm:left-1/2 sm:right-auto sm:transform sm:-translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white drop-shadow-sm"></div>
               </div>
             )}
           </div>
@@ -793,13 +850,18 @@ export default function SearchSection({
               onClick={getCurrentLocation}
               disabled={isLocating}
               className={`absolute bottom-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center border border-gray-200 disabled:opacity-75 ${
-                isLocating ? 'animate-pulse' : ''
+                isGpsPulsing ? "relative" : ""
               }`}
               aria-label="Get my location"
             >
-              <Target className={`w-5 h-5 ${
-                isLocating ? 'text-blue-600' : 'text-gray-600'
-              }`} />
+              {isGpsPulsing && (
+                <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-60 animate-blue-dot-pulse"></span>
+              )}
+              <Crosshair
+                className={`w-5 h-5 relative z-10 ${
+                  isGpsPulsing ? "text-blue-600" : isLocating ? "text-blue-600" : "text-gray-600"
+                }`}
+              />
             </button>
           </div>
           {/* Location info and confirm button */}

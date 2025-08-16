@@ -38,7 +38,7 @@
 
   /* Search bar layout styles */
   .homepage-search-container {
-    @apply px-4 sm:px-8;
+    /* Removed padding to prevent double padding with container and layout */
   }
 
   .header-search-container {

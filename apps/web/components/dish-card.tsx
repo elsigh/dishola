@@ -77,7 +77,7 @@ export default function DishCard({ recommendation, userLat, userLng }: DishCardP
   const imageSrc = `${API_BASE_URL}/api/dish-image?q=${imageQuery}`
 
   return (
-    <div className="bg-white border border-brand-border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 ease-in-out flex flex-col sm:flex-row">
+    <div className="bg-white border border-brand-border rounded overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 ease-in-out flex flex-col sm:flex-row">
       <div className="sm:w-1/3 h-48 sm:h-auto relative" style={{ aspectRatio: "4 / 3" }}>
         <Image
           src={imageSrc}

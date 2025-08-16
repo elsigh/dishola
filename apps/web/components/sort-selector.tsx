@@ -16,7 +16,7 @@ export default function SortSelector({ currentSort }: SortSelectorProps) {
     const params = new URLSearchParams(searchParams.toString())
     params.set("sort", newSort)
 
-    router.push(`/search?${params.toString()}`)
+    router.push(`/?${params.toString()}`)
   }
 
   return (

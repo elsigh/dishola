@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     cacheComponents: true,
     clientSegmentCache: true
   },
-  //distDir: require("path").join(__dirname, process.env.NODE_ENV === "development" ? ".next/dev" : ".next"),
+  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   transpilePackages: ["@dishola/types", "@dishola/supabase"],
   eslint: {
     ignoreDuringBuilds: true

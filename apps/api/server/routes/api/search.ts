@@ -149,17 +149,57 @@ async function handleStreamingSearch(
 ) {
   logger.info("Starting streaming search")
   
+  // Create cache key for this search
+  const cacheKey = searchCache.createKey(
+    query.q as string,
+    locationInfo.lat,
+    locationInfo.long,
+    Array.isArray(query.tastes) ? query.tastes.join(",") : (query.tastes as string) || "",
+    sortBy
+  )
+  
   // Set SSE headers manually
   setHeader(event, "Content-Type", "text/event-stream")
   setHeader(event, "Cache-Control", "no-cache, no-store, must-revalidate")
   setHeader(event, "Connection", "keep-alive")
   
+  // Check for cached streaming response
+  const cachedEvents = searchCache.getStreamingResponse(cacheKey)
+  if (cachedEvents) {
+    logger.info("Found cached streaming response, replaying events", { eventCount: cachedEvents.length })
+    
+    // Replay cached events with small delays to maintain streaming feel
+    for (const cachedEvent of cachedEvents) {
+      if (event.node.res.destroyed) break
+      
+      try {
+        const sseData = `data: ${JSON.stringify(cachedEvent)}\n\n`
+        event.node.res.write(sseData)
+        
+        // Add small delay between events for realistic streaming experience
+        if (cachedEvent.type !== 'complete') {
+          await new Promise(resolve => setTimeout(resolve, 50))
+        }
+      } catch (error) {
+        logger.error("Failed to replay cached SSE data", { error })
+        break
+      }
+    }
+    
+    event.node.res.end()
+    return
+  }
+  
   // Manual SSE sending function
   let responseEnded = false
+  const eventBuffer: Array<{ type: string; data: any }> = []
   const sendSSE = async (data: any) => {
     if (responseEnded) return
     
     try {
+      // Buffer the event for caching
+      eventBuffer.push({ type: data.type, data: data.data })
+      
       const sseData = `data: ${JSON.stringify(data)}\n\n`
       event.node.res.write(sseData)
       logger.debug("Sent SSE data", { type: data.type })
@@ -172,6 +212,13 @@ async function handleStreamingSearch(
   const endResponse = () => {
     if (!responseEnded) {
       responseEnded = true
+      
+      // Cache the complete event buffer for future identical searches
+      if (eventBuffer.length > 0) {
+        searchCache.setStreamingResponse(cacheKey, eventBuffer)
+        logger.info("Cached streaming response", { eventCount: eventBuffer.length, cacheKey })
+      }
+      
       event.node.res.end()
     }
   }
@@ -246,6 +293,13 @@ async function handleStreamingSearch(
       type: "error",
       data: { message: "Search failed", error: error instanceof Error ? error.message : 'Unknown error' }
     })
+    
+    // Still cache partial results if we have any useful events
+    if (eventBuffer.length > 1) { // At least metadata + one result
+      searchCache.setStreamingResponse(cacheKey, eventBuffer)
+      logger.info("Cached partial streaming response due to error", { eventCount: eventBuffer.length, cacheKey })
+    }
+    
     endResponse()
   }
 }
