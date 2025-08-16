@@ -812,8 +812,11 @@ async function getDishRecommendationa(
       }
     })
 
-    // Return results without temporary sorting fields
-    return sortedResults.map(({ distance, numericRating, ...result }) => result)
+    // Return results with distance field formatted as string
+    return sortedResults.map(({ numericRating, distance, ...result }) => ({
+      ...result,
+      distance: `${distance.toFixed(1)} mi`
+    }))
   } catch (error) {
     logger.error("Restaurant recommendation error", { error })
     return []
@@ -938,8 +941,11 @@ async function processAIResponse(
     }
   })
 
-  // Return results without temporary sorting fields
-  return sortedResults.map(({ distance, numericRating, ...result }) => result)
+  // Return results with distance field formatted as string
+  return sortedResults.map(({ numericRating, distance, ...result }) => ({
+    ...result,
+    distance: `${distance.toFixed(1)} mi`
+  }))
 }
 
 async function getDbDishRecommendations(

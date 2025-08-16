@@ -113,8 +113,11 @@ async function getDbDishRecommendations(
     }
   })
 
-  // Return top 15 results, removing temporary fields
-  return sortedResults.slice(0, 15).map(({ distance, vote_avg, ...result }) => result)
+  // Return top 15 results, converting distance to formatted string
+  return sortedResults.slice(0, 15).map(({ vote_avg, distance, ...result }) => ({
+    ...result,
+    distance: `${distance.toFixed(1)} mi`
+  }))
 }
 
 export default defineEventHandler(async (event) => {

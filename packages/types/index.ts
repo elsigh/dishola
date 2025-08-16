@@ -353,7 +353,8 @@ export const DishRecommendationSchema = z.object({
     lat: z.string(),
     lng: z.string(),
     website: z.string()
-  })
+  }),
+  distance: z.string().optional()
 })
 
 export type DishRecommendation = z.infer<typeof DishRecommendationSchema>
