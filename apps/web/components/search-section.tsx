@@ -427,6 +427,17 @@ export default function SearchSection({
               const lng = center.lng()
               setTempLat(lat)
               setTempLng(lng)
+              
+              // Update main location state
+              setLatitude(lat)
+              setLongitude(lng)
+
+              // Update URL parameters with new center position
+              const currentParams = new URLSearchParams(searchParams.toString())
+              currentParams.set("lat", lat.toString())
+              currentParams.set("long", lng.toString())
+              router.replace(`${pathname}?${currentParams.toString()}`)
+
               if (accuracyCircleRef.current) {
                 accuracyCircleRef.current.setCenter(center)
               }
@@ -455,7 +466,7 @@ export default function SearchSection({
         mapInstanceRef.current = null
       }
     }
-  }, [mapOpen, tempLat, tempLng, fetchLocationInfo])
+  }, [mapOpen, tempLat, tempLng, fetchLocationInfo, pathname, router, searchParams, stopLocationTracking])
 
   // Auto-start location tracking if no URL parameters are present
   useEffect(() => {
