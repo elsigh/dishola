@@ -447,6 +447,18 @@ export default function SearchSection({
               // Stop location tracking - user is manually setting location
               stopLocationTracking()
               setShowLocationTooltip(false)
+
+              // Scroll to position the search input at the top with small margin
+              setTimeout(() => {
+                if (searchFormRef.current) {
+                  const elementTop = searchFormRef.current.getBoundingClientRect().top + window.pageYOffset
+                  const offset = 8 // 8px margin (equivalent to Tailwind's "2")
+                  window.scrollTo({
+                    top: elementTop - offset,
+                    behavior: "smooth"
+                  })
+                }
+              }, 100) // Small delay to ensure UI updates
             }
           })
 
