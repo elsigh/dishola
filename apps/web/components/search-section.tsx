@@ -234,13 +234,16 @@ export default function SearchSection({
   }, [fetchLocationInfo, pathname, router, searchParams])
 
   // Function to start location tracking interval
-  const startLocationTracking = useCallback(() => {
+  const startLocationTracking = useCallback((fromButtonClick = false) => {
     if (locationIntervalRef.current) {
       clearInterval(locationIntervalRef.current)
     }
 
     setIsTrackingLocation(true)
-    setIsLocating(true)
+    // Only show loading state if explicitly requested from button click
+    if (fromButtonClick) {
+      setIsLocating(true)
+    }
 
     const trackLocation = () => {
       if (!navigator.geolocation) return
@@ -273,21 +276,25 @@ export default function SearchSection({
 
           fetchLocationInfo(lat, lng)
 
-          // Always stop the loading spinner
-          setIsLocating(false)
+          // Stop loading state if it was from button click
+          if (fromButtonClick) {
+            setIsLocating(false)
+          }
           
           // Show tooltip if we have good accuracy and location info
           if (accuracy < 100) {
             setShowLocationTooltip(true)
-            // Close map after successfully getting precise location
-            if (mapOpen) {
+            // Close map after successfully getting precise location (only if from button click)
+            if (mapOpen && fromButtonClick) {
               setTimeout(() => setMapOpen(false), 500) // Small delay to show the updated location
             }
           }
         },
         (error) => {
           console.error("Location tracking error:", error)
-          setIsLocating(false)
+          if (fromButtonClick) {
+            setIsLocating(false)
+          }
         },
         {
           enableHighAccuracy: true,
@@ -352,7 +359,7 @@ export default function SearchSection({
 
     // Stop any existing tracking and start fresh
     stopLocationTracking()
-    startLocationTracking()
+    startLocationTracking(true) // true indicates this is from button click
   }, [pathname, router, searchParams, stopLocationTracking, startLocationTracking])
 
   // Function to handle location changes and trigger new search
@@ -784,15 +791,15 @@ export default function SearchSection({
             <button
               type="button"
               onClick={getCurrentLocation}
-              disabled={isTrackingLocation || isLocating}
-              className="absolute bottom-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg hover:shadow-xl transition-shadow duration-200 flex items-center justify-center border border-gray-200 disabled:opacity-50"
+              disabled={isLocating}
+              className={`absolute bottom-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center border border-gray-200 disabled:opacity-75 ${
+                isLocating ? 'animate-pulse' : ''
+              }`}
               aria-label="Get my location"
             >
-              {isTrackingLocation || isLocating ? (
-                <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
-              ) : (
-                <Target className="w-5 h-5 text-gray-600" />
-              )}
+              <Target className={`w-5 h-5 ${
+                isLocating ? 'text-blue-600' : 'text-gray-600'
+              }`} />
             </button>
           </div>
           {/* Location info and confirm button */}
