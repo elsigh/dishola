@@ -66,6 +66,7 @@ export default function SearchSection({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<any>(null)
   const searchFormRef = useRef<HTMLFormElement>(null)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
 
   // Update dishQuery when initialQuery changes (e.g., when navigating to search page)
   useEffect(() => {
@@ -254,6 +255,12 @@ export default function SearchSection({
           setTempLat(lat)
           setTempLng(lng)
 
+          // Update URL parameters with GPS location
+          const currentParams = new URLSearchParams(searchParams.toString())
+          currentParams.set("lat", lat.toString())
+          currentParams.set("long", lng.toString())
+          router.replace(`${pathname}?${currentParams.toString()}`)
+
           // Update map if open
           if (mapInstanceRef.current) {
             const newCenter = { lat, lng }
@@ -266,10 +273,16 @@ export default function SearchSection({
 
           fetchLocationInfo(lat, lng)
 
+          // Always stop the loading spinner
+          setIsLocating(false)
+          
           // Show tooltip if we have good accuracy and location info
           if (accuracy < 100) {
             setShowLocationTooltip(true)
-            setIsLocating(false)
+            // Close map after successfully getting precise location
+            if (mapOpen) {
+              setTimeout(() => setMapOpen(false), 500) // Small delay to show the updated location
+            }
           }
         },
         (error) => {
@@ -289,7 +302,7 @@ export default function SearchSection({
 
     // Set up interval for continuous tracking (every 30 seconds)
     locationIntervalRef.current = setInterval(trackLocation, 30000)
-  }, [fetchLocationInfo])
+  }, [fetchLocationInfo, pathname, router, searchParams, mapOpen])
 
   // Function to stop location tracking
   const stopLocationTracking = useCallback(() => {
@@ -544,6 +557,27 @@ export default function SearchSection({
     }
   }, [stopLocationTracking])
 
+  // Handle click outside map to close it
+  useEffect(() => {
+    if (!mapOpen) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mapContainerRef.current && !mapContainerRef.current.contains(event.target as Node)) {
+        setMapOpen(false)
+      }
+    }
+
+    // Add event listener with a small delay to avoid immediate closing
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 100)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [mapOpen])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (latitude === null || longitude === null) {
@@ -739,7 +773,7 @@ export default function SearchSection({
 
       {/* Map and location controls */}
       {mapOpen && (
-        <div className="mt-2">
+        <div ref={mapContainerRef} className="mt-2">
           <div className="relative overflow-hidden rounded-t-xl rounded-bl-xl rounded-br-xl">
             <div ref={mapRef} style={{ width: "100%", height: "400px" }} />
             {/* Absolutely positioned blue dot in the center */}
