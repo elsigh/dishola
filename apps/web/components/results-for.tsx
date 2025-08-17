@@ -10,6 +10,7 @@ interface ResultsForProps {
   searchQuery?: string
   searchType?: string
   aiProgress?: { message: string; timing?: any } | null
+  timeToFirstDish?: number | null
 }
 
 const ResultsFor: FC<ResultsForProps> = ({ 
@@ -19,7 +20,8 @@ const ResultsFor: FC<ResultsForProps> = ({
   isSearching = false,
   searchQuery,
   searchType,
-  aiProgress
+  aiProgress,
+  timeToFirstDish
 }) => {
   // Show loading state or completed results
   const displayText = isSearching 
@@ -46,9 +48,9 @@ const ResultsFor: FC<ResultsForProps> = ({
       {aiProgress && (
         <div className="text-xs text-brand-text-muted/75 mt-1">
           {aiProgress.timing?.totalTime
-            ? `Search completed in ${aiProgress.timing.totalTime}ms (${aiProgress.timing.avgTokensPerSecond} tokens/sec)`
+            ? `Search completed in ${aiProgress.timing.totalTime}ms (${aiProgress.timing.avgTokensPerSecond} tokens/sec)${timeToFirstDish ? `, TTFD: ${(timeToFirstDish / 1000).toFixed(1)}s` : ''}`
             : aiProgress.timing?.timeToFirstToken
-              ? `First response: ${aiProgress.timing.timeToFirstToken}ms`
+              ? `First response: ${aiProgress.timing.timeToFirstToken}ms${timeToFirstDish ? `, TTFD: ${(timeToFirstDish / 1000).toFixed(1)}s` : ''}`
               : aiProgress.message}
         </div>
       )}

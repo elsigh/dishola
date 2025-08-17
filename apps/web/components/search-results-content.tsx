@@ -44,10 +44,21 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
   const [error, setError] = useState<string | null>(null)
 
   // Helper function to extract distance number from string like "1.2 mi"
-  const getDistanceNumber = (distanceStr: string | undefined): number => {
+  const getDistanceNumber = (distanceStr: string | number | undefined): number => {
     if (!distanceStr) return Infinity
-    const match = distanceStr.match(/(\d+\.?\d*)\s*mi/)
-    return match ? parseFloat(match[1]) : Infinity
+    
+    // Handle numeric distance values
+    if (typeof distanceStr === 'number') {
+      return distanceStr
+    }
+    
+    // Handle string distance values
+    if (typeof distanceStr === 'string') {
+      const match = distanceStr.match(/(\d+\.?\d*)\s*mi/)
+      return match ? parseFloat(match[1]) : Infinity
+    }
+    
+    return Infinity
   }
 
   // Merge and sort results based on sort parameter
@@ -84,6 +95,8 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
   const [aiProgress, setAiProgress] = useState<{ message: string; timing?: any } | null>(null)
   const [dbResultsReceived, setDbResultsReceived] = useState(false)
   const [aiResultsReceived, setAiResultsReceived] = useState(false)
+  const [timeToFirstDish, setTimeToFirstDish] = useState<number | null>(null)
+  const [searchStartTime, setSearchStartTime] = useState<number | null>(null)
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const abortController = useRef<AbortController | null>(null)
@@ -101,6 +114,8 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
     setAiResultsReceived(false)
     setAiDishes([])
     setDbDishes([])
+    setTimeToFirstDish(null)
+    setSearchStartTime(Date.now())
 
     if (!abortController) {
       console.error("No abort controller provided")
@@ -182,8 +197,42 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
         setStreamingStatus(event.data.message)
         break
 
+      case "aiDish":
+        // Handle individual streaming dishes
+        setAiDishes(prev => {
+          const newDish = event.data.dish
+          const exists = prev.some(dish => 
+            dish.dish.name === newDish.dish.name && 
+            dish.restaurant.name === newDish.restaurant.name
+          )
+          if (exists) return prev
+          
+          // Track time to first dish
+          if (prev.length === 0 && searchStartTime && !timeToFirstDish) {
+            const ttfd = Date.now() - searchStartTime
+            setTimeToFirstDish(ttfd)
+            console.log(`🍽️ TTFD: ${(ttfd / 1000).toFixed(1)}s`)
+          }
+          
+          return [...prev, newDish]
+        })
+        break
+
       case "aiResults":
-        setAiDishes(event.data.results)
+        // Handle final batch results (fallback for cached responses)
+        setAiDishes(prev => {
+          // Only replace if we haven't received streaming dishes
+          if (prev.length === 0) {
+            // Track TTFD for batch results
+            if (searchStartTime && !timeToFirstDish) {
+              const ttfd = Date.now() - searchStartTime
+              setTimeToFirstDish(ttfd)
+              console.log(`🍽️ TTFD (batch): ${(ttfd / 1000).toFixed(1)}s`)
+            }
+            return event.data.results
+          }
+          return prev
+        })
         setAiResultsReceived(true)
         setAiProgress({
           message: `AI recommendations completed`,
@@ -334,6 +383,7 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
                   searchQuery={hasQuery ? q : undefined}
                   searchType={sortParam}
                   aiProgress={aiProgress}
+                  timeToFirstDish={timeToFirstDish}
                 />
               </div>
               <div className="flex-shrink-0">
