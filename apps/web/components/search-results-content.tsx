@@ -369,7 +369,7 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
     <div>
 
       {/* Results Section */}
-      {(hasSearched || dbResultsReceived || aiResultsReceived) && (
+      {(hasSearched || dbResultsReceived || aiResultsReceived || isSearching) && (
         <>
           {/* Sort Selector and Results For */}
           {(allDishes.length > 0 || (!isSearching && hasSearched) || isSearching) && (
