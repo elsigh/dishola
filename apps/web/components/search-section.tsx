@@ -76,6 +76,7 @@ export default function SearchSection({
   const autocompleteRef = useRef<any>(null)
   const searchFormRef = useRef<HTMLFormElement>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapButtonRef = useRef<HTMLButtonElement>(null)
 
   // Update dishQuery when initialQuery changes (e.g., when navigating to search page)
   useEffect(() => {
@@ -604,7 +605,10 @@ export default function SearchSection({
     if (!mapOpen) return
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (mapContainerRef.current && !mapContainerRef.current.contains(event.target as Node)) {
+      const isClickOnMapContainer = mapContainerRef.current && mapContainerRef.current.contains(event.target as Node)
+      const isClickOnMapButton = mapButtonRef.current && mapButtonRef.current.contains(event.target as Node)
+      
+      if (!isClickOnMapContainer && !isClickOnMapButton) {
         setMapOpen(false)
         // Only remove full-screen height if input is empty AND not focused
         if (dishQuery.trim() === "" && document.activeElement !== searchInputRef.current) {
@@ -765,6 +769,7 @@ export default function SearchSection({
           {/* Map button */}
           <div className="relative">
             <button
+              ref={mapButtonRef}
               type="button"
               onClick={(e) => {
                 e.stopPropagation() // Prevent event bubbling to avoid conflict with click outside handler
