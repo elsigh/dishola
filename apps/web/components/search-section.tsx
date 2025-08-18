@@ -866,9 +866,7 @@ export default function SearchSection({
               type="button"
               onClick={getCurrentLocation}
               disabled={isLocating}
-              className={`absolute bottom-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center border border-gray-200 disabled:opacity-75 ${
-                isGpsPulsing ? "relative" : ""
-              }`}
+              className="absolute bottom-4 right-4 w-10 h-10 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center border border-gray-200 disabled:opacity-75"
               aria-label="Get my location"
             >
               {isGpsPulsing && (
