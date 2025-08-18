@@ -3,7 +3,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", ".output/**"]
+      "outputs": [".vercel/**"]
     },
     "@dishola/types#build": {
       "outputs": ["dist/**"]
