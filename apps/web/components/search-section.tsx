@@ -58,15 +58,11 @@ export default function SearchSection({
   const [isEditingAddress, setIsEditingAddress] = useState(false)
   const [autocompleteReady, setAutocompleteReady] = useState(false)
   const [showLocationTooltip, setShowLocationTooltip] = useState(false)
-  const [tooltipDismissed, setTooltipDismissed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('locationTooltipDismissed') === 'true'
-    }
-    return false
-  })
+  const [tooltipDismissed, setTooltipDismissed] = useState(false)
   const [isTrackingLocation, setIsTrackingLocation] = useState(false)
   const [isGpsPulsing, setIsGpsPulsing] = useState(false)
   const [useFullScreenHeight, setUseFullScreenHeight] = useState(false)
+  const [hasInteracted, setHasInteracted] = useState(false)
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const gpsPulseTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
@@ -113,7 +109,6 @@ export default function SearchSection({
 
   // Create a div container for the autocomplete element
   const autocompleteContainerRef = useRef<HTMLDivElement>(null)
-
 
   // Function to setup Google Places Autocomplete (using new PlaceAutocompleteElement)
   const setupAutocomplete = useCallback(async () => {
@@ -263,7 +258,6 @@ export default function SearchSection({
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude: lat, longitude: lng, accuracy } = position.coords
-            console.debug(`[Location Tracking] lat: ${lat}, lng: ${lng}, accuracy: ${accuracy}m`)
 
             setLatitude(lat)
             setLongitude(lng)
@@ -293,11 +287,13 @@ export default function SearchSection({
               setIsLocating(false)
             }
 
-            // Show tooltip if we have good accuracy and location info
-            if (accuracy < 100 && !tooltipDismissed) {
+            // Show tooltip if we have location info and haven't dismissed it
+            if (!tooltipDismissed) {
               setShowLocationTooltip(true)
+            }
 
-              // Stop GPS pulsing when we get good accuracy
+            // Stop GPS pulsing when we get good accuracy or after button click
+            if (accuracy < 100) {
               setIsGpsPulsing(false)
               if (gpsPulseTimeoutRef.current) {
                 clearTimeout(gpsPulseTimeoutRef.current)
@@ -590,6 +586,24 @@ export default function SearchSection({
     }
   }, [mapOpen])
 
+  // Autofocus search input on page load (only if no search results are showing)
+  useEffect(() => {
+    const hasExistingSearch = searchParams.get("q") || searchParams.get("tastes")
+    if (!hasExistingSearch && searchInputRef.current) {
+      // Small delay to ensure the component is fully rendered
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 100)
+    }
+
+    // Hide location tooltip when search results are showing
+    if (hasExistingSearch) {
+      setShowLocationTooltip(false)
+      setTooltipDismissed(true)
+      setHasInteracted(true)
+    }
+  }, [searchParams])
+
   // Cleanup location tracking on unmount
   useEffect(() => {
     return () => {
@@ -607,7 +621,7 @@ export default function SearchSection({
     const handleClickOutside = (event: MouseEvent) => {
       const isClickOnMapContainer = mapContainerRef.current && mapContainerRef.current.contains(event.target as Node)
       const isClickOnMapButton = mapButtonRef.current && mapButtonRef.current.contains(event.target as Node)
-      
+
       if (!isClickOnMapContainer && !isClickOnMapButton) {
         setMapOpen(false)
         // Only remove full-screen height if input is empty AND not focused
@@ -639,11 +653,11 @@ export default function SearchSection({
     const currentQuery = searchParams.get("q") || ""
     const currentTastes = searchParams.get("tastes") || ""
     const newQuery = dishQuery.trim()
-    
+
     // If logged-in user with empty query wants taste search
     const wantsTasteSearch = isUserLoggedIn && newQuery === ""
     const hasTasteSearch = !!currentTastes
-    
+
     // If query hasn't changed and search type hasn't changed, don't re-search
     if (currentQuery === newQuery && wantsTasteSearch === hasTasteSearch) {
       return // No change, keep current results
@@ -676,7 +690,14 @@ export default function SearchSection({
       params.append("sort", "distance")
     }
 
+    // Mark as interacted, dismiss tooltip
+    setHasInteracted(true)
+    setShowLocationTooltip(false)
+    setTooltipDismissed(true)
+    setUseFullScreenHeight(true)
+
     // Stay on homepage with search parameters
+    // Don't scroll - let the layout change handle positioning
     router.push(`/?${params.toString()}`)
   }
 
@@ -686,6 +707,23 @@ export default function SearchSection({
   const handleClearSearch = useCallback(() => {
     setDishQuery("")
     searchInputRef.current?.focus()
+  }, [])
+
+  // Function to scroll search input to top of viewport
+  const scrollToTop = useCallback(() => {
+    if (searchFormRef.current) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (searchFormRef.current) {
+          const elementTop = searchFormRef.current.getBoundingClientRect().top + window.pageYOffset
+          const offset = 8 // 8px margin (equivalent to Tailwind's "2")
+          window.scrollTo({
+            top: elementTop - offset,
+            behavior: "smooth"
+          })
+        }
+      })
+    }
   }, [])
 
   // Handle search input blur - just cleanup UI state
@@ -701,9 +739,7 @@ export default function SearchSection({
     <form
       ref={searchFormRef}
       onSubmit={handleSearch}
-      className={`w-full max-w-full sm:max-w-[850px] ${
-        useFullScreenHeight ? "min-h-screen" : ""
-      }`}
+      className={`w-full max-w-full sm:max-w-[850px] ${useFullScreenHeight ? "min-h-screen" : ""}`}
     >
       <div className="relative w-full">
         <div className="relative flex items-center w-full px-2 sm:px-4 bg-white rounded-full shadow-md border focus-within:shadow-lg transition-all duration-200">
@@ -718,33 +754,18 @@ export default function SearchSection({
             value={dishQuery}
             onChange={(e) => setDishQuery(e.target.value)}
             onFocus={() => {
-              setShowLocationTooltip(false)
-              setTooltipDismissed(true) // Permanently dismiss tooltip for this session
-              if (typeof window !== 'undefined') {
-                sessionStorage.setItem('locationTooltipDismissed', 'true')
+              // Only dismiss tooltip and use full screen height if user has already interacted
+              // This prevents the autofocus from hiding the tooltip on page load
+              if (hasInteracted) {
+                setShowLocationTooltip(false)
+                setTooltipDismissed(true)
               }
-              
+
               // Only use full screen height if we're not already showing search results
-              const hasExistingSearch = searchParams.get('q') || searchParams.get('tastes')
+              const hasExistingSearch = searchParams.get("q") || searchParams.get("tastes")
               if (!hasExistingSearch) {
                 setUseFullScreenHeight(true)
               }
-
-              // Only scroll if input is not already near the top
-              setTimeout(() => {
-                if (searchFormRef.current) {
-                  const elementTop = searchFormRef.current.getBoundingClientRect().top
-                  const offset = 8 // 8px margin (equivalent to Tailwind's "2")
-                  
-                  // Only scroll if element is more than 20px from the desired position
-                  if (elementTop > offset + 20) {
-                    window.scrollTo({
-                      top: searchFormRef.current.getBoundingClientRect().top + window.pageYOffset - offset,
-                      behavior: "smooth"
-                    })
-                  }
-                }
-              }, 100) // Small delay to ensure full-screen height is applied
             }}
             onBlur={handleSearchBlur}
             placeholder="What are you craving?"
@@ -773,7 +794,7 @@ export default function SearchSection({
               type="button"
               onClick={(e) => {
                 e.stopPropagation() // Prevent event bubbling to avoid conflict with click outside handler
-                
+
                 if (mapOpen) {
                   setMapOpen(false)
                   // Only remove full-screen height if input is empty AND not focused
@@ -781,8 +802,9 @@ export default function SearchSection({
                     setUseFullScreenHeight(false)
                   }
                 } else {
-                  // Close tooltip and start location tracking if no URL params
+                  // Close tooltip and dismiss it permanently, start location tracking if no URL params
                   setShowLocationTooltip(false)
+                  setTooltipDismissed(true)
                   const hasUrlLocation = searchParams.get("lat") && searchParams.get("long")
                   if (!hasUrlLocation) {
                     startLocationTracking()
@@ -791,23 +813,14 @@ export default function SearchSection({
                   setTempLat(latitude || 37.7749)
                   setTempLng(longitude || -122.4194)
                   setMapOpen(true)
-                  
-                  // Only use full screen height if we're not already showing search results
-                  const hasExistingSearch = searchParams.get('q') || searchParams.get('tastes')
-                  if (!hasExistingSearch) {
-                    setUseFullScreenHeight(true)
-                  }
+
+                  // Mark as interacted and set full screen height
+                  setHasInteracted(true)
+                  setUseFullScreenHeight(true)
 
                   // Scroll to position the search input at the top of the viewport with small margin
                   setTimeout(() => {
-                    if (searchFormRef.current) {
-                      const elementTop = searchFormRef.current.getBoundingClientRect().top + window.pageYOffset
-                      const offset = 8 // 8px margin (equivalent to Tailwind's "2")
-                      window.scrollTo({
-                        top: elementTop - offset,
-                        behavior: "smooth"
-                      })
-                    }
+                    scrollToTop()
                   }, 100) // Small delay to ensure map is rendered
                 }
               }}
@@ -851,6 +864,19 @@ export default function SearchSection({
           </button>
         </div>
       </div>
+
+      {/* Google-style Search button - only show on homepage before first interaction */}
+      {!hasInteracted && !searchParams.get("q") && !searchParams.get("tastes") && (
+        <div className="flex justify-center mt-8">
+          <Button
+            type="submit"
+            disabled={!canSearch || isLocating}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-6 py-2 rounded-md shadow-sm transition-colors duration-200"
+          >
+            Search
+          </Button>
+        </div>
+      )}
 
       {/* Map and location controls */}
       {mapOpen && (
