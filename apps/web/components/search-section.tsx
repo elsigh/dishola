@@ -719,7 +719,12 @@ export default function SearchSection({
               if (typeof window !== 'undefined') {
                 sessionStorage.setItem('locationTooltipDismissed', 'true')
               }
-              setUseFullScreenHeight(true)
+              
+              // Only use full screen height if we're not already showing search results
+              const hasExistingSearch = searchParams.get('q') || searchParams.get('tastes')
+              if (!hasExistingSearch) {
+                setUseFullScreenHeight(true)
+              }
 
               // Only scroll if input is not already near the top
               setTimeout(() => {

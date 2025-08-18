@@ -32,6 +32,7 @@
     "clean": "turbo clean",
     "format": "biome format apps --write",
     "typecheck": "turbo typecheck",
+    "test": "turbo test",
     "prepare": "husky"
   },
   "devDependencies": {

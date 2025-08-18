@@ -30,7 +30,8 @@
   "scripts": {
     "build": "node build.js",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests configured'"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

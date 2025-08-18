@@ -10,7 +10,9 @@
     "start": "next start",
     "lint": "next lint",
     "clean": "rm -rf .next",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@dishola/supabase": "workspace:*",
@@ -74,12 +76,16 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.7.0",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^22",
     "@types/react": "19.1.10",
     "@types/react-dom": "19.1.7",
     "eslint-config-next": "15.4.2-canary.50",
+    "jsdom": "^26.1.0",
     "postcss": "^8.5",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "vitest": "^3.2.4"
   },
   "pnpm": {
     "overrides": {

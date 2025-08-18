@@ -10,7 +10,8 @@
     "preview": "node .output/server/index.mjs",
     "lint": "echo 'No linting configured'",
     "clean": "rm -rf .output",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests configured'"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

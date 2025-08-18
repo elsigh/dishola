@@ -23,6 +23,8 @@ const ResultsFor: FC<ResultsForProps> = ({
   aiProgress,
   timeToFirstDish
 }) => {
+  console.log("🍽️ ResultsFor props:", { timeToFirstDish, aiProgress })
+
   // Show loading state or completed results
   const displayText = isSearching 
     ? `Searching for ${searchQuery ? `${searchQuery} deliciousness` : "deliciousness"} near ${neighborhood && city ? `${neighborhood}, ${city}` : neighborhood || city || "your location"}...`
@@ -45,15 +47,18 @@ const ResultsFor: FC<ResultsForProps> = ({
       </div>
       
       {/* AI Progress Info - small text underneath */}
-      {aiProgress && (
-        <div className="text-xs text-brand-text-muted/75 mt-1">
-          {aiProgress.timing?.totalTime
-            ? `Search completed in ${aiProgress.timing.totalTime}ms (${aiProgress.timing.avgTokensPerSecond} tokens/sec)${timeToFirstDish ? `, TTFD: ${(timeToFirstDish / 1000).toFixed(1)}s` : ''}`
+      <div className={`text-xs text-brand-text-muted/75 mt-1 ${!aiProgress ? 'invisible' : 'visible'}`} title={timeToFirstDish ? "TTFD = Time To First Dish" : undefined}>
+        {aiProgress ? (
+          aiProgress.timing?.totalTime
+            ? `Search completed in ${aiProgress.timing.totalTime >= 1000 ? `${(aiProgress.timing.totalTime / 1000).toFixed(1)}s` : `${aiProgress.timing.totalTime}ms`} (${aiProgress.timing.avgTokensPerSecond} tokens/sec)${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}`
             : aiProgress.timing?.timeToFirstToken
-              ? `First response: ${aiProgress.timing.timeToFirstToken}ms${timeToFirstDish ? `, TTFD: ${(timeToFirstDish / 1000).toFixed(1)}s` : ''}`
-              : aiProgress.message}
-        </div>
-      )}
+              ? `First response: ${aiProgress.timing.timeToFirstToken}ms${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}`
+              : `${aiProgress.message}${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}`
+        ) : (
+          // Placeholder text to maintain layout height
+          '\u00A0'
+        )}
+      </div>
     </div>
   )
 }

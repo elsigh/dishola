@@ -100,12 +100,18 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
 
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const abortController = useRef<AbortController | null>(null)
+  const searchStartTimeRef = useRef<number | null>(null)
 
   const { user, getUserTastes } = useAuth()
 
   // Streaming search handler
   const handleStreamingSearch = async (searchUrl: string, abortController: AbortController | null) => {
     console.log("🚀 handleStreamingSearch started with URL:", searchUrl)
+
+    // Set start time immediately in ref for sync access
+    const startTime = Date.now()
+    searchStartTimeRef.current = startTime
+    console.log("🔍 Set searchStartTimeRef to:", startTime)
 
     // Reset streaming state
     setStreamingStatus("Starting search...")
@@ -115,7 +121,7 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
     setAiDishes([])
     setDbDishes([])
     setTimeToFirstDish(null)
-    setSearchStartTime(Date.now())
+    setSearchStartTime(startTime)
 
     if (!abortController) {
       console.error("No abort controller provided")
@@ -207,11 +213,12 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
           )
           if (exists) return prev
           
-          // Track time to first dish
-          if (prev.length === 0 && searchStartTime && !timeToFirstDish) {
-            const ttfd = Date.now() - searchStartTime
+          // Track time to first dish using ref for immediate access
+          console.log("🍽️ TTFD check:", { prevLength: prev.length, searchStartTimeRef: searchStartTimeRef.current, timeToFirstDish })
+          if (prev.length === 0 && searchStartTimeRef.current && !timeToFirstDish) {
+            const ttfd = Date.now() - searchStartTimeRef.current
             setTimeToFirstDish(ttfd)
-            console.log(`🍽️ TTFD: ${(ttfd / 1000).toFixed(1)}s`)
+            console.log(`🍽️ TTFD calculated: ${ttfd}ms = ${(ttfd / 1000).toFixed(1)}s`)
           }
           
           return [...prev, newDish]
@@ -223,11 +230,11 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
         setAiDishes(prev => {
           // Only replace if we haven't received streaming dishes
           if (prev.length === 0) {
-            // Track TTFD for batch results
-            if (searchStartTime && !timeToFirstDish) {
-              const ttfd = Date.now() - searchStartTime
+            // Track TTFD for batch results using ref
+            if (searchStartTimeRef.current && !timeToFirstDish) {
+              const ttfd = Date.now() - searchStartTimeRef.current
               setTimeToFirstDish(ttfd)
-              console.log(`🍽️ TTFD (batch): ${(ttfd / 1000).toFixed(1)}s`)
+              console.log(`🍽️ TTFD (batch): ${ttfd}ms = ${(ttfd / 1000).toFixed(1)}s`)
             }
             return event.data.results
           }
@@ -271,15 +278,6 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
       // Clear existing timeout
       if (debounceTimeout.current) clearTimeout(debounceTimeout.current)
 
-      // Immediately set searching state to show skeletons
-      setIsSearching(true)
-      setError(null)
-      setAiDishes([])
-      setDbDishes([])
-      setDbResultsReceived(false)
-      setAiResultsReceived(false)
-      setHasSearched(false)
-
       // Abort any existing request
       if (abortController.current) abortController.current.abort()
       abortController.current = new AbortController()
@@ -287,13 +285,25 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
       const performSearch = async () => {
         console.log("🔍 performSearch called with:", { hasQuery, hasTastes, lat, long, q, tastesParam })
 
+        // Only clear results and set searching state when we actually start searching
+        const startTime = Date.now()
+        searchStartTimeRef.current = startTime
+        console.log("🔍 Setting searchStartTime to:", startTime)
+        setIsSearching(true)
+        setError(null)
+        setAiDishes([])
+        setDbDishes([])
+        setDbResultsReceived(false)
+        setAiResultsReceived(false)
+        setHasSearched(false)
+        setTimeToFirstDish(null)
+        setSearchStartTime(startTime)
+
         if (abortController.current) {
           abortController.current.abort()
         }
 
         abortController.current = new AbortController()
-        setError(null)
-        // Don't call setIsSearching(true) again here - already set above
 
         try {
           const searchUrl = new URL(`${API_BASE_URL}/api/search`)
