@@ -46,18 +46,18 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
   // Helper function to extract distance number from string like "1.2 mi"
   const getDistanceNumber = (distanceStr: string | number | undefined): number => {
     if (!distanceStr) return Infinity
-    
+
     // Handle numeric distance values
-    if (typeof distanceStr === 'number') {
+    if (typeof distanceStr === "number") {
       return distanceStr
     }
-    
+
     // Handle string distance values
-    if (typeof distanceStr === 'string') {
+    if (typeof distanceStr === "string") {
       const match = distanceStr.match(/(\d+\.?\d*)\s*mi/)
       return match ? parseFloat(match[1]) : Infinity
     }
-    
+
     return Infinity
   }
 
@@ -205,29 +205,32 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
 
       case "aiDish":
         // Handle individual streaming dishes
-        setAiDishes(prev => {
+        setAiDishes((prev) => {
           const newDish = event.data.dish
-          const exists = prev.some(dish => 
-            dish.dish.name === newDish.dish.name && 
-            dish.restaurant.name === newDish.restaurant.name
+          const exists = prev.some(
+            (dish) => dish.dish.name === newDish.dish.name && dish.restaurant.name === newDish.restaurant.name
           )
           if (exists) return prev
-          
+
           // Track time to first dish using ref for immediate access
-          console.log("🍽️ TTFD check:", { prevLength: prev.length, searchStartTimeRef: searchStartTimeRef.current, timeToFirstDish })
+          console.log("🍽️ TTFD check:", {
+            prevLength: prev.length,
+            searchStartTimeRef: searchStartTimeRef.current,
+            timeToFirstDish
+          })
           if (prev.length === 0 && searchStartTimeRef.current && !timeToFirstDish) {
             const ttfd = Date.now() - searchStartTimeRef.current
             setTimeToFirstDish(ttfd)
             console.log(`🍽️ TTFD calculated: ${ttfd}ms = ${(ttfd / 1000).toFixed(1)}s`)
           }
-          
+
           return [...prev, newDish]
         })
         break
 
       case "aiResults":
         // Handle final batch results (fallback for cached responses)
-        setAiDishes(prev => {
+        setAiDishes((prev) => {
           // Only replace if we haven't received streaming dishes
           if (prev.length === 0) {
             // Track TTFD for batch results using ref
@@ -377,13 +380,12 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
 
   return (
     <div>
-
       {/* Results Section */}
       {(hasSearched || dbResultsReceived || aiResultsReceived || isSearching) && (
         <>
           {/* Sort Selector and Results For */}
           {(allDishes.length > 0 || (!isSearching && hasSearched) || isSearching) && (
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 gap-4 px-2">
               <div className="flex-1">
                 <ResultsFor
                   neighborhood={finalNeighborhood}

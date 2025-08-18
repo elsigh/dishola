@@ -32,17 +32,20 @@ const ResultsFor: FC<ResultsForProps> = ({
 
   return (
     <div>
-      <div className="flex gap-2 items-center">
+      <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center">
+        <div className="text-brand-primary">
+          <LocationDot />
+        </div>
         <h2 className="text-brand-primary">
-          <LocationDot /> <strong>{displayText}</strong>
+          <strong>{displayText}</strong>
         </h2>
         {!isSearching && showTastesLink && (
-          <>
+          <div className="flex gap-2 items-center">
             <span>∙</span>
             <Link href="/profile" className="text-sm text-brand-text-muted hover:text-brand-primary">
               Manage my Tastes
             </Link>
-          </>
+          </div>
         )}
       </div>
 
