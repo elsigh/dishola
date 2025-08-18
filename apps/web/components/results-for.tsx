@@ -13,10 +13,10 @@ interface ResultsForProps {
   timeToFirstDish?: number | null
 }
 
-const ResultsFor: FC<ResultsForProps> = ({ 
-  neighborhood, 
-  city, 
-  showTastesLink = false, 
+const ResultsFor: FC<ResultsForProps> = ({
+  neighborhood,
+  city,
+  showTastesLink = false,
   isSearching = false,
   searchQuery,
   searchType,
@@ -26,7 +26,7 @@ const ResultsFor: FC<ResultsForProps> = ({
   console.log("🍽️ ResultsFor props:", { timeToFirstDish, aiProgress })
 
   // Show loading state or completed results
-  const displayText = isSearching 
+  const displayText = isSearching
     ? `Searching for ${searchQuery ? `${searchQuery} deliciousness` : "deliciousness"} near ${neighborhood && city ? `${neighborhood}, ${city}` : neighborhood || city || "your location"}...`
     : `Results for ${neighborhood}${city ? `, ${city}` : ""}`
 
@@ -45,19 +45,20 @@ const ResultsFor: FC<ResultsForProps> = ({
           </>
         )}
       </div>
-      
+
       {/* AI Progress Info - small text underneath with monospace font for metrics */}
-      <div className={`text-xs text-brand-text-muted/75 mt-1 font-mono ${!aiProgress ? 'invisible' : 'visible'}`} title={timeToFirstDish ? "TTFD = Time To First Dish" : undefined}>
-        {aiProgress ? (
-          aiProgress.timing?.totalTime
-            ? `Search completed in ${aiProgress.timing.totalTime >= 1000 ? `${(aiProgress.timing.totalTime / 1000).toFixed(1)}s` : `${aiProgress.timing.totalTime}ms`}${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}${aiProgress.timing.avgTokensPerSecond ? ` (${aiProgress.timing.avgTokensPerSecond} tokens/sec)` : ''}`
+      <div
+        className={`text-xs text-brand-text-muted/75 mt-1 font-mono ${!aiProgress ? "invisible" : "visible"}`}
+        title={timeToFirstDish ? "TTFD = Time To First Dish" : undefined}
+      >
+        {aiProgress
+          ? aiProgress.timing?.totalTime
+            ? `Done in ${aiProgress.timing.totalTime >= 1000 ? `${(aiProgress.timing.totalTime / 1000).toFixed(1)}s` : `${aiProgress.timing.totalTime}ms`}${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ""}${aiProgress.timing.avgTokensPerSecond ? ` (${aiProgress.timing.avgTokensPerSecond} tok/sec)` : ""}`
             : aiProgress.timing?.timeToFirstToken
-              ? `First response: ${aiProgress.timing.timeToFirstToken}ms${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}`
-              : `${aiProgress.message}${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}`
-        ) : (
-          // Placeholder text to maintain layout height
-          '\u00A0'
-        )}
+              ? `First response: ${aiProgress.timing.timeToFirstToken}ms${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ""}`
+              : `${aiProgress.message}${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ""}`
+          : // Placeholder text to maintain layout height
+            "\u00A0"}
       </div>
     </div>
   )

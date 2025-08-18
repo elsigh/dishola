@@ -20,10 +20,11 @@ export default function SortSelector({ currentSort }: SortSelectorProps) {
   }
 
   return (
-    <div className="flex items-center gap-2 mb-4">
+    <div className="flex items-center gap-2">
       <span className="text-sm text-gray-600 font-medium">Sort by:</span>
       <div className="flex gap-1">
         <button
+          type="button"
           onClick={() => handleSortChange("distance")}
           className={`px-3 py-1 text-sm rounded-full transition-colors ${
             currentSort === "distance" ? "bg-brand-primary text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -32,6 +33,7 @@ export default function SortSelector({ currentSort }: SortSelectorProps) {
           Distance
         </button>
         <button
+          type="button"
           onClick={() => handleSortChange("rating")}
           className={`px-3 py-1 text-sm rounded-full transition-colors ${
             currentSort === "rating" ? "bg-brand-primary text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"

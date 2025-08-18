@@ -5,7 +5,7 @@ export default function SiteFooter() {
 
   return (
     <footer className="py-8 mt-16 border-t border-brand-border">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-brand-text-muted">
+      <div className="container mx-auto px-2 sm:px-6 lg:px-8 text-center text-brand-text-muted">
         <div className="mt-2 text-xs flex flex-col items-center">
           <ul className="mt-1 text-left mx-auto max-w-xs">
             <li>[dish-ola]</li>

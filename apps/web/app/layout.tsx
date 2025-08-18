@@ -52,7 +52,7 @@ export default function RootLayout({
             <Suspense
               fallback={
                 <div className="py-4">
-                  <div className="container mx-auto px-4">
+                  <div className="container mx-auto px-2 sm:px-4">
                     <div className="h-12"></div>
                   </div>
                 </div>
@@ -60,7 +60,7 @@ export default function RootLayout({
             >
               <SiteHeader />
             </Suspense>
-            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <main className="flex-grow container mx-auto px-2 sm:px-6 lg:px-8 py-2">
               {children}
             </main>
             <SiteFooter />
