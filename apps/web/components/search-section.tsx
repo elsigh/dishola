@@ -697,7 +697,7 @@ export default function SearchSection({
     <form
       ref={searchFormRef}
       onSubmit={handleSearch}
-      className={`w-full max-w-[850px] ${
+      className={`w-full max-w-full sm:max-w-[850px] ${
         useFullScreenHeight ? "min-h-screen" : ""
       }`}
     >

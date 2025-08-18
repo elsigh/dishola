@@ -46,11 +46,11 @@ const ResultsFor: FC<ResultsForProps> = ({
         )}
       </div>
       
-      {/* AI Progress Info - small text underneath */}
-      <div className={`text-xs text-brand-text-muted/75 mt-1 ${!aiProgress ? 'invisible' : 'visible'}`} title={timeToFirstDish ? "TTFD = Time To First Dish" : undefined}>
+      {/* AI Progress Info - small text underneath with monospace font for metrics */}
+      <div className={`text-xs text-brand-text-muted/75 mt-1 font-mono ${!aiProgress ? 'invisible' : 'visible'}`} title={timeToFirstDish ? "TTFD = Time To First Dish" : undefined}>
         {aiProgress ? (
           aiProgress.timing?.totalTime
-            ? `Search completed in ${aiProgress.timing.totalTime >= 1000 ? `${(aiProgress.timing.totalTime / 1000).toFixed(1)}s` : `${aiProgress.timing.totalTime}ms`} (${aiProgress.timing.avgTokensPerSecond} tokens/sec)${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}`
+            ? `Search completed in ${aiProgress.timing.totalTime >= 1000 ? `${(aiProgress.timing.totalTime / 1000).toFixed(1)}s` : `${aiProgress.timing.totalTime}ms`}${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}${aiProgress.timing.avgTokensPerSecond ? ` (${aiProgress.timing.avgTokensPerSecond} tokens/sec)` : ''}`
             : aiProgress.timing?.timeToFirstToken
               ? `First response: ${aiProgress.timing.timeToFirstToken}ms${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}`
               : `${aiProgress.message}${timeToFirstDish ? `, TTFD: ${timeToFirstDish >= 1000 ? `${(timeToFirstDish / 1000).toFixed(1)}s` : `${timeToFirstDish}ms`}` : ''}`

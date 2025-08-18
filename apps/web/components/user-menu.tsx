@@ -74,7 +74,7 @@ export function UserMenu() {
               </>
             ) : (
               // Skeleton avatar with user icon
-              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-200 animate-pulse">
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-200">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"

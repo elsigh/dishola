@@ -19,13 +19,13 @@ export default function SiteHeader() {
 
   return (
     <header className="py-4">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex gap-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex gap-2 sm:gap-4 lg:gap-8">
         <nav className={`hidden md:block py-2 transition-opacity duration-300 ${isHome && !hasSearchParams ? "opacity-0" : "opacity-100"}`}>
           <Link href="/" className="text-3xl font-serif font-bold text-brand-primary">
             dishola
           </Link>
         </nav>
-        <div className="flex flex-grow">
+        <div className="flex flex-grow min-w-0">
           {/* Show search in header only when we have search parameters (search results are showing) */}
           {hasSearchParams && (
             <div className="header-search-container">
@@ -39,7 +39,7 @@ export default function SiteHeader() {
             </div>
           )}
         </div>
-        <div className="py-2">
+        <div className="py-2 flex-shrink-0">
           <UserMenu />
         </div>
       </div>
