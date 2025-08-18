@@ -2,8 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import SearchSection from "@/components/search-section"
 import SearchResultsContent from "@/components/search-results-content"
+import SearchSection from "@/components/search-section"
 import { useAuth } from "@/lib/auth-context"
 import { getLocationInfo } from "@/lib/location-utils"
 
@@ -14,24 +14,24 @@ export default function HomePage() {
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // Check if we have search parameters
   const q = searchParams.get("q")
-  const lat = searchParams.get("lat") 
+  const lat = searchParams.get("lat")
   const long = searchParams.get("long")
   const tastes = searchParams.get("tastes")
   const hasSearchParams = !!(q || tastes) && !!(lat && long)
-  
+
   // Get location info for search results
   let locationDisplayName = ""
   let neighborhood: string | undefined
   let city: string | undefined
-  
+
   if (lat && long) {
     const locationInfo = getLocationInfo(parseFloat(lat), parseFloat(long))
     neighborhood = locationInfo.neighborhood
     city = locationInfo.city
-    
+
     if (locationInfo.neighborhood && locationInfo.city) {
       locationDisplayName = `in ${locationInfo.neighborhood}, ${locationInfo.city}`
     } else if (locationInfo.city) {
@@ -79,7 +79,7 @@ export default function HomePage() {
         searchParams.append("long", longitude.toString())
         searchParams.append("sort", "distance") // Default sort by distance
         searchParams.append("tastes", userTastes.join(","))
-        
+
         console.log("[HomePage] Auto-searching with tastes:", searchParams.toString())
         // Stay on homepage, just update URL params
         router.replace(`/?${searchParams.toString()}`)
@@ -87,33 +87,11 @@ export default function HomePage() {
     }
   }, [user, authLoading, latitude, longitude, getUserTastes, profile, router, hasSearchParams])
 
-  // If user is not signed in, show the standard homepage
-  if (authLoading || (user && isGettingLocation) || (user && profile === null)) {
-    return (
-      <div className="flex flex-col items-center justify-center text-center py-12 md:py-20">
-        <div className="animate-pulse">
-          <h1 className="text-5xl md:text-6xl font-bold text-brand-primary mb-4">dishola</h1>
-          {authLoading ? (
-            <p className="text-lg text-brand-text-muted">Loading...</p>
-          ) : isGettingLocation ? (
-            <p className="text-lg text-brand-text-muted">Getting your location...</p>
-          ) : (
-            <p className="text-lg text-brand-text-muted">Loading your tastes...</p>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   // Show search results if we have search parameters
   if (hasSearchParams) {
     return (
       <div className="w-full">
-        <SearchResultsContent 
-          locationDisplayName={locationDisplayName}
-          neighborhood={neighborhood}
-          city={city}
-        />
+        <SearchResultsContent locationDisplayName={locationDisplayName} neighborhood={neighborhood} city={city} />
       </div>
     )
   }
@@ -126,10 +104,10 @@ export default function HomePage() {
         Share the love of food, dish by dish. <br />
         The ultimate source to find real meals at real places that rule.
       </p>
-      
+
       <div className="homepage-search-container mt-8 w-full max-w-2xl">
-        <SearchSection 
-          includeTastesOption={true} 
+        <SearchSection
+          includeTastesOption={true}
           isUserLoggedIn={!!user}
           initialQuery={q || ""}
           initialLat={lat ? parseFloat(lat) : undefined}
