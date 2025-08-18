@@ -766,7 +766,9 @@ export default function SearchSection({
           <div className="relative">
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation() // Prevent event bubbling to avoid conflict with click outside handler
+                
                 if (mapOpen) {
                   setMapOpen(false)
                   // Only remove full-screen height if input is empty AND not focused
@@ -784,7 +786,12 @@ export default function SearchSection({
                   setTempLat(latitude || 37.7749)
                   setTempLng(longitude || -122.4194)
                   setMapOpen(true)
-                  setUseFullScreenHeight(true)
+                  
+                  // Only use full screen height if we're not already showing search results
+                  const hasExistingSearch = searchParams.get('q') || searchParams.get('tastes')
+                  if (!hasExistingSearch) {
+                    setUseFullScreenHeight(true)
+                  }
 
                   // Scroll to position the search input at the top of the viewport with small margin
                   setTimeout(() => {
