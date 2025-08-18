@@ -375,9 +375,6 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
     )
   }
 
-  // Show loading state only if we're searching and haven't received any results yet
-  const shouldShowLoading = isSearching && !dbResultsReceived && !aiResultsReceived && !error
-
   return (
     <div>
       {/* Results Section */}
@@ -409,8 +406,8 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
             {allDishes.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
                 {allDishes.map((dish) => (
-                  <DishCard 
-                    key={`${dish.source}-${dish.id}`} 
+                  <DishCard
+                    key={`${dish.source}-${dish.id}`}
                     recommendation={dish}
                     userLat={lat ? parseFloat(lat) : undefined}
                     userLng={long ? parseFloat(long) : undefined}
@@ -419,8 +416,8 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
               </div>
             ) : isSearching ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
-                {[...Array(10)].map((_, i) => (
-                  <DishCardSkeleton key={`skeleton-${i}`} />
+                {[...Array(10)].map((_, _i) => (
+                  <DishCardSkeleton key={`skeleton-${Date.now()}-${Math.random()}`} />
                 ))}
               </div>
             ) : null}
