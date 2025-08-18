@@ -1,4 +1,4 @@
-import { Analytics } from "@vercel/analytics/react"
+import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import type { Metadata } from "next"
 import { Mona_Sans as FontSans, Young_Serif as FontSerif } from "next/font/google"
@@ -60,9 +60,7 @@ export default function RootLayout({
             >
               <SiteHeader />
             </Suspense>
-            <main className="flex-grow container mx-auto px-2 sm:px-6 lg:px-8 py-2">
-              {children}
-            </main>
+            <main className="flex-grow container mx-auto px-2 sm:px-6 lg:px-8 py-2">{children}</main>
             <SiteFooter />
           </AuthProvider>
         </ThemeProvider>
