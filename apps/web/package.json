@@ -11,8 +11,8 @@
     "lint": "next lint",
     "clean": "rm -rf .next",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dishola/supabase": "workspace:*",
