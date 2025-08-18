@@ -849,8 +849,8 @@ export default function SearchSection({
 
       {/* Map and location controls */}
       {mapOpen && (
-        <div ref={mapContainerRef} className="mt-2 sm:relative sm:w-full -mx-2 sm:mx-0">
-          <div className="relative overflow-hidden sm:rounded-t-xl sm:rounded-bl-xl sm:rounded-br-xl">
+        <div ref={mapContainerRef} className="mt-2 sm:relative sm:w-full w-screen -ml-2 sm:w-full sm:ml-0">
+          <div className="relative overflow-hidden sm:rounded-t-xl sm:rounded-bl-xl sm:rounded-br-xl px-2 sm:px-0">
             <div ref={mapRef} style={{ width: "100%", height: "400px" }} />
             {/* Absolutely positioned blue dot in the center */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
@@ -877,7 +877,7 @@ export default function SearchSection({
             </button>
           </div>
           {/* Location info and confirm button */}
-          <div className="mt-0 bg-gray-50 sm:rounded-bl-xl sm:rounded-br-xl p-3">
+          <div className="mt-0 bg-gray-50 sm:rounded-bl-xl sm:rounded-br-xl p-3 mx-2 sm:mx-0">
             {isEditingAddress ? (
               <div className="flex items-center gap-2">
                 <div className="flex-1">
