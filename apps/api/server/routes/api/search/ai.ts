@@ -152,7 +152,7 @@ Respond with valid, strict JSON only. Do not include comments, trailing commas, 
 
 async function generateAIResponse(prompt: string, logger: ReturnType<typeof createLogger>): Promise<string> {
   const model = await getModel(logger)
-  
+
   const startTime = Date.now()
   let firstTokenTime: number | null = null
   let tokenCount = 0
@@ -167,16 +167,16 @@ async function generateAIResponse(prompt: string, logger: ReturnType<typeof crea
 
     // Collect the streamed response
     let fullText = ""
-    
+
     for await (const chunk of result.textStream) {
       // Capture timing for first token
       if (firstTokenTime === null) {
         firstTokenTime = Date.now()
-        logger.debug("First token received", { 
-          timeToFirstToken: firstTokenTime - startTime 
+        logger.debug("First token received", {
+          timeToFirstToken: firstTokenTime - startTime
         })
       }
-      
+
       fullText += chunk
       tokenCount++
     }
@@ -196,7 +196,7 @@ async function generateAIResponse(prompt: string, logger: ReturnType<typeof crea
   } catch (error) {
     const errorTime = Date.now() - startTime
     logger.error("AI model error", { error, timeTaken: errorTime })
-    
+
     // Fall back to a simpler response format if the AI call fails
     return JSON.stringify([
       {
@@ -392,14 +392,14 @@ export default defineEventHandler(async (event) => {
 
   try {
     const searchPrompt = query.q as string
-    
-    logger.info("Fetching AI recommendations", { 
-      useQuery, 
-      useTastes, 
-      query: searchPrompt, 
+
+    logger.info("Fetching AI recommendations", {
+      useQuery,
+      useTastes,
+      query: searchPrompt,
       tastes: query.tastes,
-      sortBy, 
-      location: locationInfo 
+      sortBy,
+      location: locationInfo
     })
 
     // Get user tastes if needed
@@ -415,7 +415,7 @@ export default defineEventHandler(async (event) => {
     const parsedQuery = useQuery
       ? await parseUserQuery(searchPrompt, logger)
       : { dishName: userTastes.join(", "), cuisine: "Any" }
-    
+
     // Get AI-powered recommendations
     const aiResults = await getDishRecommendations(
       parsedQuery,
@@ -428,10 +428,10 @@ export default defineEventHandler(async (event) => {
     // Deduplicate AI results
     const deduplicatedResults = deduplicateResults(aiResults)
 
-    logger.info("AI search completed", { 
+    logger.info("AI search completed", {
       resultsCount: deduplicatedResults.length,
       query: searchPrompt || "tastes-based",
-      parsedQuery 
+      parsedQuery
     })
 
     return {

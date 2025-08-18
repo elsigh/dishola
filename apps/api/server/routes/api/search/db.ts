@@ -182,18 +182,18 @@ export default defineEventHandler(async (event) => {
 
   try {
     const dishName = query.dish as string
-    
+
     logger.info("Fetching database results", { dish: dishName, sortBy, location: locationInfo })
-    
+
     // Get database results
     const dbResults = await getDbDishRecommendations(dishName, locationInfo, sortBy, logger)
-    
+
     // Deduplicate results
     const deduplicatedResults = deduplicateResults(dbResults)
 
-    logger.info("Database search completed", { 
+    logger.info("Database search completed", {
       resultsCount: deduplicatedResults.length,
-      dish: dishName 
+      dish: dishName
     })
 
     return {

@@ -44,7 +44,7 @@
   .header-search-container {
     @apply w-full;
   }
-  
+
   /* View transition styles - disabled temporarily due to SSR hydration mismatch
   .homepage-search-container {
     view-transition-name: homepage-search-bar;
@@ -54,6 +54,7 @@
     view-transition-name: header-search-bar;
   }
   */
+
 
   /* Blue dot pulse animation */
   @keyframes blue-dot-pulse {

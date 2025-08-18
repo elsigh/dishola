@@ -87,6 +87,8 @@ export default function HomePage() {
     }
   }, [user, authLoading, latitude, longitude, getUserTastes, profile, router, hasSearchParams])
 
+
+
   // Show search results if we have search parameters
   if (hasSearchParams) {
     return (

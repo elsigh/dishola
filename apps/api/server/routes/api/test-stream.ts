@@ -10,12 +10,12 @@ export default defineEventHandler(async (event) => {
   if (corsResponse) return corsResponse
 
   logger.info("Starting manual test stream")
-  
+
   // Set SSE headers manually
   setHeader(event, "Content-Type", "text/event-stream")
   setHeader(event, "Cache-Control", "no-cache, no-store, must-revalidate")
   setHeader(event, "Connection", "keep-alive")
-  
+
   // Manual SSE sending function
   const sendSSE = (data: any) => {
     const sseData = `data: ${JSON.stringify(data)}\n\n`
@@ -25,27 +25,27 @@ export default defineEventHandler(async (event) => {
 
   try {
     logger.info("Sending test messages")
-    
+
     // Send test messages
     sendSSE({ message: "Test message 1", timestamp: Date.now() })
-    
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
     sendSSE({ message: "Test message 2", timestamp: Date.now() })
-    
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
     sendSSE({ message: "Test completed", timestamp: Date.now() })
-    
+
     logger.info("All test messages sent, ending response")
-    
+
     // End the response
     event.node.res.end()
   } catch (error) {
     logger.error("Manual test stream error", { error })
     throw error
   }
-  
+
   // Return to satisfy TypeScript (though the response is already ended)
   return
 })

@@ -6,9 +6,12 @@ import { setCorsHeaders } from "../../lib/cors"
 
 export default defineEventHandler(async (event): Promise<ProfileResponse> => {
   const logger = createLogger({ event, handlerName: "profile" })
-  
+
   // Handle CORS
-  const corsResponse = setCorsHeaders(event, { methods: ["GET", "POST", "OPTIONS"], headers: ["Content-Type", "Authorization", "Cache-Control"] })
+  const corsResponse = setCorsHeaders(event, {
+    methods: ["GET", "POST", "OPTIONS"],
+    headers: ["Content-Type", "Authorization", "Cache-Control"]
+  })
   if (corsResponse) return corsResponse as any
 
   // Get user from Authorization header

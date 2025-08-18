@@ -48,18 +48,13 @@ export default async function DbResults({ dish, lat, lng, sort, userLat, userLng
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
           {results.map((rec) => (
-            <DishCard 
-              key={`db-${rec.id}`} 
-              recommendation={rec} 
-              userLat={userLat}
-              userLng={userLng}
-            />
+            <DishCard key={`db-${rec.id}`} recommendation={rec} userLat={userLat} userLng={userLng} />
           ))}
         </div>
       </section>
     )
   } catch (error) {
-    console.error('Database search error:', error)
+    console.error("Database search error:", error)
     return (
       <section className="mb-10">
         <div className="flex items-center mb-4">

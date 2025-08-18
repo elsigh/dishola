@@ -5,7 +5,7 @@ import { setCorsHeaders } from "../../lib/cors"
 
 export default defineEventHandler(async (event) => {
   const logger = createLogger({ event, handlerName: "geocode" })
-  
+
   // Handle CORS
   const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
   if (corsResponse) return corsResponse

@@ -50,7 +50,6 @@ interface DishCardProps {
 }
 
 export default function DishCard({ recommendation, userLat, userLng }: DishCardProps) {
-
   const restaurant = recommendation.restaurant
 
   const googleMapsQuery = encodeURIComponent(`${restaurant.name} ${restaurant.address}`)

@@ -13,9 +13,15 @@ interface AiResultsProps {
   userLng?: number
 }
 
-async function getAiResults(query: string | undefined, tastes: string | undefined, lat: string, lng: string, sort = "distance") {
+async function getAiResults(
+  query: string | undefined,
+  tastes: string | undefined,
+  lat: string,
+  lng: string,
+  sort = "distance"
+) {
   const searchUrl = new URL(`${API_BASE_URL}/api/search/ai`)
-  
+
   if (query) {
     searchUrl.searchParams.append("q", query)
   } else if (tastes) {
@@ -23,7 +29,7 @@ async function getAiResults(query: string | undefined, tastes: string | undefine
   } else {
     throw new Error("Either query or tastes parameter is required")
   }
-  
+
   searchUrl.searchParams.append("lat", lat)
   searchUrl.searchParams.append("long", lng)
   searchUrl.searchParams.append("sort", sort)
@@ -63,31 +69,25 @@ export default async function AiResults({ query, tastes, lat, lng, sort, userLat
         <div className="flex items-center mb-4">
           <h2 className="text-2xl font-semibold text-brand-primary">AI Recommendations</h2>
         </div>
-        
+
         {/* Show timing info if available */}
         {data.timing && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-700">
-              AI recommendations completed in {data.timing.totalTime}ms 
-              ({data.timing.avgTokensPerSecond} tokens/sec)
+              AI recommendations completed in {data.timing.totalTime}ms ({data.timing.avgTokensPerSecond} tokens/sec)
             </p>
           </div>
         )}
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
           {results.map((rec) => (
-            <DishCard 
-              key={`ai-${rec.id}`} 
-              recommendation={rec} 
-              userLat={userLat}
-              userLng={userLng}
-            />
+            <DishCard key={`ai-${rec.id}`} recommendation={rec} userLat={userLat} userLng={userLng} />
           ))}
         </div>
       </section>
     )
   } catch (error) {
-    console.error('AI search error:', error)
+    console.error("AI search error:", error)
     return (
       <section className="mb-10">
         <div className="flex items-center mb-4">

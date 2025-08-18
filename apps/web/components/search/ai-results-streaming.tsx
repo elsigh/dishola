@@ -29,14 +29,14 @@ interface StreamingState {
   }
 }
 
-export default function AiResultsStreaming({ 
-  query, 
-  tastes, 
-  lat, 
-  lng, 
-  sort = "distance", 
-  userLat, 
-  userLng 
+export default function AiResultsStreaming({
+  query,
+  tastes,
+  lat,
+  lng,
+  sort = "distance",
+  userLat,
+  userLng
 }: AiResultsStreamingProps) {
   const [state, setState] = useState<StreamingState>({
     dishes: [],
@@ -62,7 +62,7 @@ export default function AiResultsStreaming({
 
       // Set a 60-second timeout for the entire streaming process
       timeoutId = setTimeout(() => {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           error: "Search timed out after 60 seconds",
           isStreaming: false,
@@ -74,7 +74,7 @@ export default function AiResultsStreaming({
       try {
         // Check if already aborted before starting
         if (abortController.signal.aborted) {
-          console.log('Request aborted before starting')
+          console.log("Request aborted before starting")
           return
         }
 
@@ -89,13 +89,13 @@ export default function AiResultsStreaming({
         searchUrl.searchParams.append("long", lng)
         searchUrl.searchParams.append("sort", sort)
 
-        console.log('🤖 Starting AI streaming from:', searchUrl.toString())
+        console.log("🤖 Starting AI streaming from:", searchUrl.toString())
 
         const response = await fetch(searchUrl.toString(), {
           signal: abortController.signal
         })
 
-        console.log('📡 Fetch response received:', {
+        console.log("📡 Fetch response received:", {
           ok: response.ok,
           status: response.status,
           statusText: response.statusText,
@@ -113,71 +113,73 @@ export default function AiResultsStreaming({
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
 
-        console.log('🔄 Starting to read stream...')
-        
+        console.log("🔄 Starting to read stream...")
+
         while (true) {
           const { done, value } = await reader.read()
           if (done) {
-            console.log('✅ Stream reading completed')
+            console.log("✅ Stream reading completed")
             break
           }
 
           const chunk = decoder.decode(value, { stream: true })
-          console.log('📦 Raw stream chunk received:', chunk)
-          
-          const lines = chunk.split('\n').filter(line => line.trim())
-          console.log('📝 Parsed lines:', lines)
+          console.log("📦 Raw stream chunk received:", chunk)
+
+          const lines = chunk.split("\n").filter((line) => line.trim())
+          console.log("📝 Parsed lines:", lines)
 
           for (const line of lines) {
             if (line.trim()) {
               try {
                 // Parse SSE format
                 let eventData
-                if (line.startsWith('data: ')) {
+                if (line.startsWith("data: ")) {
                   eventData = JSON.parse(line.slice(6))
                 } else {
                   eventData = JSON.parse(line)
                 }
 
-                console.log('🎯 AI Stream event:', eventData.type, eventData.data)
+                console.log("🎯 AI Stream event:", eventData.type, eventData.data)
 
                 // Skip non-AI events for cleaner AI results section
-                if (['metadata', 'dbResults', 'complete'].includes(eventData.type)) {
+                if (["metadata", "dbResults", "complete"].includes(eventData.type)) {
                   continue
                 }
 
                 // Handle different event types
                 switch (eventData.type) {
-                  case 'aiProgress':
-                    setState(prev => ({
+                  case "aiProgress":
+                    setState((prev) => ({
                       ...prev,
                       streamingStatus: eventData.data.message,
-                      timing: eventData.data.timeToFirstToken ? {
-                        timeToFirstToken: eventData.data.timeToFirstToken,
-                        totalTime: 0,
-                        avgTokensPerSecond: 0
-                      } : prev.timing
+                      timing: eventData.data.timeToFirstToken
+                        ? {
+                            timeToFirstToken: eventData.data.timeToFirstToken,
+                            totalTime: 0,
+                            avgTokensPerSecond: 0
+                          }
+                        : prev.timing
                     }))
                     break
 
-                  case 'aiDish':
+                  case "aiDish":
                     // Individual dish streamed from server as it's parsed
                     const dish = eventData.data.dish
-                    console.log('🍽️ Client received streaming dish:', dish.dish?.name, 'from', dish.restaurant?.name)
-                    
-                    setState(prev => ({
+                    console.log("🍽️ Client received streaming dish:", dish.dish?.name, "from", dish.restaurant?.name)
+
+                    setState((prev) => ({
                       ...prev,
                       dishes: [...prev.dishes, dish],
                       streamingStatus: `Found ${prev.dishes.length + 1} recommendations...`
                     }))
                     break
 
-                  case 'aiResults':
+                  case "aiResults":
                     // Final results event with timing data - dishes already streamed individually
                     const timing = eventData.data.timing
-                    console.log('✅ AI streaming completed with timing:', timing)
+                    console.log("✅ AI streaming completed with timing:", timing)
 
-                    setState(prev => ({
+                    setState((prev) => ({
                       ...prev,
                       isStreaming: false,
                       isCompleted: true,
@@ -186,40 +188,40 @@ export default function AiResultsStreaming({
                     }))
                     break
 
-                  case 'error':
-                  case 'aiError':
-                    console.error('AI Error received:', eventData.data)
-                    setState(prev => ({
+                  case "error":
+                  case "aiError":
+                    console.error("AI Error received:", eventData.data)
+                    setState((prev) => ({
                       ...prev,
-                      error: eventData.data.message || 'Search failed',
+                      error: eventData.data.message || "Search failed",
                       isStreaming: false,
                       streamingStatus: null
                     }))
                     break
-                  
+
                   default:
-                    console.log('Unhandled event type:', eventData.type, eventData.data)
+                    console.log("Unhandled event type:", eventData.type, eventData.data)
                     break
                 }
               } catch (parseError) {
-                console.warn('Failed to parse stream data:', line, parseError)
+                console.warn("Failed to parse stream data:", line, parseError)
               }
             }
           }
         }
       } catch (error) {
-        console.error('AI streaming error:', error)
-        
+        console.error("AI streaming error:", error)
+
         // Don't show error state for aborted requests (component unmounting)
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.log('Request was aborted (likely due to component unmount)')
+        if (error instanceof Error && error.name === "AbortError") {
+          console.log("Request was aborted (likely due to component unmount)")
           return
         }
-        
-        setState(prev => ({
+
+        setState((prev) => ({
           ...prev,
           isStreaming: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof Error ? error.message : "Unknown error",
           streamingStatus: null
         }))
       } finally {
@@ -254,23 +256,20 @@ export default function AiResultsStreaming({
     <section className="mb-10">
       <div className="flex items-center mb-4">
         <h2 className="text-2xl font-semibold text-brand-primary">Search Results</h2>
-        {state.isStreaming && (
-          <Loader2 className="h-4 w-4 animate-spin text-brand-primary ml-3" />
-        )}
+        {state.isStreaming && <Loader2 className="h-4 w-4 animate-spin text-brand-primary ml-3" />}
       </div>
 
       {/* Show timing and progress info */}
       {(state.streamingStatus || state.timing) && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          {state.streamingStatus && (
-            <p className="text-sm text-blue-700">{state.streamingStatus}</p>
-          )}
+          {state.streamingStatus && <p className="text-sm text-blue-700">{state.streamingStatus}</p>}
           {state.timing && (
             <p className="text-xs text-blue-600 mt-1">
-              {state.timing.totalTime > 0 ? 
-                `Completed in ${state.timing.totalTime}ms (${state.timing.avgTokensPerSecond} tokens/sec)` :
-                state.timing.timeToFirstToken > 0 ? `First response: ${state.timing.timeToFirstToken}ms` : ''
-              }
+              {state.timing.totalTime > 0
+                ? `Completed in ${state.timing.totalTime}ms (${state.timing.avgTokensPerSecond} tokens/sec)`
+                : state.timing.timeToFirstToken > 0
+                  ? `First response: ${state.timing.timeToFirstToken}ms`
+                  : ""}
             </p>
           )}
         </div>
@@ -285,11 +284,7 @@ export default function AiResultsStreaming({
               className="animate-in fade-in-50 slide-in-from-bottom-2 duration-300"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <DishCard 
-                recommendation={dish} 
-                userLat={userLat}
-                userLng={userLng}
-              />
+              <DishCard recommendation={dish} userLat={userLat} userLng={userLng} />
             </div>
           ))}
         </div>

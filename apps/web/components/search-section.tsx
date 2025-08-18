@@ -614,6 +614,7 @@ export default function SearchSection({
     }
   }, [stopLocationTracking])
 
+
   // Handle click outside map to close it
   useEffect(() => {
     if (!mapOpen) return
@@ -870,8 +871,7 @@ export default function SearchSection({
         <div className="flex justify-center mt-8">
           <Button
             type="submit"
-            disabled={!canSearch || isLocating}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-6 py-2 rounded-md shadow-sm transition-colors duration-200"
+            className="bg-gray-100 hover:bg-gray-200 hover:shadow-md hover:border-gray-400 text-gray-700 border border-gray-300 px-6 py-2 rounded-md shadow-sm transition-all duration-200"
           >
             Search
           </Button>
@@ -880,7 +880,7 @@ export default function SearchSection({
 
       {/* Map and location controls */}
       {mapOpen && (
-        <div ref={mapContainerRef} className="mt-2 sm:relative sm:w-full w-screen -ml-2 sm:w-full sm:ml-0">
+        <div ref={mapContainerRef} className="mt-2 sm:relative w-screen -ml-2 sm:w-full sm:ml-0">
           <div className="relative overflow-hidden sm:rounded-t-xl sm:rounded-bl-xl sm:rounded-br-xl px-2 sm:px-0">
             <div ref={mapRef} style={{ width: "100%", height: "400px" }} />
             {/* Absolutely positioned blue dot in the center */}

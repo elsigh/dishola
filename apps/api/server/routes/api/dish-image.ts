@@ -9,11 +9,11 @@ import { setCorsHeaders } from "../../lib/cors"
 
 export default defineEventHandler(async (event) => {
   const logger = createLogger({ event, handlerName: "dish-image", disable: true })
-  
+
   // Handle CORS
   const corsResponse = setCorsHeaders(event, { methods: ["GET", "OPTIONS"] })
   if (corsResponse) return corsResponse
-  
+
   const { q, nocache } = getQuery(event)
   if (!q || typeof q !== "string") {
     event.res.statusCode = 400

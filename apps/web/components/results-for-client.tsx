@@ -10,12 +10,6 @@ interface ResultsForClientProps {
 
 export default function ResultsForClient({ neighborhood, city }: ResultsForClientProps) {
   const { user } = useAuth()
-  
-  return (
-    <ResultsFor 
-      neighborhood={neighborhood} 
-      city={city} 
-      showTastesLink={!!user}
-    />
-  )
+
+  return <ResultsFor neighborhood={neighborhood} city={city} showTastesLink={!!user} />
 }

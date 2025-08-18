@@ -148,7 +148,7 @@ async function handleStreamingSearch(
   query: any
 ) {
   logger.info("Starting streaming search")
-  
+
   // Create cache key for this search
   const cacheKey = searchCache.createKey(
     query.q as string,
@@ -157,49 +157,49 @@ async function handleStreamingSearch(
     Array.isArray(query.tastes) ? query.tastes.join(",") : (query.tastes as string) || "",
     sortBy
   )
-  
+
   // Set SSE headers manually
   setHeader(event, "Content-Type", "text/event-stream")
   setHeader(event, "Cache-Control", "no-cache, no-store, must-revalidate")
   setHeader(event, "Connection", "keep-alive")
-  
+
   // Check for cached streaming response
   const cachedEvents = searchCache.getStreamingResponse(cacheKey)
   if (cachedEvents) {
     logger.info("Found cached streaming response, replaying events", { eventCount: cachedEvents.length })
-    
+
     // Replay cached events with small delays to maintain streaming feel
     for (const cachedEvent of cachedEvents) {
       if (event.node.res.destroyed) break
-      
+
       try {
         const sseData = `data: ${JSON.stringify(cachedEvent)}\n\n`
         event.node.res.write(sseData)
-        
+
         // Add small delay between events for realistic streaming experience
-        if (cachedEvent.type !== 'complete') {
-          await new Promise(resolve => setTimeout(resolve, 50))
+        if (cachedEvent.type !== "complete") {
+          await new Promise((resolve) => setTimeout(resolve, 50))
         }
       } catch (error) {
         logger.error("Failed to replay cached SSE data", { error })
         break
       }
     }
-    
+
     event.node.res.end()
     return
   }
-  
+
   // Manual SSE sending function
   let responseEnded = false
   const eventBuffer: Array<{ type: string; data: any }> = []
   const sendSSE = async (data: any) => {
     if (responseEnded) return
-    
+
     try {
       // Buffer the event for caching
       eventBuffer.push({ type: data.type, data: data.data })
-      
+
       const sseData = `data: ${JSON.stringify(data)}\n\n`
       event.node.res.write(sseData)
       logger.debug("Sent SSE data", { type: data.type })
@@ -208,21 +208,21 @@ async function handleStreamingSearch(
       responseEnded = true
     }
   }
-  
+
   const endResponse = () => {
     if (!responseEnded) {
       responseEnded = true
-      
+
       // Cache the complete event buffer for future identical searches
       if (eventBuffer.length > 0) {
         searchCache.setStreamingResponse(cacheKey, eventBuffer)
         logger.info("Cached streaming response", { eventCount: eventBuffer.length, cacheKey })
       }
-      
+
       event.node.res.end()
     }
   }
-  
+
   try {
     // Get user tastes if needed
     let userTastes: string[] = []
@@ -255,7 +255,7 @@ async function handleStreamingSearch(
     logger.debug("Fetching database results")
     const dbResults = await getDbDishRecommendations(parsedQuery.dishName, locationInfo, sortBy, logger)
     const deduplicatedDbResults = deduplicateResults(dbResults)
-    
+
     await sendSSE({
       type: "dbResults",
       data: deduplicatedDbResults
@@ -263,15 +263,10 @@ async function handleStreamingSearch(
 
     // Get AI results with streaming
     logger.debug("Fetching AI recommendations")
-    await getDishRecommendationaStreaming(
-      parsedQuery,
-      locationInfo,
-      useTastes ? userTastes : [],
-      sortBy,
-      logger,
-      { push: sendSSE }
-    )
-    
+    await getDishRecommendationaStreaming(parsedQuery, locationInfo, useTastes ? userTastes : [], sortBy, logger, {
+      push: sendSSE
+    })
+
     // Get location data
     const locationData = await getNeighborhoodInfo(locationInfo.lat, locationInfo.long, event.headers)
     const { neighborhood, city } = locationData
@@ -291,15 +286,16 @@ async function handleStreamingSearch(
     logger.error("Streaming search error", { error })
     await sendSSE({
       type: "error",
-      data: { message: "Search failed", error: error instanceof Error ? error.message : 'Unknown error' }
+      data: { message: "Search failed", error: error instanceof Error ? error.message : "Unknown error" }
     })
-    
+
     // Still cache partial results if we have any useful events
-    if (eventBuffer.length > 1) { // At least metadata + one result
+    if (eventBuffer.length > 1) {
+      // At least metadata + one result
       searchCache.setStreamingResponse(cacheKey, eventBuffer)
       logger.info("Cached partial streaming response due to error", { eventCount: eventBuffer.length, cacheKey })
     }
-    
+
     endResponse()
   }
 }
@@ -354,7 +350,7 @@ export default defineEventHandler(async (event) => {
 
   // Get sort parameter (default to distance)
   const sortBy = typeof query.sort === "string" ? query.sort : "distance"
-  
+
   // Check if client wants to disable streaming (streaming is default)
   const isStreaming = query.stream !== "false" && query.stream !== "0"
 
@@ -366,7 +362,7 @@ export default defineEventHandler(async (event) => {
     Array.isArray(query.tastes) ? query.tastes.join(",") : (query.tastes as string) || "",
     sortBy
   )
-  
+
   // Check cache for non-streaming requests
   if (!isStreaming) {
     const cached = searchCache.get(cacheKey)
@@ -393,16 +389,7 @@ export default defineEventHandler(async (event) => {
 
   // ---- STREAMING MODE ----
   if (isStreaming) {
-    return handleStreamingSearch(
-      event,
-      logger,
-      useQuery,
-      useTastes,
-      searchPrompt,
-      locationInfo,
-      sortBy,
-      query
-    )
+    return handleStreamingSearch(event, logger, useQuery, useTastes, searchPrompt, locationInfo, sortBy, query)
   }
 
   const headers = event.node.req.headers
@@ -511,7 +498,7 @@ async function getDishRecommendationaStreaming(
   stream: { push: (data: any) => Promise<void> }
 ): Promise<DishRecommendation[]> {
   const prompt = getPrompt(q.dishName, location, userTastes, sortBy)
-  
+
   try {
     await stream.push({
       type: "aiProgress",
@@ -535,39 +522,40 @@ async function getDishRecommendationaStreaming(
     let lastUpdateTime = startTime
     let lastProcessedLength = 0
     let streamedDishes = new Set<string>() // Track already streamed dishes
-    
+
     for await (const chunk of result.textStream) {
       // Capture timing for first token
       if (firstTokenTime === null) {
         firstTokenTime = Date.now()
-        logger.debug("First token received", { 
-          timeToFirstToken: firstTokenTime - startTime 
+        logger.debug("First token received", {
+          timeToFirstToken: firstTokenTime - startTime
         })
-        
+
         await stream.push({
-          type: "aiProgress", 
+          type: "aiProgress",
           data: { status: "streaming", message: "Receiving response...", timeToFirstToken: firstTokenTime - startTime }
         })
       }
-      
+
       fullText += chunk
       tokenCount++
 
       // Try to parse and stream individual dishes as they become complete
-      if (fullText.length > lastProcessedLength + 100) { // Check every 100 chars for better responsiveness
-        logger.debug("Trying to parse partial dishes", { 
-          fullTextLength: fullText.length, 
-          lastProcessedLength, 
+      if (fullText.length > lastProcessedLength + 100) {
+        // Check every 100 chars for better responsiveness
+        logger.debug("Trying to parse partial dishes", {
+          fullTextLength: fullText.length,
+          lastProcessedLength,
           streamedCount: streamedDishes.size,
           textSample: fullText.substring(Math.max(0, fullText.length - 200)) // Show last 200 chars
         })
-        
+
         const partialDishes = await tryParsePartialDishes(fullText, location, sortBy, logger)
-        logger.debug("Partial parsing result", { 
+        logger.debug("Partial parsing result", {
           foundDishes: partialDishes.length,
-          dishes: partialDishes.map(d => ({ name: d.dish.name, restaurant: d.restaurant.name }))
+          dishes: partialDishes.map((d) => ({ name: d.dish.name, restaurant: d.restaurant.name }))
         })
-        
+
         if (partialDishes.length > 0) {
           // Stream individual dishes that haven't been sent yet
           for (const dish of partialDishes) {
@@ -592,8 +580,8 @@ async function getDishRecommendationaStreaming(
       if (now - lastUpdateTime > 500) {
         await stream.push({
           type: "aiProgress",
-          data: { 
-            status: "streaming", 
+          data: {
+            status: "streaming",
             message: `Processing response... (${Math.round(fullText.length / 10)} chars)`,
             partialLength: fullText.length
           }
@@ -627,22 +615,22 @@ async function getDishRecommendationaStreaming(
 
     // Process the complete response and get final results
     const results = await processAIResponse(fullText, location, sortBy, logger)
-    
+
     // Check if we got valid results
     if (results.length === 0) {
-      logger.error("AI response processing failed - no valid results", { 
-        responseLength: fullText.length, 
+      logger.error("AI response processing failed - no valid results", {
+        responseLength: fullText.length,
         tokensGenerated: tokenCount,
-        responsePreview: fullText.substring(0, 200) 
+        responsePreview: fullText.substring(0, 200)
       })
-      
+
       await stream.push({
         type: "aiError",
         data: { message: "AI failed to generate valid recommendations. The response was too short or malformed." }
       })
       return []
     }
-    
+
     // Log each final result being sent to client
     logger.info("Sending AI results to client:", {
       resultCount: results.length,
@@ -674,7 +662,7 @@ async function getDishRecommendationaStreaming(
     logger.error("Streaming AI recommendation error", { error })
     await stream.push({
       type: "aiError",
-      data: { message: "AI recommendation failed", error: error instanceof Error ? error.message : 'Unknown error' }
+      data: { message: "AI recommendation failed", error: error instanceof Error ? error.message : "Unknown error" }
     })
     return []
   }
@@ -696,7 +684,7 @@ async function tryParsePartialDishes(
       cleaned = cleaned.replace(/^```\s*/, "")
     }
 
-    logger.debug("Attempting to parse partial text", { 
+    logger.debug("Attempting to parse partial text", {
       textLength: cleaned.length,
       textStart: cleaned.substring(0, 100),
       textEnd: cleaned.substring(cleaned.length - 100)
@@ -704,19 +692,20 @@ async function tryParsePartialDishes(
 
     // Try multiple parsing strategies
     const dishes: DishRecommendation[] = []
-    
+
     // Strategy 1: Look for complete dish objects with proper nesting
-    const dishPattern1 = /\{\s*"dish"\s*:\s*\{[^{}]*"name"[^{}]*\}[^{}]*"restaurant"\s*:\s*\{[^{}]*"name"[^{}]*\}[^{}]*\}/g
+    const dishPattern1 =
+      /\{\s*"dish"\s*:\s*\{[^{}]*"name"[^{}]*\}[^{}]*"restaurant"\s*:\s*\{[^{}]*"name"[^{}]*\}[^{}]*\}/g
     let matches = cleaned.match(dishPattern1)
     logger.debug("Strategy 1 results", { pattern: "full nested objects", matches: matches?.length || 0 })
-    
+
     // Strategy 2: If no matches, try simpler pattern
     if (!matches || matches.length === 0) {
       const dishPattern2 = /\{[^{}]*"dish"[^{}]*"restaurant"[^{}]*\}/g
       matches = cleaned.match(dishPattern2)
       logger.debug("Strategy 2 results", { pattern: "simple objects", matches: matches?.length || 0 })
     }
-    
+
     if (!matches || matches.length === 0) {
       logger.debug("No dish patterns found in partial text")
       return []
@@ -726,7 +715,7 @@ async function tryParsePartialDishes(
       try {
         logger.debug("Attempting to parse match", { match: match.substring(0, 100) + "..." })
         const dishObj = JSON.parse(match)
-        
+
         // Validate the dish object has required fields
         if (dishObj?.dish?.name && dishObj?.restaurant?.name && dishObj?.dish?.rating) {
           // Calculate distance and add ID
@@ -745,7 +734,7 @@ async function tryParsePartialDishes(
           dishes.push(processedDish)
           logger.debug("Successfully parsed dish", { dishName: dishObj.dish.name, restaurant: dishObj.restaurant.name })
         } else {
-          logger.debug("Invalid dish object - missing required fields", { 
+          logger.debug("Invalid dish object - missing required fields", {
             hasDishName: !!dishObj?.dish?.name,
             hasRestaurantName: !!dishObj?.restaurant?.name,
             hasRating: !!dishObj?.dish?.rating
@@ -896,10 +885,10 @@ async function processAIResponse(
 
   // Log the raw response for debugging if it's problematic
   if (!cleanedResponse.startsWith("[") && !cleanedResponse.startsWith("{")) {
-    logger.error("AI response doesn't look like JSON", { 
+    logger.error("AI response doesn't look like JSON", {
       fullResponse: cleanedResponse,
       responseLength: cleanedResponse.length,
-      preview: cleanedResponse.substring(0, 200) + "..." 
+      preview: cleanedResponse.substring(0, 200) + "..."
     })
     return []
   }
@@ -942,9 +931,9 @@ async function processAIResponse(
   const validResults = parsed.filter((rec: any, index: number) => {
     const isValid = rec?.dish?.name && rec?.restaurant?.name && rec?.dish?.rating
     logger.info(`Dish ${index + 1} validation:`, {
-      dishName: rec?.dish?.name || 'missing',
-      restaurantName: rec?.restaurant?.name || 'missing', 
-      rating: rec?.dish?.rating || 'missing',
+      dishName: rec?.dish?.name || "missing",
+      restaurantName: rec?.restaurant?.name || "missing",
+      rating: rec?.dish?.rating || "missing",
       isValid,
       fullRecord: rec
     })
@@ -960,7 +949,7 @@ async function processAIResponse(
   if (validResults.length === 0) {
     logger.error("No valid results from AI response", {
       parsedLength: parsed.length,
-      sampleRecord: parsed[0] || 'no records'
+      sampleRecord: parsed[0] || "no records"
     })
     return []
   }
@@ -1081,7 +1070,7 @@ async function getDbDishRecommendations(
 
 async function generateAIResponse(prompt: string, logger: ReturnType<typeof createLogger>): Promise<string> {
   const model = await getModel(logger)
-  
+
   const startTime = Date.now()
   let firstTokenTime: number | null = null
   let tokenCount = 0
@@ -1096,16 +1085,16 @@ async function generateAIResponse(prompt: string, logger: ReturnType<typeof crea
 
     // Collect the streamed response
     let fullText = ""
-    
+
     for await (const chunk of result.textStream) {
       // Capture timing for first token
       if (firstTokenTime === null) {
         firstTokenTime = Date.now()
-        logger.debug("First token received", { 
-          timeToFirstToken: firstTokenTime - startTime 
+        logger.debug("First token received", {
+          timeToFirstToken: firstTokenTime - startTime
         })
       }
-      
+
       fullText += chunk
       tokenCount++
     }
@@ -1125,7 +1114,7 @@ async function generateAIResponse(prompt: string, logger: ReturnType<typeof crea
   } catch (error) {
     const errorTime = Date.now() - startTime
     logger.error("AI model error", { error, timeTaken: errorTime })
-    
+
     // Fall back to a simpler response format if the AI call fails
     return JSON.stringify([
       {

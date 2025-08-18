@@ -1,15 +1,15 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./vitest.setup.js'],
-    include: ['**/*.test.{ts,tsx}']
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.js"],
+    include: ["**/*.test.{ts,tsx}"]
   },
   resolve: {
     alias: {
-      '@': new URL('./', import.meta.url).pathname
+      "@": new URL("./", import.meta.url).pathname
     }
   }
 })
