@@ -1,6 +1,12 @@
-# Dishola
+# Dishola.com
 
-A modern food-discovery platform that focuses on dishes rather than restaurants. Built as a Turborepo monorepo with a Next.js frontend and Nitro backend API, using Supabase as the database and authentication provider.
+A food-discovery platform that focuses on dishes rather than restaurants. Built as a Turborepo monorepo with a Next.js frontend and Nitro backend API, using Supabase as the database and authentication provider.
+
+## History
+
+Dishola was originally developed as a startup in Austin, TX in 2006 by Lindsey Simon, Meredith Maycotte and Laura Kelso to be a community and industry user-generated-review site. 
+
+In 2025, I (Lindsey) am going to bring it back - as a modern webapp that leverages AI for search and discovery. It's also a fun vibe+hand-coding learning experience for me.
 
 ## Features
 
