@@ -409,7 +409,12 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
             {allDishes.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-6">
                 {allDishes.map((dish) => (
-                  <DishCard key={`${dish.source}-${dish.id}`} recommendation={dish} />
+                  <DishCard 
+                    key={`${dish.source}-${dish.id}`} 
+                    recommendation={dish}
+                    userLat={lat ? parseFloat(lat) : undefined}
+                    userLng={long ? parseFloat(long) : undefined}
+                  />
                 ))}
               </div>
             ) : isSearching ? (
