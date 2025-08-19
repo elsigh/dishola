@@ -306,7 +306,7 @@ async function handleStreamingSearch(
 }
 
 export default defineEventHandler(async (event) => {
-  const logger = createLogger({ event, handlerName: "search", disable: true })
+  const logger = createLogger({ event, handlerName: "search", disable: false })
 
   // Handle CORS
   const corsResponse = setCorsHeaders(event, { methods: ["GET", "POST", "OPTIONS"] })
@@ -665,9 +665,28 @@ async function getDishRecommendationaStreaming(
     return results
   } catch (error) {
     logger.error("Streaming AI recommendation error", { error })
+    
+    // Provide specific error messages for common issues
+    let userMessage = "AI recommendation failed"
+    if (error instanceof Error) {
+      if (error.message.includes("Cost limit exceeded") || error.message.includes("rate limit")) {
+        userMessage = "AI Gateway rate limit exceeded. Please try again in a moment."
+      } else if (error.message.includes("401") || error.message.includes("authentication")) {
+        userMessage = "AI Gateway authentication failed. Please check configuration."
+      } else if (error.message.includes("403")) {
+        userMessage = "AI Gateway access forbidden. Please check API key permissions."
+      } else {
+        userMessage = `AI error: ${error.message}`
+      }
+    }
+    
     await stream.push({
       type: "aiError",
-      data: { message: "AI recommendation failed", error: error instanceof Error ? error.message : "Unknown error" }
+      data: { 
+        message: userMessage,
+        errorType: error instanceof Error ? error.constructor.name : "Unknown",
+        originalError: error instanceof Error ? error.message : "Unknown error"
+      }
     })
     return []
   }

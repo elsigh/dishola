@@ -56,7 +56,7 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
 
   // Streaming state
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null)
-  const [aiProgress, setAiProgress] = useState<{ message: string; timing?: any } | null>(null)
+  const [aiProgress, setAiProgress] = useState<{ message: string; timing?: any; error?: boolean; errorType?: string; originalError?: string } | null>(null)
   const [dbResultsReceived, setDbResultsReceived] = useState(false)
   const [aiResultsReceived, setAiResultsReceived] = useState(false)
   const [timeToFirstDish, setTimeToFirstDish] = useState<number | null>(null)
@@ -221,7 +221,14 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
 
       case "aiError":
         console.error("AI recommendation error:", event.data)
-        setAiProgress({ message: `AI error: ${event.data.message}` })
+        // Set both error state and aiProgress for comprehensive error display
+        setError(event.data.message || "AI recommendation failed")
+        setAiProgress({ 
+          message: event.data.message || "AI recommendation failed",
+          error: true,
+          errorType: event.data.errorType,
+          originalError: event.data.originalError
+        })
         break
 
       case "error":
@@ -327,11 +334,32 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
   }
 
   if (error) {
+    const isRateLimit = error.includes("rate limit") || error.includes("Cost limit exceeded")
+    
     return (
-      <div className="flex flex-col items-center justify-center text-center py-20 bg-red-50 border border-red-200 p-8 rounded-lg">
-        <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold text-red-700 mb-2">Oops! Something went wrong.</h2>
-        <p className="text-red-600 mb-6">{error}</p>
+      <div className={`flex flex-col items-center justify-center text-center py-20 p-8 rounded-lg ${
+        isRateLimit 
+          ? "bg-yellow-50 border border-yellow-200" 
+          : "bg-red-50 border border-red-200"
+      }`}>
+        <AlertTriangle className={`h-12 w-12 mb-4 ${
+          isRateLimit ? "text-yellow-500" : "text-red-500"
+        }`} />
+        <h2 className={`text-xl font-semibold mb-2 ${
+          isRateLimit ? "text-yellow-700" : "text-red-700"
+        }`}>
+          {isRateLimit ? "Rate Limit Reached" : "Oops! Something went wrong."}
+        </h2>
+        <p className={`mb-6 ${
+          isRateLimit ? "text-yellow-600" : "text-red-600"
+        }`}>
+          {error}
+        </p>
+        {isRateLimit && (
+          <p className="text-sm text-yellow-600 mb-4">
+            This usually resolves quickly. Please wait a moment before trying again.
+          </p>
+        )}
         <Button asChild className="btn-custom-primary">
           <Link href="/">Try a new search</Link>
         </Button>
