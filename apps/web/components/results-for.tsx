@@ -28,7 +28,7 @@ const ResultsFor: FC<ResultsForProps> = ({
   // Show loading state or completed results
   const displayText = isSearching
     ? `Searching for ${searchQuery ? `${searchQuery} deliciousness` : "deliciousness"} near ${neighborhood && city ? `${neighborhood}, ${city}` : neighborhood || city || "your location"}...`
-    : `Results for ${neighborhood}${city ? `, ${city}` : ""}`
+    : `Results for ${searchQuery ? `${searchQuery} deliciousness` : "deliciousness"} in ${neighborhood}${city ? `, ${city}` : ""}`
 
   return (
     <div>
