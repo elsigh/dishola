@@ -8,6 +8,7 @@ import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { getLocationInfo } from "@/lib/location-utils"
+import { useSearchState } from "@/lib/search-state-context"
 
 function BluePulseDot() {
   return (
@@ -48,6 +49,8 @@ export default function SearchSection({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const isHomePage = pathname === "/"
+  const { showHeaderSearch } = useSearchState()
   const [mapOpen, setMapOpen] = useState(false)
   const [tempLat, setTempLat] = useState<number | null>(initialLat || null)
   const [tempLng, setTempLng] = useState<number | null>(initialLng || null)
@@ -65,6 +68,7 @@ export default function SearchSection({
   const [isGpsPulsing, setIsGpsPulsing] = useState(false)
   const [useFullScreenHeight, setUseFullScreenHeight] = useState(false)
   const [hasInteracted, setHasInteracted] = useState(false)
+  const [mapClicked, setMapClicked] = useState(false)
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const gpsPulseTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
@@ -549,7 +553,8 @@ export default function SearchSection({
           fetchLocationInfo(lat, lng)
 
           // Show location tooltip on page load when URL has location parameters
-          if (!tooltipDismissed) {
+          // But not if we're showing header search (which means we came from map click)
+          if (!tooltipDismissed && !showHeaderSearch) {
             setShowLocationTooltip(true)
           }
         }
@@ -564,7 +569,8 @@ export default function SearchSection({
     isTrackingLocation,
     startLocationTracking,
     fetchLocationInfo,
-    tooltipDismissed
+    tooltipDismissed,
+    showHeaderSearch
   ])
 
   // Setup autocomplete when entering edit mode
@@ -716,7 +722,6 @@ export default function SearchSection({
     searchInputRef.current?.focus()
   }, [])
 
-
   // Handle search input blur - just cleanup UI state
   const handleSearchBlur = useCallback(() => {
     // Only remove full-screen height if input is empty after blur
@@ -807,11 +812,20 @@ export default function SearchSection({
 
                   // Mark as interacted and set full screen height
                   setHasInteracted(true)
+                  setMapClicked(true)
                   setUseFullScreenHeight(true)
 
-                  // Trigger hero collapse animation instead of scrolling
+                  // Trigger hero collapse animation and update URL to show search in header
                   if (onHeroCollapse) {
                     onHeroCollapse()
+                  }
+
+                  // Update URL to indicate map was opened, which will trigger header search to show
+                  const currentParams = new URLSearchParams(searchParams.toString())
+                  if (latitude && longitude) {
+                    currentParams.set("lat", latitude.toString())
+                    currentParams.set("long", longitude.toString())
+                    router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false })
                   }
                 }
               }}
@@ -825,7 +839,7 @@ export default function SearchSection({
             </button>
 
             {/* Location Tooltip */}
-            {showLocationTooltip && locationInfo && !mapOpen && (
+            {showLocationTooltip && locationInfo && !mapOpen && !showHeaderSearch && (
               <div className="absolute bottom-full mb-4 right-0 sm:left-1/2 sm:transform sm:-translate-x-1/2 bg-white border border-gray-200 rounded-xl shadow-md px-3 py-2 min-w-36 sm:min-w-48 max-w-64 sm:mr-0 z-50">
                 <div className="flex items-center gap-2 text-left">
                   <BluePulseDot />
@@ -857,16 +871,21 @@ export default function SearchSection({
       </div>
 
       {/* Google-style Search button - only show on homepage before first interaction */}
-      {!hasInteracted && !searchParams.get("q") && !searchParams.get("tastes") && (
-        <div className="flex justify-center mt-8">
-          <Button
-            type="submit"
-            className="bg-gray-50 hover:bg-blue-50 text-gray-700 border border-gray-300 hover:border-gray-400 px-6 py-2 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
-          >
-            Search
-          </Button>
-        </div>
-      )}
+      {isHomePage &&
+        !hasInteracted &&
+        !mapClicked &&
+        !showHeaderSearch &&
+        !searchParams.get("q") &&
+        !searchParams.get("tastes") && (
+          <div className="flex justify-center mt-8">
+            <Button
+              type="submit"
+              className="bg-gray-50 hover:bg-blue-50 text-gray-700 border border-gray-300 hover:border-gray-400 px-6 py-2 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              Search
+            </Button>
+          </div>
+        )}
 
       {/* Map and location controls */}
       {mapOpen && (

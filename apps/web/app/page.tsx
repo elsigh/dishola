@@ -5,24 +5,26 @@ import { useEffect, useState } from "react"
 import SearchResultsContent from "@/components/search-results-content"
 import SearchSection from "@/components/search-section"
 import { useAuth } from "@/lib/auth-context"
+import { useSearchState } from "@/lib/search-state-context"
 import { getLocationInfo } from "@/lib/location-utils"
 
 export default function HomePage() {
   const { user, isLoading: authLoading, getUserTastes, profile } = useAuth()
+  const { setShowHeaderSearch } = useSearchState()
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // Check if we have search parameters
   const q = searchParams.get("q")
   const lat = searchParams.get("lat")
   const long = searchParams.get("long")
   const tastes = searchParams.get("tastes")
   const hasSearchParams = !!(q || tastes) && !!(lat && long)
-  
+
   const [latitude, setLatitude] = useState<number | null>(null)
   const [longitude, setLongitude] = useState<number | null>(null)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
-  const [heroCollapsed, setHeroCollapsed] = useState(hasSearchParams)
+  const [heroCollapsed, setHeroCollapsed] = useState(false)
 
   // Get location info for search results
   let locationDisplayName = ""
@@ -89,8 +91,6 @@ export default function HomePage() {
     }
   }, [user, authLoading, latitude, longitude, getUserTastes, profile, router, hasSearchParams])
 
-
-
   // Show search results if we have search parameters
   if (hasSearchParams) {
     return (
@@ -102,8 +102,12 @@ export default function HomePage() {
 
   // Show centered search interface (for both logged-in and non-logged-in users)
   return (
-    <div className={`flex flex-col items-center justify-center text-center transition-all duration-500 ease-in-out ${heroCollapsed ? 'py-4' : 'py-12 md:py-20'}`}>
-      <div className={`transition-all duration-500 ease-in-out overflow-hidden ${heroCollapsed ? 'max-h-0 opacity-0' : 'max-h-96 opacity-100'}`}>
+    <div
+      className={`flex flex-col items-center justify-center text-center transition-all duration-500 ease-in-out ${heroCollapsed ? "py-4" : "py-12 md:py-20"}`}
+    >
+      <div
+        className={`transition-all duration-500 ease-in-out overflow-hidden ${heroCollapsed ? "max-h-0 opacity-0" : "max-h-96 opacity-100"}`}
+      >
         <h1 className="text-5xl md:text-6xl font-bold text-brand-primary mb-4">dishola</h1>
         <p className="text-lg md:text-xl text-brand-text-muted mb-10 md:mb-16 max-w-2xl">
           Share the love of food, dish by dish. <br />
@@ -111,14 +115,19 @@ export default function HomePage() {
         </p>
       </div>
 
-      <div className={`homepage-search-container w-full max-w-2xl transition-all duration-500 ease-in-out ${heroCollapsed ? 'mt-0' : 'mt-8'}`}>
+      <div
+        className={`homepage-search-container w-full max-w-2xl transition-all duration-500 ease-in-out ${heroCollapsed ? "opacity-0 pointer-events-none" : "opacity-100 mt-8"}`}
+      >
         <SearchSection
           includeTastesOption={true}
           isUserLoggedIn={!!user}
           initialQuery={q || ""}
           initialLat={lat ? parseFloat(lat) : undefined}
           initialLng={long ? parseFloat(long) : undefined}
-          onHeroCollapse={() => setHeroCollapsed(true)}
+          onHeroCollapse={() => {
+            setHeroCollapsed(true)
+            setShowHeaderSearch(true)
+          }}
         />
       </div>
     </div>

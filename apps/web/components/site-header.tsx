@@ -3,6 +3,7 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import SearchSection from "@/components/search-section"
 import { useAuth } from "@/lib/auth-context"
+import { useSearchState } from "@/lib/search-state-context"
 import { UserMenu } from "./user-menu"
 
 export default function SiteHeader() {
@@ -10,27 +11,30 @@ export default function SiteHeader() {
   const searchParams = useSearchParams()
   const isHome = pathname === "/"
   const { user } = useAuth()
+  const { showHeaderSearch } = useSearchState()
 
   // Get current URL parameters to pass to SearchSection
   const currentQuery = searchParams.get("q") || ""
   const currentLat = searchParams.get("lat")
   const currentLng = searchParams.get("long")
   const hasSearchParams = !!(currentQuery || searchParams.get("tastes")) && !!(currentLat && currentLng)
-  
-  // Show search in header when we have search params OR when on homepage with location (indicating map was opened)
-  const showHeaderSearch = hasSearchParams || (isHome && currentLat && currentLng)
+
+  // Show search in header when we have search results OR when explicitly set via context
+  const shouldShowHeaderSearch = hasSearchParams || showHeaderSearch
 
   return (
     <header className="py-4 pb-2 sm:pb-4">
       <div className="container mx-auto px-2 sm:px-6 lg:px-8 flex gap-2 sm:gap-4 lg:gap-8">
-        <nav className={`hidden md:block py-2 transition-opacity duration-300 ${isHome && !hasSearchParams ? "opacity-0" : "opacity-100"}`}>
+        <nav
+          className={`hidden md:block py-2 transition-opacity duration-300 ${isHome && !shouldShowHeaderSearch ? "opacity-0" : "opacity-100"}`}
+        >
           <Link href="/" className="text-3xl font-serif font-bold text-brand-primary">
             dishola
           </Link>
         </nav>
         <div className="flex flex-grow min-w-0">
-          {/* Show search in header only when we have search parameters (search results are showing) */}
-          {hasSearchParams && (
+          {/* Show search in header when we have search parameters OR when set via context */}
+          {shouldShowHeaderSearch && (
             <div className="header-search-container">
               <SearchSection
                 includeTastesOption={true}

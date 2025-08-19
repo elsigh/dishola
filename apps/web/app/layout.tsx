@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
+import { SearchStateProvider } from "@/lib/search-state-context"
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -49,19 +50,21 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <Suspense
-              fallback={
-                <div className="py-4">
-                  <div className="container mx-auto px-2 sm:px-4">
-                    <div className="h-12"></div>
+            <SearchStateProvider>
+              <Suspense
+                fallback={
+                  <div className="py-4">
+                    <div className="container mx-auto px-2 sm:px-4">
+                      <div className="h-12"></div>
+                    </div>
                   </div>
-                </div>
-              }
-            >
-              <SiteHeader />
-            </Suspense>
-            <main className="flex-grow container mx-auto px-2 sm:px-6 lg:px-8 py-2">{children}</main>
-            <SiteFooter />
+                }
+              >
+                <SiteHeader />
+              </Suspense>
+              <main className="flex-grow container mx-auto px-2 sm:px-6 lg:px-8 py-2">{children}</main>
+              <SiteFooter />
+            </SearchStateProvider>
           </AuthProvider>
         </ThemeProvider>
         <Analytics />
