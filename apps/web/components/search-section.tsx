@@ -31,13 +31,15 @@ interface SearchSectionProps {
   initialQuery?: string
   initialLat?: number
   initialLng?: number
+  onHeroCollapse?: () => void
 }
 
 export default function SearchSection({
   isUserLoggedIn = false,
   initialQuery = "",
   initialLat,
-  initialLng
+  initialLng,
+  onHeroCollapse
 }: SearchSectionProps) {
   const [dishQuery, setDishQuery] = useState(initialQuery)
   const [latitude, setLatitude] = useState<number | null>(initialLat || null)
@@ -614,7 +616,6 @@ export default function SearchSection({
     }
   }, [stopLocationTracking])
 
-
   // Handle click outside map to close it
   useEffect(() => {
     if (!mapOpen) return
@@ -697,6 +698,11 @@ export default function SearchSection({
     setTooltipDismissed(true)
     setUseFullScreenHeight(true)
 
+    // Trigger hero collapse animation when searching
+    if (onHeroCollapse) {
+      onHeroCollapse()
+    }
+
     // Stay on homepage with search parameters
     // Don't scroll - let the layout change handle positioning
     router.push(`/?${params.toString()}`)
@@ -710,22 +716,6 @@ export default function SearchSection({
     searchInputRef.current?.focus()
   }, [])
 
-  // Function to scroll search input to top of viewport
-  const scrollToTop = useCallback(() => {
-    if (searchFormRef.current) {
-      // Use requestAnimationFrame to ensure DOM has updated
-      requestAnimationFrame(() => {
-        if (searchFormRef.current) {
-          const elementTop = searchFormRef.current.getBoundingClientRect().top + window.pageYOffset
-          const offset = 8 // 8px margin (equivalent to Tailwind's "2")
-          window.scrollTo({
-            top: elementTop - offset,
-            behavior: "smooth"
-          })
-        }
-      })
-    }
-  }, [])
 
   // Handle search input blur - just cleanup UI state
   const handleSearchBlur = useCallback(() => {
@@ -740,7 +730,7 @@ export default function SearchSection({
     <form
       ref={searchFormRef}
       onSubmit={handleSearch}
-      className={`w-full max-w-full sm:max-w-[850px] ${useFullScreenHeight ? "min-h-screen" : ""}`}
+      className={`w-full max-w-full sm:max-w-[850px] ${useFullScreenHeight ? "x-min-h-screen" : ""}`}
     >
       <div className="relative w-full">
         <div className="relative flex items-center w-full px-2 sm:px-4 bg-white rounded-full shadow-md border focus-within:shadow-lg transition-all duration-200">
@@ -819,10 +809,10 @@ export default function SearchSection({
                   setHasInteracted(true)
                   setUseFullScreenHeight(true)
 
-                  // Scroll to position the search input at the top of the viewport with small margin
-                  setTimeout(() => {
-                    scrollToTop()
-                  }, 100) // Small delay to ensure map is rendered
+                  // Trigger hero collapse animation instead of scrolling
+                  if (onHeroCollapse) {
+                    onHeroCollapse()
+                  }
                 }
               }}
               className={`flex-shrink-0 p-2 transition-colors duration-200 ${
@@ -871,7 +861,7 @@ export default function SearchSection({
         <div className="flex justify-center mt-8">
           <Button
             type="submit"
-            className="bg-gray-100 hover:bg-gray-200 hover:shadow-md hover:border-gray-400 text-gray-700 border border-gray-300 px-6 py-2 rounded-md shadow-sm transition-all duration-200"
+            className="bg-gray-50 hover:bg-blue-50 text-gray-700 border border-gray-300 hover:border-gray-400 px-6 py-2 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
           >
             Search
           </Button>

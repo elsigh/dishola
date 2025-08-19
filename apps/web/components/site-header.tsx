@@ -16,6 +16,9 @@ export default function SiteHeader() {
   const currentLat = searchParams.get("lat")
   const currentLng = searchParams.get("long")
   const hasSearchParams = !!(currentQuery || searchParams.get("tastes")) && !!(currentLat && currentLng)
+  
+  // Show search in header when we have search params OR when on homepage with location (indicating map was opened)
+  const showHeaderSearch = hasSearchParams || (isHome && currentLat && currentLng)
 
   return (
     <header className="py-4 pb-2 sm:pb-4">
