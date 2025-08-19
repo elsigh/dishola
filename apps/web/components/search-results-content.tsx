@@ -43,47 +43,11 @@ export default function SearchResultsContent({ locationDisplayName, neighborhood
   const [dbDishes, setDbDishes] = useState<DishRecommendation[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  // Helper function to extract distance number from string like "1.2 mi"
-  const getDistanceNumber = (distanceStr: string | number | undefined): number => {
-    if (!distanceStr) return Infinity
-
-    // Handle numeric distance values
-    if (typeof distanceStr === "number") {
-      return distanceStr
-    }
-
-    // Handle string distance values
-    if (typeof distanceStr === "string") {
-      const match = distanceStr.match(/(\d+\.?\d*)\s*mi/)
-      return match ? parseFloat(match[1]) : Infinity
-    }
-
-    return Infinity
-  }
-
-  // Merge and sort results based on sort parameter
-  const allDishes = (() => {
-    const combined = [
-      ...aiDishes.map((dish) => ({ ...dish, source: "ai" as const })),
-      ...dbDishes.map((dish) => ({ ...dish, source: "db" as const }))
-    ]
-
-    if (sortParam === "distance") {
-      return combined.sort((a, b) => {
-        const distA = getDistanceNumber(a.distance)
-        const distB = getDistanceNumber(b.distance)
-        return distA - distB
-      })
-    } else if (sortParam === "rating") {
-      return combined.sort((a, b) => {
-        const ratingA = parseFloat(a.dish.rating || "0")
-        const ratingB = parseFloat(b.dish.rating || "0")
-        return ratingB - ratingA // Higher rating first
-      })
-    }
-
-    return combined
-  })()
+  // Merge results without client-side sorting - server handles sorting
+  const allDishes = [
+    ...aiDishes.map((dish) => ({ ...dish, source: "ai" as const })),
+    ...dbDishes.map((dish) => ({ ...dish, source: "db" as const }))
+  ]
   // Initialize isSearching to true if we have search parameters
   const [isSearching, setIsSearching] = useState(() => {
     return !!(hasQuery || hasTastes) && !!(lat && long)
