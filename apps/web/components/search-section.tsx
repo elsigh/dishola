@@ -488,10 +488,12 @@ export default function SearchSection({
                 accuracyCircleRef.current.setCenter(center)
               }
 
-              // Batch state updates to minimize re-renders
+              // Update temp coordinates immediately (needed for map rendering)
+              setTempLat(lat)
+              setTempLng(lng)
+
+              // Batch non-critical state updates to minimize re-renders
               startTransition(() => {
-                setTempLat(lat)
-                setTempLng(lng)
                 setLatitude(lat)
                 setLongitude(lng)
               })
