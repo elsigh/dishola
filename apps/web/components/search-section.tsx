@@ -5,7 +5,7 @@ import { Crosshair, Edit3, Loader2, Map as MapIcon, SearchIcon, X } from "lucide
 import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type React from "react"
-import { useCallback, useEffect, useRef, useState, startTransition } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { getLocationInfo } from "@/lib/location-utils"
 import { useSearchState } from "@/lib/search-state-context"
@@ -488,15 +488,11 @@ export default function SearchSection({
                 accuracyCircleRef.current.setCenter(center)
               }
 
-              // Update temp coordinates immediately (needed for map rendering)
+              // Update all state synchronously (visual update above prevents jarring)
               setTempLat(lat)
               setTempLng(lng)
-
-              // Batch non-critical state updates to minimize re-renders
-              startTransition(() => {
-                setLatitude(lat)
-                setLongitude(lng)
-              })
+              setLatitude(lat)
+              setLongitude(lng)
 
               // Update URL parameters with new center position
               const currentParams = new URLSearchParams(searchParams.toString())
