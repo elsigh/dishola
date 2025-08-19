@@ -18,7 +18,7 @@ ok I need some help with my prompt. I just ran a search for burrito which ran fr
 │   inspect my */
 
 const gateway = createGatewayProvider({
-  apiKey: process.env.GATEWAY_API_KEY
+  apiKey: process.env.AI_GATEWAY_API_KEY
 })
 
 // Deduplicate results based on dish name + restaurant name
@@ -68,6 +68,12 @@ async function getModel(logger: ReturnType<typeof createLogger>): Promise<Langua
     }
   } catch (error) {
     logger.warn("Failed to fetch SEARCH_AI_MODEL from Edge Config", { error })
+  }
+
+  // Check if AI_GATEWAY_API_KEY is available
+  if (!process.env.AI_GATEWAY_API_KEY) {
+    logger.error("AI_GATEWAY_API_KEY not found. Gateway authentication will likely fail.")
+    logger.info("To fix: Run 'vc env pull' or set up Vercel deployment for automatic authentication")
   }
 
   // Fallback to Claude 3.5 Sonnet - optimized for complex search tasks
@@ -1112,25 +1118,27 @@ async function generateAIResponse(prompt: string, logger: ReturnType<typeof crea
     return fullText
   } catch (error) {
     const errorTime = Date.now() - startTime
-    logger.error("AI model error", { error, timeTaken: errorTime })
+    logger.error("AI model error", { 
+      error: error instanceof Error ? error.message : error, 
+      errorStack: error instanceof Error ? error.stack : undefined,
+      timeTaken: errorTime,
+      hasGatewayKey: !!process.env.AI_GATEWAY_API_KEY
+    })
 
-    // Fall back to a simpler response format if the AI call fails
-    return JSON.stringify([
-      {
-        dish: {
-          name: "Error generating recommendations",
-          description: "We couldn't generate personalized recommendations at this time. Please try again later.",
-          rating: "N/A"
-        },
-        restaurant: {
-          name: "Unknown",
-          address: "N/A",
-          lat: "0",
-          lng: "0",
-          website: null
-        }
+    // Log specific gateway authentication errors
+    if (error instanceof Error) {
+      if (error.message.includes("401") || error.message.includes("authentication")) {
+        logger.error("Gateway authentication failed - GATEWAY_API_KEY likely missing or invalid")
+      } else if (error.message.includes("403")) {
+        logger.error("Gateway access forbidden - check API key permissions")
+      } else if (error.message.includes("429")) {
+        logger.error("Gateway rate limit exceeded")
       }
-    ])
+    }
+
+    // Re-throw the error instead of returning fallback JSON
+    // This will trigger the proper error handling in the calling function
+    throw error
   }
 }
 
