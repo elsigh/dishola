@@ -5,7 +5,7 @@ import { Crosshair, Edit3, Loader2, Map as MapIcon, SearchIcon, X } from "lucide
 import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type React from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, startTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { getLocationInfo } from "@/lib/location-utils"
 import { useSearchState } from "@/lib/search-state-context"
@@ -482,12 +482,19 @@ export default function SearchSection({
             if (center) {
               const lat = center.lat()
               const lng = center.lng()
-              setTempLat(lat)
-              setTempLng(lng)
+              
+              // Update visual elements immediately to prevent jarring effects
+              if (accuracyCircleRef.current) {
+                accuracyCircleRef.current.setCenter(center)
+              }
 
-              // Update main location state
-              setLatitude(lat)
-              setLongitude(lng)
+              // Batch state updates to minimize re-renders
+              startTransition(() => {
+                setTempLat(lat)
+                setTempLng(lng)
+                setLatitude(lat)
+                setLongitude(lng)
+              })
 
               // Update URL parameters with new center position
               const currentParams = new URLSearchParams(searchParams.toString())
@@ -495,9 +502,6 @@ export default function SearchSection({
               currentParams.set("long", lng.toString())
               router.replace(`${pathname}?${currentParams.toString()}`, { scroll: false })
 
-              if (accuracyCircleRef.current) {
-                accuracyCircleRef.current.setCenter(center)
-              }
               // Fetch location info for the new coordinates
               fetchLocationInfo(lat, lng)
 
