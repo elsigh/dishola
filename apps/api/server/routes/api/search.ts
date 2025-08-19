@@ -213,10 +213,13 @@ async function handleStreamingSearch(
     if (!responseEnded) {
       responseEnded = true
 
-      // Cache the complete event buffer for future identical searches
-      if (eventBuffer.length > 0) {
+      // Only cache responses that don't contain error events
+      const hasErrorEvents = eventBuffer.some(event => event.type === "error" || event.type === "aiError")
+      if (eventBuffer.length > 0 && !hasErrorEvents) {
         searchCache.setStreamingResponse(cacheKey, eventBuffer)
         logger.info("Cached streaming response", { eventCount: eventBuffer.length, cacheKey })
+      } else if (hasErrorEvents) {
+        logger.info("Not caching streaming response due to error events", { eventCount: eventBuffer.length, cacheKey })
       }
 
       event.node.res.end()
@@ -289,12 +292,8 @@ async function handleStreamingSearch(
       data: { message: "Search failed", error: error instanceof Error ? error.message : "Unknown error" }
     })
 
-    // Still cache partial results if we have any useful events
-    if (eventBuffer.length > 1) {
-      // At least metadata + one result
-      searchCache.setStreamingResponse(cacheKey, eventBuffer)
-      logger.info("Cached partial streaming response due to error", { eventCount: eventBuffer.length, cacheKey })
-    }
+    // DO NOT cache responses that contain errors - they should be retried
+    logger.info("Not caching streaming response due to error", { eventCount: eventBuffer.length, cacheKey })
 
     endResponse()
   }
